@@ -1,0 +1,452 @@
+{
+  "services": [
+    {
+      "name": "AuthService",
+      "description": "User authentication and authorization",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/auth/auth/register",
+          "description": "Register a new user account",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com",
+            "username": "username",
+            "password": "Password123!"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/login",
+          "description": "Login and receive JWT tokens",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com",
+            "password": "Password123!"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/refresh-token",
+          "description": "Refresh access token using refresh token",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "refreshToken": "your-refresh-token"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/validate",
+          "description": "Validate JWT token",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "token": "your-jwt-token"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/revoke",
+          "description": "Revoke refresh token",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "refreshToken": "your-refresh-token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "UserService - Profile",
+      "description": "User profile management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/user/userprofile/me",
+          "description": "Get current user's profile",
+          "requiresAuth": true
+        },
+        {
+          "method": "GET",
+          "path": "/user/userprofile/{userId}",
+          "description": "Get user profile by ID (public)",
+          "requiresAuth": false,
+          "pathParameters": {
+            "userId": "guid"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/user/userprofile/me",
+          "description": "Update current user's profile",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "displayName": "John Doe",
+            "bio": "Software Developer at Company",
+            "location": "Ho Chi Minh City",
+            "website": "https://example.com",
+            "dateOfBirth": "1990-01-01T00:00:00Z"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/user/userprofile/me/bio",
+          "description": "Update user bio only",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "bio": "My new bio text (max 500 chars)"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/user/userprofile/me/avatar",
+          "description": "Upload user avatar image",
+          "requiresAuth": true,
+          "contentType": "multipart/form-data",
+          "requestBody": {
+            "file": "[Binary file data - max 5MB]"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/user/userprofile/me/cover",
+          "description": "Upload cover image",
+          "requiresAuth": true,
+          "contentType": "multipart/form-data",
+          "requestBody": {
+            "file": "[Binary file data - max 5MB]"
+          }
+        }
+      ]
+    },
+    {
+      "name": "UserService - Follow",
+      "description": "User follow/unfollow system",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/user/follow/{userId}",
+          "description": "Follow a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/user/follow/{userId}",
+          "description": "Unfollow a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/follow/{userId}/is-following",
+          "description": "Check if current user is following specified user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/follow/{userId}/stats",
+          "description": "Get follow statistics for a user",
+          "requiresAuth": false,
+          "pathParameters": {
+            "userId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/follow/{userId}/followers",
+          "description": "Get list of user's followers",
+          "requiresAuth": false,
+          "pathParameters": {
+            "userId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/follow/{userId}/following",
+          "description": "Get list of users that user is following",
+          "requiresAuth": false,
+          "pathParameters": {
+            "userId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        }
+      ]
+    },
+    {
+      "name": "PostService - Posts",
+      "description": "Post creation, management, and feed",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/post",
+          "description": "Create a new post",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "content": "My post content with #hashtags and @mentions",
+            "location": "Ho Chi Minh City",
+            "visibility": 0,
+            "media": [
+              {
+                "url": "https://res.cloudinary.com/.../image.jpg",
+                "publicId": "uitvibes/posts/abc123",
+                "type": 0,
+                "width": 1920,
+                "height": 1080,
+                "displayOrder": 0
+              }
+            ]
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/{id}",
+          "description": "Get post by ID (public)",
+          "requiresAuth": false,
+          "pathParameters": {
+            "id": "guid"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/post/{id}",
+          "description": "Update post (owner only)",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "id": "guid"
+          },
+          "requestBody": {
+            "content": "Updated post content",
+            "location": "Updated location",
+            "visibility": 0
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/{id}",
+          "description": "Delete post (soft delete, owner only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "id": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/user/{userId}",
+          "description": "Get all posts by a specific user",
+          "requiresAuth": false,
+          "pathParameters": {
+            "userId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/feed",
+          "description": "Get personalized feed for current user",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/media",
+          "description": "Upload media file (before creating post)",
+          "requiresAuth": true,
+          "contentType": "multipart/form-data",
+          "requestBody": {
+            "file": "[Binary file data - max 10MB for images, 100MB for videos]"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PostService - Likes",
+      "description": "Like/unlike posts and comments",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/post/{postId}/like",
+          "description": "Like a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/{postId}/like",
+          "description": "Unlike a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/{postId}/likes",
+          "description": "Get list of users who liked a post",
+          "requiresAuth": false,
+          "pathParameters": {
+            "postId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/comment/{commentId}/like",
+          "description": "Like a comment",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/comment/{commentId}/like",
+          "description": "Unlike a comment",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PostService - Comments",
+      "description": "Comment on posts and reply to comments",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/post/{postId}/comment",
+          "description": "Add a comment to a post",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "postId": "guid"
+          },
+          "requestBody": {
+            "content": "My comment text",
+            "parentCommentId": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/{postId}/comments",
+          "description": "Get all comments for a post",
+          "requiresAuth": false,
+          "pathParameters": {
+            "postId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/comment/{commentId}/replies",
+          "description": "Get replies to a comment",
+          "requiresAuth": false,
+          "pathParameters": {
+            "commentId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/post/comment/{commentId}",
+          "description": "Update a comment (owner only)",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "commentId": "guid"
+          },
+          "requestBody": {
+            "content": "Updated comment text"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/comment/{commentId}",
+          "description": "Delete a comment (soft delete, owner only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PostService - Bookmarks",
+      "description": "Save and manage bookmarked posts",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/post/{postId}/bookmark",
+          "description": "Bookmark a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          },
+          "contentType": "application/json",
+          "requestBody": {
+            "collection": "Saved Posts"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/{postId}/bookmark",
+          "description": "Remove bookmark from a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/bookmarks",
+          "description": "Get all bookmarked posts for current user",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20,
+            "collection": "optional"
+          }
+        }
+      ]
+    }
+  ]
+}

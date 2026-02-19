@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -16,6 +16,7 @@ builder.AddServiceDefaults();
 
 // ===== REGISTER SERVICE DISCOVERY =====
 builder.Services.AddSingleton<IServiceDiscovery, ServiceDiscovery>();
+builder.Services.AddSingleton<IPostmanRouteExportService, PostmanRouteExportService>();
 
 // ===== JWT CONFIGURATION =====
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -377,6 +378,21 @@ app.MapGet("/gateway/me", [Authorize] (HttpContext context) =>
 })
 .WithName("GetAuthenticatedUser")
 .RequireAuthorization();
+
+
+app.MapGet("/gateway/export/postman", (IPostmanRouteExportService exporter) =>
+{
+    var doc = exporter.GeneratePostmanCollection();
+    var json = doc.RootElement.GetRawText();
+
+    return Results.File(
+        fileContents: System.Text.Encoding.UTF8.GetBytes(json),
+        contentType: "application/json",
+        fileDownloadName: "UITVibes_Gateway_Routes.postman_collection.json"
+    );
+})
+.WithName("ExportPostmanRoutes")
+.AllowAnonymous(); // nếu muốn public
 
 app.MapDefaultEndpoints();
 
