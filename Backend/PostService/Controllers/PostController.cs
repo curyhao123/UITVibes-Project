@@ -22,7 +22,7 @@ public class PostController : ControllerBase
     public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -83,7 +83,7 @@ public class PostController : ControllerBase
         return Ok(posts);
     }
 
-  
+
     /// Get feed for current user
     [HttpGet("feed")]
     public async Task<ActionResult<List<PostDto>>> GetFeed(
@@ -91,7 +91,7 @@ public class PostController : ControllerBase
         [FromQuery] int take = 20)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -108,7 +108,7 @@ public class PostController : ControllerBase
     public async Task<ActionResult<PostDto>> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -129,13 +129,13 @@ public class PostController : ControllerBase
         }
     }
 
- 
+
     /// Delete post
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePost(Guid id)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -163,7 +163,7 @@ public class PostController : ControllerBase
     public async Task<ActionResult<MediaUploadResponse>> UploadMedia([FromForm] UploadMediaRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -187,6 +187,81 @@ public class PostController : ControllerBase
         {
             _logger.LogError(ex, "Error uploading media for user {UserId}", userId);
             return StatusCode(500, new { message = "An error occurred while uploading media" });
+        }
+    }
+
+    [HttpPost("{postId}/like")]
+    public async Task<ActionResult<LikeResponse>> LikePost(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            var response = await _postService.LikePostAsync(postId, userId);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error liking post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while liking post" });
+        }
+    }
+
+    [HttpDelete("{postId}/like")]
+    public async Task<IActionResult> UnlikePost(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            await _postService.UnlikePostAsync(postId, userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error unliking post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while unliking post" });
+        }
+    }
+
+    [HttpGet("{postId}/likes")]
+    public async Task<ActionResult<List<LikeDto>>> GetPostLikes(
+        Guid postId,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50)
+    {
+        if (take > 100) take = 100;
+
+        try
+        {
+            var likes = await _postService.GetPostLikesAsync(postId, skip, take);
+            return Ok(likes);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }

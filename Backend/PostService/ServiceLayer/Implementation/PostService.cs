@@ -354,4 +354,102 @@ public class PostService : IPostService
 
         return dto;
     }
+    public async Task<LikeResponse> LikePostAsync(Guid postId, Guid userId)
+    {
+        // Check if post exists
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+
+        if (post == null)
+            throw new KeyNotFoundException("Post not found");
+
+        // Check if already liked
+        var existingLike = await _context.Likes
+            .FirstOrDefaultAsync(l => l.PostId == postId && l.UserId == userId);
+
+        if (existingLike != null)
+            throw new InvalidOperationException("Post already liked");
+
+        // Create like
+        var like = new Like
+        {
+            Id = Guid.NewGuid(),
+            PostId = postId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Likes.Add(like);
+
+        // Increment likes count
+        post.LikesCount++;
+        post.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("User {UserId} liked post {PostId}", userId, postId);
+
+        return new LikeResponse
+        {
+            LikeId = like.Id,
+            PostId = postId,
+            UserId = userId,
+            TotalLikes = post.LikesCount,
+            CreatedAt = like.CreatedAt
+        };
+    }
+
+    public async Task UnlikePostAsync(Guid postId, Guid userId)
+    {
+        // Find the like
+        var like = await _context.Likes
+            .FirstOrDefaultAsync(l => l.PostId == postId && l.UserId == userId);
+
+        if (like == null)
+            throw new KeyNotFoundException("Like not found");
+
+        // Get post to decrement count
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId);
+
+        if (post == null)
+            throw new KeyNotFoundException("Post not found");
+
+        // Remove like
+        _context.Likes.Remove(like);
+
+        // Decrement likes count
+        if (post.LikesCount > 0)
+        {
+            post.LikesCount--;
+            post.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("User {UserId} unliked post {PostId}", userId, postId);
+    }
+
+    public async Task<List<LikeDto>> GetPostLikesAsync(Guid postId, int skip = 0, int take = 50)
+    {
+        // Check if post exists
+        var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted);
+
+        if (!postExists)
+            throw new KeyNotFoundException("Post not found");
+
+        var likes = await _context.Likes
+            .Where(l => l.PostId == postId)
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .Select(l => new LikeDto
+            {
+                LikeId = l.Id,
+                PostId = l.PostId,
+                UserId = l.UserId,
+                CreatedAt = l.CreatedAt
+            })
+            .ToListAsync();
+
+        return likes;
+    }
 }

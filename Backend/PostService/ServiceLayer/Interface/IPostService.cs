@@ -10,5 +10,10 @@ public interface IPostService
     Task<List<PostDto>> GetFeedAsync(Guid userId, int skip = 0, int take = 20);
     Task<PostDto> UpdatePostAsync(Guid postId, Guid userId, UpdatePostRequest request);
     Task DeletePostAsync(Guid postId, Guid userId);
-    Task<MediaUploadResponse> UploadMediaAsync(IFormFile file); // Returns metadata only, no DB save
+    Task<MediaUploadResponse> UploadMediaAsync(IFormFile file);
+
+    // ===== LIKE FUNCTIONS =====
+    Task<LikeResponse> LikePostAsync(Guid postId, Guid userId);
+    Task UnlikePostAsync(Guid postId, Guid userId);
+    Task<List<LikeDto>> GetPostLikesAsync(Guid postId, int skip = 0, int take = 50);
 }
