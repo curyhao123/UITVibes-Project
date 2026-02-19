@@ -1,0 +1,17 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.cache
+*.db
+*.opendb
+
+# DotNet build
+bin/
+obj/
+
+# Node
+node_modules/
+
+# Environment
+.env
