@@ -10,11 +10,13 @@ public class PostController : ControllerBase
 {
     private readonly IPostService _postService;
     private readonly ILogger<PostController> _logger;
+    private readonly IBookmarkService _bookmarkService;
 
-    public PostController(IPostService postService, ILogger<PostController> logger)
+    public PostController(IPostService postService, ILogger<PostController> logger, IBookmarkService bookmarkService)
     {
         _postService = postService;
         _logger = logger;
+        _bookmarkService = bookmarkService;
     }
 
     /// Create a new post
@@ -262,6 +264,82 @@ public class PostController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{postId}/bookmark")]
+    public async Task<ActionResult<BookmarkDto>> BookmarkPost(Guid postId, [FromBody] string? collection = null)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            CreateBookmarkRequest request = new CreateBookmarkRequest();
+            request.PostId = postId;
+            request.UserId = userId;
+            if (collection != null)
+                request.Collection = collection;
+            var bookmark = await _bookmarkService.CreateBookmarkAsync(request);
+            return Ok(bookmark);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bookmarking post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while bookmarking post" });
+        }
+    }
+
+    [HttpDelete("{postId}/bookmark")]
+    public async Task<IActionResult> RemoveBookmark(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            await _bookmarkService.DeleteBookmarkAsync(postId, userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing bookmark for post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while removing bookmark" });
+        }
+    }
+
+    [HttpGet("bookmarks")]
+    public async Task<ActionResult<List<BookmarkDto>>> GetUserBookmarks(
+        [FromQuery] string? collection = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var bookmarks = await _bookmarkService.GetBookmarksByUserAsync(userId, collection, skip, take);
+            return Ok(bookmarks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving bookmarks for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while retrieving bookmarks" });
         }
     }
 }
