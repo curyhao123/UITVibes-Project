@@ -12,6 +12,8 @@ public class UserDbContext : DbContext
     public DbSet<SocialLink> SocialLinks { get; set; }
     public DbSet<Follow> Follows { get; set; }
 
+    public DbSet<Block> Blocks { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -35,7 +37,7 @@ public class UserDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Platform).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
-            
+
             entity.HasOne(e => e.UserProfile)
                 .WithMany(u => u.SocialLinks)
                 .HasForeignKey(e => e.UserProfileId)
@@ -45,10 +47,10 @@ public class UserDbContext : DbContext
         modelBuilder.Entity<Follow>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             // Composite index to prevent duplicate follows
             entity.HasIndex(e => new { e.FollowerId, e.FollowingId }).IsUnique();
-            
+
             // Index for queries
             entity.HasIndex(e => e.FollowerId);
             entity.HasIndex(e => e.FollowingId);
@@ -56,6 +58,17 @@ public class UserDbContext : DbContext
             // ✅ NO FOREIGN KEY CONSTRAINTS
             // FollowerId and FollowingId reference UserId from AuthService, not UserProfile.Id
             // We'll handle referential integrity in application logic
+        });
+
+        modelBuilder.Entity<Block>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Composite index to prevent duplicate blocks
+            entity.HasIndex(e => new { e.BlockerId, e.BlockedId }).IsUnique();
+            // Index for queries
+            entity.HasIndex(e => e.BlockerId);
+            entity.HasIndex(e => e.BlockedId);
+
         });
     }
 }

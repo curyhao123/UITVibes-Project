@@ -27,8 +27,13 @@ public class UserProfileController : ControllerBase
     [HttpGet("{userId}")]
     public async Task<ActionResult<UserProfileDto>> GetProfile(Guid userId)
     {
-        var profile = await _userProfileService.GetProfileByUserIdAsync(userId);
-        
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        var profile = await _userProfileService.GetProfileByUserIdAsync(currentUserId, userId);
+
         if (profile == null)
         {
             return NotFound(new { message = "Profile not found" });
@@ -48,7 +53,7 @@ public class UserProfileController : ControllerBase
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
 
-        var profile = await _userProfileService.GetProfileByUserIdAsync(userId);
+        var profile = await _userProfileService.GetProfileByUserIdAsync(userId, userId);
 
         if (profile == null)
         {
@@ -105,10 +110,10 @@ public class UserProfileController : ControllerBase
         {
             // Upload to Cloudinary
             var avatarUrl = await _cloudinaryService.UploadImageAsync(request.File, "uitvibes/avatars");
-            
+
             // Update profile with new avatar URL
             var updatedProfile = await _userProfileService.UpdateAvatarAsync(userId, avatarUrl);
-            
+
             return Ok(updatedProfile);
         }
         catch (ArgumentException ex)
@@ -134,10 +139,10 @@ public class UserProfileController : ControllerBase
         {
             // Upload to Cloudinary
             var avatarUrl = await _cloudinaryService.UploadImageAsync(request.File, "uitvibes/avatars");
-            
+
             // Update profile with new avatar URL
             var updatedProfile = await _userProfileService.UpdateAvatarAsync(userId, avatarUrl);
-            
+
             return Ok(updatedProfile);
         }
         catch (ArgumentException ex)
@@ -151,7 +156,7 @@ public class UserProfileController : ControllerBase
         }
     }
 
-    
+
     [HttpPost("me/cover")]
     [RequestSizeLimit(5 * 1024 * 1024)] // 5MB limit
     public async Task<ActionResult<UserProfileDto>> UploadCoverImage([FromForm] UploadImageRequest request)
@@ -172,10 +177,10 @@ public class UserProfileController : ControllerBase
         {
             // Upload to Cloudinary with different transformation for cover
             var coverUrl = await _cloudinaryService.UploadImageAsync(request.File, "uitvibes/covers");
-            
+
             // Update profile with new cover image URL
             var updatedProfile = await _userProfileService.UpdateCoverImageAsync(userId, coverUrl);
-            
+
             return Ok(updatedProfile);
         }
         catch (ArgumentException ex)
@@ -188,7 +193,7 @@ public class UserProfileController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while uploading cover image" });
         }
     }
-  
+
     [HttpPut("me/bio")]
     public async Task<ActionResult<UserProfileDto>> UpdateMyBio([FromBody] UpdateBioRequest request)
     {

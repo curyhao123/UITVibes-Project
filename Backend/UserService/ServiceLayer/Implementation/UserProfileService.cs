@@ -10,26 +10,39 @@ public class UserProfileService : IUserProfileService
     private readonly UserDbContext _context;
     private readonly ILogger<UserProfileService> _logger;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IBlockService _blockService;
 
     public UserProfileService(
-        UserDbContext context, 
+        UserDbContext context,
         ILogger<UserProfileService> logger,
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IBlockService blockService)
     {
         _context = context;
         _logger = logger;
         _cloudinaryService = cloudinaryService;
+        _blockService = blockService;
     }
 
-    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid userId)
+    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId, Guid userId)
     {
+        var blocked = await _blockService.IsBlockedAsync(currentUserId, userId);
+        if (blocked)
+        {
+            throw new UnauthorizedAccessException("You cannot view this profile");
+        }
+        var blocking = await _blockService.IsBlockedAsync(userId, currentUserId);
+        if (blocking)
+        {
+            throw new UnauthorizedAccessException("You cannot view this profile");
+        }
         var profile = await _context.UserProfiles
             .Include(p => p.SocialLinks)
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (profile == null)
         {
-            return null;
+            throw new KeyNotFoundException("User profile not found");
         }
 
         return MapToDto(profile);
@@ -77,22 +90,22 @@ public class UserProfileService : IUserProfileService
         // Update basic fields
         if (request.DisplayName != null)
             profile.DisplayName = request.DisplayName;
-        
+
         if (request.Bio != null)
             profile.Bio = request.Bio;
-        
+
         if (request.AvatarUrl != null)
             profile.AvatarUrl = request.AvatarUrl;
-        
+
         if (request.CoverImageUrl != null)
             profile.CoverImageUrl = request.CoverImageUrl;
-        
+
         if (request.DateOfBirth.HasValue)
             profile.DateOfBirth = request.DateOfBirth.Value;
-        
+
         if (request.Location != null)
             profile.Location = request.Location;
-        
+
         if (request.Website != null)
             profile.Website = request.Website;
 
@@ -101,7 +114,7 @@ public class UserProfileService : IUserProfileService
         {
             // Remove existing links
             _context.SocialLinks.RemoveRange(profile.SocialLinks);
-            
+
             // Add new links
             foreach (var linkDto in request.SocialLinks)
             {
@@ -220,7 +233,7 @@ public class UserProfileService : IUserProfileService
         return MapToDto(profile);
     }
 
-    
+
     private static string? ExtractPublicIdFromUrl(string url)
     {
         // Extract public ID from Cloudinary URL

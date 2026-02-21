@@ -38,9 +38,10 @@ builder.AddRabbitMQClient("messaging");
 */
 // Add services
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
-builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();    
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddHostedService<UserCreatedConsumer>();
 builder.Services.AddScoped<IFollowService, FollowService>();
+builder.Services.AddScoped<IBlockService, BlockService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

@@ -447,6 +447,49 @@
           }
         }
       ]
+    },
+    {
+      "name": "UserService - Block",
+      "description": "User blocking system",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/user/block/{blockedId}",
+          "description": "Block a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/user/block/{blockedId}",
+          "description": "Unblock a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/block",
+          "description": "Get blocked users list",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/block/{blockedId}/is-blocked",
+          "description": "Check if a user is blocked",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        }
+      ]
     }
   ]
 }

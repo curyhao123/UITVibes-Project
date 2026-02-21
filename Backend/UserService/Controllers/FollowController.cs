@@ -49,7 +49,7 @@ public class FollowController : ControllerBase
         }
     }
 
-  
+
     //[Authorize]
     [HttpDelete("{userId}")]
     public async Task<IActionResult> UnfollowUser(Guid userId)
@@ -80,7 +80,7 @@ public class FollowController : ControllerBase
         }
     }
 
-    
+
     //[Authorize]
     [HttpGet("{userId}/is-following")]
     public async Task<ActionResult<bool>> IsFollowing(Guid userId)
@@ -95,7 +95,7 @@ public class FollowController : ControllerBase
         return Ok(new { isFollowing });
     }
 
- 
+
     [HttpGet("{userId}/stats")]
     public async Task<ActionResult<UserFollowStatsDto>> GetFollowStats(Guid userId)
     {
@@ -123,7 +123,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var followers = await _followService.GetFollowersAsync(userId, skip, take);
         return Ok(followers);
     }
@@ -136,8 +136,40 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var following = await _followService.GetFollowingAsync(userId, skip, take);
+        return Ok(following);
+    }
+
+    [HttpGet("me/followers")]
+    public async Task<ActionResult<List<FollowerListDto>>> GetMyFollowers(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50)
+    {
+        if (take > 100) take = 100; // Limit max results
+
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        var followers = await _followService.GetFollowersAsync(currentUserId, skip, take);
+        return Ok(followers);
+    }
+
+    [HttpGet("me/following")]
+    public async Task<ActionResult<List<FollowerListDto>>> GetMyFollowing(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50)
+    {
+        if (take > 100) take = 100; // Limit max results
+
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        var following = await _followService.GetFollowingAsync(currentUserId, skip, take);
         return Ok(following);
     }
 }
