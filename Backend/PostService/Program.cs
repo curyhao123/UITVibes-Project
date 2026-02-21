@@ -16,7 +16,7 @@ builder.AddRabbitMQClient("messaging");
 // Add services to the container.
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped < IPostService, PostService.ServiceLayer.Implementation.PostService>();
-
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
