@@ -71,7 +71,7 @@ public class PostService : IPostService
 
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}", 
+        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}",
             post.Id, post.Media.Count, userId);
 
         return await GetPostByIdAsync(post.Id, userId);
@@ -213,7 +213,7 @@ public class PostService : IPostService
         if (isVideo)
         {
             var (url, thumbnailUrl, publicId, duration) = await _cloudinaryService.UploadVideoAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -226,7 +226,7 @@ public class PostService : IPostService
         else
         {
             var (url, publicId, width, height) = await _cloudinaryService.UploadImageAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -303,9 +303,10 @@ public class PostService : IPostService
             };
             post.Mentions.Add(mention);
         }
-        
+
         await Task.CompletedTask;
     }
+
 
     private async Task<PostDto> MapToDto(Post post, Guid? currentUserId)
     {
@@ -342,7 +343,7 @@ public class PostService : IPostService
         {
             dto.IsLikedByCurrentUser = await _context.Likes
                 .AnyAsync(l => l.PostId == post.Id && l.UserId == currentUserId.Value);
-            
+
             dto.IsBookmarkedByCurrentUser = await _context.Bookmarks
                 .AnyAsync(b => b.PostId == post.Id && b.UserId == currentUserId.Value);
         }

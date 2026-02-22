@@ -421,7 +421,7 @@ app.MapReverseProxy(proxyPipeline =>
             method == "GET" &&
             (path.Contains("/user/userprofile/") && !path.Contains("/me")) ||
             (path.Contains("/user/follow/") && (path.Contains("/stats") || path.Contains("/followers") || path.Contains("/following"))) ||
-            (path.Contains("/post/") && !path.Contains("/feed"));
+            (path.Contains("/post/") && !path.Contains("/feed") && !path.Contains("/bookmarks"));
         // Require authentication for non-public paths
         if (!isPublicPath && !isPublicGetRequest)
         {

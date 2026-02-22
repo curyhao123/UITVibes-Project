@@ -193,6 +193,49 @@
       ]
     },
     {
+      "name": "UserService - Block",
+      "description": "User blocking system",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/user/block/{blockedId}",
+          "description": "Block a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/user/block/{blockedId}",
+          "description": "Unblock a user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/block",
+          "description": "Get blocked users list",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/block/{blockedId}/is-blocked",
+          "description": "Check if a user is blocked",
+          "requiresAuth": true,
+          "pathParameters": {
+            "blockedId": "guid"
+          }
+        }
+      ]
+    },
+    {
       "name": "PostService - Posts",
       "description": "Post creation, management, and feed",
       "endpoints": [
@@ -449,44 +492,41 @@
       ]
     },
     {
-      "name": "UserService - Block",
-      "description": "User blocking system",
+      "name": "PostService - Hashtags",
+      "description": "Hashtag trending, search, and discovery",
       "endpoints": [
         {
-          "method": "POST",
-          "path": "/user/block/{blockedId}",
-          "description": "Block a user",
-          "requiresAuth": true,
-          "pathParameters": {
-            "blockedId": "guid"
-          }
-        },
-        {
-          "method": "DELETE",
-          "path": "/user/block/{blockedId}",
-          "description": "Unblock a user",
-          "requiresAuth": true,
-          "pathParameters": {
-            "blockedId": "guid"
-          }
-        },
-        {
           "method": "GET",
-          "path": "/user/block",
-          "description": "Get blocked users list",
-          "requiresAuth": true,
+          "path": "/post/hashtag/trending",
+          "description": "Get trending hashtags sorted by usage and recency",
+          "requiresAuth": false,
           "queryParameters": {
             "skip": 0,
-            "take": 50
+            "take": 20
           }
         },
         {
           "method": "GET",
-          "path": "/user/block/{blockedId}/is-blocked",
-          "description": "Check if a user is blocked",
-          "requiresAuth": true,
+          "path": "/post/hashtag/search",
+          "description": "Search hashtags by name (autocomplete)",
+          "requiresAuth": false,
+          "queryParameters": {
+            "q": "search query",
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/hashtag/{hashtagName}/posts",
+          "description": "Get all public posts containing a specific hashtag",
+          "requiresAuth": false,
           "pathParameters": {
-            "blockedId": "guid"
+            "hashtagName": "string (without #)"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
           }
         }
       ]
