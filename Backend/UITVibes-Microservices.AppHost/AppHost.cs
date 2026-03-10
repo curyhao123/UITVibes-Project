@@ -1,4 +1,4 @@
-﻿var builder = DistributedApplication.CreateBuilder(args);
+var builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("cache");
 
@@ -70,5 +70,7 @@ var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>(
     .WithReference(postService)
     .WaitFor(postService)
     .WithEnvironment("Jwt__Key", jwtKey); // ✅ Add JWT Key to Gateway
+
+builder.AddProject<Projects.MessageService>("messageservice");
 
 builder.Build().Run();

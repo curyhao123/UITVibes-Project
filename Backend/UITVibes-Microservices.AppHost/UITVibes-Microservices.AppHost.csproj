@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AuthService\AuthService.csproj" />
+    <ProjectReference Include="..\MessageService\MessageService.csproj" />
     <ProjectReference Include="..\PostService\PostService.csproj" />
     <ProjectReference Include="..\UITVibes-Microservices.ApiService\UITVibes-Microservices.ApiService.csproj" />
     <ProjectReference Include="..\UserService\UserService.csproj" />
