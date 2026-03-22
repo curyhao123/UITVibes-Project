@@ -1,27 +1,80 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Modal,
+  Alert,
+  Share,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../context/AppContext';
-import { Avatar, PostGrid } from '../../components';
-import { Feather } from '@expo/vector-icons';
-import { AppColors } from '../../constants/theme';
+import { Avatar, PostGrid, Header } from '../../components';
+import { AppColors, layoutPadding } from '../../constants/theme';
+import { Typography } from '../../constants/typography';
 
 export default function ProfileScreen() {
-  const { currentUser, posts } = useApp();
   const router = useRouter();
+  const { currentUser, posts, updateProfile } = useApp();
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editWebsite, setEditWebsite] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const userPosts = posts.filter((post) => post.userId === 'current').slice(0, 9);
 
   const formatCount = (count: number): string => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
+  };
+
+  const openEditModal = () => {
+    if (!currentUser) return;
+    setEditDisplayName(currentUser.displayName);
+    setEditBio(currentUser.bio);
+    setEditWebsite(currentUser.website || '');
+    setShowEditModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!editDisplayName.trim()) {
+      Alert.alert('Error', 'Display name cannot be empty.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        displayName: editDisplayName.trim(),
+        bio: editBio.trim(),
+        website: editWebsite.trim() || undefined,
+      });
+      setShowEditModal(false);
+    } catch {
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleShareProfile = async () => {
+    if (!currentUser) return;
+    try {
+      await Share.share({
+        message: `Check out ${currentUser.displayName} on UITVibes! @${currentUser.username}`,
+        title: `${currentUser.displayName} on UITVibes`,
+      });
+    } catch {
+      // User cancelled
+    }
   };
 
   if (!currentUser) {
@@ -30,55 +83,66 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{currentUser.username}</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Feather name="plus-square" size={24} color={AppColors.text} />
+      <Header
+        title={currentUser.username}
+        showAvatar={false}
+        rightAction={
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.settingsBtn}
+            onPress={() => router.push('/settings' as any)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="settings" size={22} color={AppColors.text} strokeWidth={2} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Feather name="menu" size={24} color={AppColors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.profileInfo}>
           <Avatar user={currentUser} size="large" />
           <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/followers/current` as any)}>
               <Text style={styles.statNumber}>{formatCount(currentUser.posts)}</Text>
               <Text style={styles.statLabel}>Posts</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/followers/current` as any)}>
               <Text style={styles.statNumber}>{formatCount(currentUser.followers)}</Text>
               <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push('/followers/current?tab=following' as any)}
+            >
               <Text style={styles.statNumber}>{formatCount(currentUser.following)}</Text>
               <Text style={styles.statLabel}>Following</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.bioContainer}>
           <Text style={styles.displayName}>{currentUser.displayName}</Text>
           <Text style={styles.bio}>{currentUser.bio}</Text>
+          {currentUser.website && (
+            <Text style={styles.website}>{currentUser.website}</Text>
+          )}
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Edit Profile</Text>
+          <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
+            <Feather name="user" size={16} color={AppColors.text} strokeWidth={2} />
+            <Text style={styles.editButtonText}> Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.editButton}>
-            <Text style={styles.editButtonText}>Share Profile</Text>
+          <TouchableOpacity style={styles.editButton} onPress={handleShareProfile}>
+            <Feather name="share" size={16} color={AppColors.text} strokeWidth={2} />
+            <Text style={styles.editButtonText}> Share</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.highlights}>
           <View style={styles.highlightItem}>
             <View style={styles.highlightCircle}>
-              <Feather name="plus" size={20} color={AppColors.text} />
+              <Feather name="plus" size={20} color={AppColors.text} strokeWidth={2} />
             </View>
             <Text style={styles.highlightText}>New Story</Text>
           </View>
@@ -86,15 +150,98 @@ export default function ProfileScreen() {
 
         <View style={styles.tabsContainer}>
           <View style={[styles.tab, styles.activeTab]}>
-            <Feather name="grid" size={24} color={AppColors.primary} />
+            <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
           </View>
           <View style={styles.tab}>
-            <Feather name="user" size={24} color={AppColors.textMuted} />
+            <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
           </View>
         </View>
 
         <PostGrid posts={userPosts.length > 0 ? userPosts : posts.slice(0, 9)} />
       </ScrollView>
+
+      {/* ─── Edit Profile Modal ─────────────────────────────── */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isSaving || !editDisplayName.trim()}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              ) : (
+                <Text
+                  style={[
+                    styles.modalSave,
+                    (!editDisplayName.trim() || isSaving) && styles.modalSaveDisabled,
+                  ]}
+                >
+                  Save
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalForm}>
+            <View style={styles.modalAvatarSection}>
+              <Avatar user={currentUser} size="large" />
+              <TouchableOpacity>
+                <Text style={styles.changePhotoText}>Change Photo</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Display Name</Text>
+              <TextInput
+                style={styles.formInput}
+                value={editDisplayName}
+                onChangeText={setEditDisplayName}
+                placeholder="Enter your display name"
+                placeholderTextColor={AppColors.textMuted}
+                maxLength={50}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Bio</Text>
+              <TextInput
+                style={[styles.formInput, styles.formInputMultiline]}
+                value={editBio}
+                onChangeText={setEditBio}
+                placeholder="Tell us about yourself"
+                placeholderTextColor={AppColors.textMuted}
+                multiline
+                numberOfLines={4}
+                maxLength={200}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Website</Text>
+              <TextInput
+                style={styles.formInput}
+                value={editWebsite}
+                onChangeText={setEditWebsite}
+                placeholder="yourwebsite.com"
+                placeholderTextColor={AppColors.textMuted}
+                keyboardType="url"
+                autoCapitalize="none"
+                maxLength={100}
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -104,70 +251,61 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.borderLight,
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: AppColors.text,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-  },
-  headerIcon: {
-    marginLeft: 16,
+    justifyContent: 'center',
   },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 20,
   },
   statsContainer: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginLeft: 20,
+    marginLeft: 16,
   },
   statItem: {
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...Typography.statNumber,
     color: AppColors.text,
   },
   statLabel: {
-    fontSize: 12,
-    color: AppColors.textSecondary,
+    ...Typography.statLabel,
+    color: AppColors.iconMuted,
     marginTop: 2,
   },
   bioContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingBottom: 16,
   },
   displayName: {
-    fontWeight: '600',
-    fontSize: 14,
+    ...Typography.captionSemibold,
     marginBottom: 2,
     color: AppColors.text,
   },
   bio: {
-    fontSize: 14,
-    lineHeight: 18,
+    ...Typography.caption,
+    lineHeight: 20,
     color: AppColors.textSecondary,
+  },
+  website: {
+    ...Typography.caption,
+    color: AppColors.primary,
+    marginTop: 4,
+    textDecorationLine: 'underline',
   },
   actionButtons: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     marginBottom: 20,
   },
   editButton: {
@@ -177,15 +315,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   editButtonText: {
-    fontWeight: '600',
-    fontSize: 14,
+    ...Typography.captionSemibold,
     color: AppColors.text,
   },
   highlights: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     marginBottom: 20,
   },
   highlightItem: {
@@ -202,7 +341,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   highlightText: {
-    fontSize: 12,
+    ...Typography.meta,
     color: AppColors.text,
   },
   tabsContainer: {
@@ -218,5 +357,77 @@ const styles = StyleSheet.create({
   activeTab: {
     borderTopWidth: 1,
     borderTopColor: AppColors.primary,
+  },
+
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  modalCancel: {
+    ...Typography.body,
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  modalTitle: {
+    ...Typography.sectionTitle,
+    color: AppColors.text,
+  },
+  modalSave: {
+    ...Typography.bodySemibold,
+    fontSize: 16,
+    color: AppColors.primary,
+  },
+  modalSaveDisabled: {
+    color: AppColors.iconMuted,
+  },
+  modalForm: {
+    flex: 1,
+  },
+  modalAvatarSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.borderLight,
+    marginBottom: 8,
+  },
+  changePhotoText: {
+    ...Typography.bodySemibold,
+    color: AppColors.primary,
+    marginTop: 10,
+  },
+  formGroup: {
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.borderLight,
+  },
+  formLabel: {
+    ...Typography.meta,
+    fontSize: 11,
+    fontWeight: '700',
+    color: AppColors.iconMuted,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  formInput: {
+    ...Typography.body,
+    color: AppColors.text,
+    padding: 0,
+  },
+  formInputMultiline: {
+    height: 80,
+    textAlignVertical: 'top',
   },
 });
