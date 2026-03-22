@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { PostCard, StoryBar, Avatar } from '../../components';
+import { useRouter } from 'expo-router';
+import { PostCard, StoryBar, Avatar, Header } from '../../components';
 import { useApp } from '../../context/AppContext';
-import { AppColors } from '../../constants/theme';
+import { AppColors, layoutPadding } from '../../constants/theme';
+import { Typography } from '../../constants/typography';
+import { currentUserFollowingIds } from '../../data/mockData';
 
 export default function HomeScreen() {
-  const { currentUser, posts, stories, isLoading, refreshPosts, refreshStories } = useApp();
+  const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
+  const { currentUser, posts, stories, isLoading, refreshPosts, refreshStories, feedTab, setFeedTab, unreadCount } = useApp();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -16,6 +20,15 @@ export default function HomeScreen() {
     await refreshStories();
     setRefreshing(false);
   };
+
+  const displayedPosts = useMemo(() => {
+    if (feedTab === 'following') {
+      return posts.filter(
+        (post) => post.userId === 'current' || currentUserFollowingIds.has(post.userId)
+      );
+    }
+    return posts;
+  }, [posts, feedTab]);
 
   if (isLoading) {
     return (
@@ -27,27 +40,56 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          {currentUser ? (
-            <TouchableOpacity activeOpacity={0.8}>
-              <Avatar user={currentUser} size="small" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.avatarPlaceholder} />
-          )}
-          <Text style={styles.headerTitle}>Discover</Text>
-          <TouchableOpacity style={styles.notificationButton} activeOpacity={0.7}>
-            <Feather name="bell" size={22} color={AppColors.text} />
+      {/* Unified premium header */}
+      <Header
+        title="Discover"
+        showAvatar
+        avatarUser={currentUser}
+        rightAction={
+          <TouchableOpacity
+            style={styles.notificationButton}
+            activeOpacity={0.7}
+            onPress={() => router.push('/notifications' as any)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="bell" size={22} color={AppColors.text} strokeWidth={2} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
-        </View>
-      </View>
+        }
+        bottomContent={
+          <View style={styles.feedTabs}>
+            <TouchableOpacity
+              style={[styles.feedTab, feedTab === 'foryou' && styles.feedTabActive]}
+              onPress={() => setFeedTab('foryou')}
+            >
+              <Text style={[styles.feedTabText, feedTab === 'foryou' && styles.feedTabTextActive]}>
+                For You
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.feedTab, feedTab === 'following' && styles.feedTabActive]}
+              onPress={() => setFeedTab('following')}
+            >
+              <Text style={[styles.feedTabText, feedTab === 'following' && styles.feedTabTextActive]}>
+                Following
+              </Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
+
       <FlatList
-        data={posts}
+        data={displayedPosts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={
-          stories.length > 0 ? <StoryBar stories={stories} /> : null
+          stories.length > 0 && feedTab === 'foryou' ? <StoryBar stories={stories} /> : null
         }
         refreshControl={
           <RefreshControl
@@ -57,6 +99,20 @@ export default function HomeScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyFeed}>
+            <Feather name="users" size={40} color={AppColors.iconMuted} strokeWidth={1.8} />
+            <Text style={styles.emptyFeedTitle}>
+              {feedTab === 'following' ? 'No posts from people you follow' : 'No posts yet'}
+            </Text>
+            <Text style={styles.emptyFeedSubtitle}>
+              {feedTab === 'following'
+                ? 'Follow more people to see their posts here'
+                : 'Be the first to share something!'}
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.feedContent}
       />
     </SafeAreaView>
   );
@@ -67,27 +123,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: 8,
-    backgroundColor: AppColors.surfaceElevated,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 24,
-    fontWeight: '700',
-    color: AppColors.text,
-    letterSpacing: -0.5,
-  },
   notificationButton: {
     width: 40,
     height: 40,
@@ -96,11 +131,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: AppColors.border,
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: AppColors.primary,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: AppColors.surfaceElevated,
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  // Feed Tabs
+  feedTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: layoutPadding,
+  },
+  feedTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  feedTabActive: {
+    borderBottomColor: AppColors.primary,
+  },
+  feedTabText: {
+    ...Typography.bodySemibold,
+    fontSize: 14,
+    color: AppColors.iconMuted,
+  },
+  feedTabTextActive: {
+    color: AppColors.text,
+  },
+  // Feed Content
+  feedContent: {
+    paddingHorizontal: layoutPadding,
+    paddingBottom: 100,
+  },
+  // Empty State
+  emptyFeed: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyFeedTitle: {
+    ...Typography.sectionTitle,
+    marginTop: 16,
+    textAlign: 'center',
+    color: AppColors.text,
+  },
+  emptyFeedSubtitle: {
+    ...Typography.caption,
+    color: AppColors.iconMuted,
+    textAlign: 'center',
+    marginTop: 6,
   },
   loadingContainer: {
     flex: 1,

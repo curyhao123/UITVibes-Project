@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { getUserById, getUserPosts } from '../../services/api';
+import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
 import { User, Post } from '../../data/mockData';
 import { Avatar, PostGrid } from '../../components';
 import { AppColors } from '../../constants/theme';
@@ -28,13 +28,29 @@ export default function UserProfileScreen() {
     setIsLoading(false);
   };
 
+  const handleFollowToggle = async () => {
+    if (!user) return;
+    const result = await toggleFollow(user.id);
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            isFollowing: result,
+            followers: result ? prev.followers + 1 : Math.max(0, prev.followers - 1),
+          }
+        : null
+    );
+  };
+
+  const handleMessage = async () => {
+    if (!user) return;
+    // Navigate to message tab - in a real app, create/open a conversation
+    router.push('/(tabs)/message' as any);
+  };
+
   const formatCount = (count: number): string => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   };
 
@@ -69,41 +85,58 @@ export default function UserProfileScreen() {
           <View style={styles.profileInfo}>
             <Avatar user={user} size="large" />
             <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => router.push(`/followers/${user.id}` as any)}
+              >
                 <Text style={styles.statNumber}>{formatCount(user.posts)}</Text>
                 <Text style={styles.statLabel}>Posts</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => router.push(`/followers/${user.id}` as any)}
+              >
                 <Text style={styles.statNumber}>{formatCount(user.followers)}</Text>
                 <Text style={styles.statLabel}>Followers</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => router.push(`/followers/${user.id}?tab=following` as any)}
+              >
                 <Text style={styles.statNumber}>{formatCount(user.following)}</Text>
                 <Text style={styles.statLabel}>Following</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.bioContainer}>
             <Text style={styles.displayName}>{user.displayName}</Text>
             <Text style={styles.bio}>{user.bio}</Text>
+            {user.website && (
+              <Text style={styles.website}>{user.website}</Text>
+            )}
           </View>
 
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.followButton}>
-              <Text style={styles.followButtonText}>Follow</Text>
+            <TouchableOpacity
+              style={[styles.followButton, user.isFollowing && styles.followingButton]}
+              onPress={handleFollowToggle}
+            >
+              <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
+                {user.isFollowing ? 'Following' : 'Follow'}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.messageButton}>
+            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
               <Text style={styles.messageButtonText}>Message</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.tabsContainer}>
             <View style={[styles.tab, styles.activeTab]}>
-              <Feather name="grid" size={24} color="black" />
+              <Feather name="grid" size={24} color={AppColors.primary} />
             </View>
             <View style={styles.tab}>
-              <Feather name="user" size={24} color="#8e8e8e" />
+              <Feather name="tag" size={24} color={AppColors.textMuted} />
             </View>
           </View>
 
@@ -165,6 +198,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: AppColors.textSecondary,
   },
+  website: {
+    fontSize: 14,
+    color: '#1a5fc9',
+    marginTop: 4,
+    textDecorationLine: 'underline',
+  },
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -178,10 +217,16 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: 'center',
   },
+  followingButton: {
+    backgroundColor: AppColors.border,
+  },
   followButtonText: {
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
+  },
+  followingButtonText: {
+    color: AppColors.text,
   },
   messageButton: {
     flex: 1,

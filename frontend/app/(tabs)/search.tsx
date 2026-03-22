@@ -7,21 +7,24 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { searchUsers, getPosts } from '../../services/api';
+import { Header } from '../../components';
+import { useApp } from '../../context/AppContext';
+import { searchUsers, getPosts, toggleFollow as apiToggleFollow } from '../../services/api';
 import { User, Post } from '../../data/mockData';
-import { AppColors } from '../../constants/theme';
+import { AppColors, layoutPadding } from '../../constants/theme';
+import { Typography } from '../../constants/typography';
 
 export default function SearchScreen() {
+  const router = useRouter();
+  const { toggleFollow } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
-  const router = useRouter();
 
   useEffect(() => {
     loadInitialData();
@@ -58,6 +61,22 @@ export default function SearchScreen() {
     </TouchableOpacity>
   );
 
+  const handleFollowToggle = async (userId: string) => {
+    await toggleFollow(userId);
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          return {
+            ...u,
+            isFollowing: !u.isFollowing,
+            followers: u.isFollowing ? u.followers - 1 : u.followers + 1,
+          };
+        }
+        return u;
+      })
+    );
+  };
+
   const renderUserItem = ({ item }: { item: User }) => (
     <TouchableOpacity
       style={styles.userItem}
@@ -65,57 +84,81 @@ export default function SearchScreen() {
     >
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <View style={styles.userInfo}>
-        <Text style={styles.username}>{item.username}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.username}>{item.username}</Text>
+          {item.isVerified && (
+            <Feather name="check-circle" size={12} color={AppColors.primary} style={{ marginLeft: 4 }} />
+          )}
+        </View>
         <Text style={styles.displayName}>{item.displayName}</Text>
       </View>
-      <TouchableOpacity style={styles.followButton}>
-        <Text style={styles.followText}>Follow</Text>
+      <TouchableOpacity
+        style={[styles.followButton, item.isFollowing && styles.followingButton]}
+        onPress={() => handleFollowToggle(item.id)}
+      >
+        <Text style={[styles.followText, item.isFollowing && styles.followingText]}>
+          {item.isFollowing ? 'Following' : 'Follow'}
+        </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={18} color={AppColors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search"
-            placeholderTextColor={AppColors.textMuted}
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch('')}>
-              <Feather name="x" size={18} color={AppColors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
-          onPress={() => setActiveTab('posts')}
-        >
-          <Feather
-            name="grid"
-            size={24}
-            color={activeTab === 'posts' ? AppColors.primary : AppColors.textMuted}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'users' && styles.activeTab]}
-          onPress={() => setActiveTab('users')}
-        >
-          <Feather
-            name="users"
-            size={24}
-            color={activeTab === 'users' ? AppColors.primary : AppColors.textMuted}
-          />
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Search"
+        showAvatar={false}
+        rightAction={
+          <View style={styles.searchIconWrap}>
+            <Feather name="search" size={20} color={AppColors.iconMuted} strokeWidth={2} />
+          </View>
+        }
+        bottomContent={
+          <>
+            <View style={styles.searchRow}>
+              <View style={styles.searchContainer}>
+                <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search"
+                  placeholderTextColor={AppColors.iconMuted}
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => handleSearch('')}>
+                    <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
+                onPress={() => setActiveTab('posts')}
+              >
+                <Feather
+                  name="grid"
+                  size={22}
+                  color={activeTab === 'posts' ? AppColors.primary : AppColors.iconMuted}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'users' && styles.activeTab]}
+                onPress={() => setActiveTab('users')}
+              >
+                <Feather
+                  name="users"
+                  size={22}
+                  color={activeTab === 'users' ? AppColors.primary : AppColors.iconMuted}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
+          </>
+        }
+      />
 
       {activeTab === 'posts' ? (
         <FlatList
@@ -142,39 +185,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  header: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
+  searchIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchRow: {
+    paddingHorizontal: layoutPadding,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppColors.borderLight,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   searchInput: {
+    ...Typography.body,
     flex: 1,
     marginLeft: 8,
-    fontSize: 14,
     color: AppColors.text,
+    padding: 0,
   },
   tabContainer: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomWidth: 2,
     borderBottomColor: AppColors.primary,
   },
   postItem: {
@@ -203,6 +252,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
   },
+  username: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: AppColors.text,
+  },
+  displayName: {
+    color: AppColors.textSecondary,
+    fontSize: 14,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  followButton: {
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  followingButton: {
+    backgroundColor: AppColors.border,
+  },
+  followText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  followingText: {
+    color: AppColors.text,
+  },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,25 +298,5 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
     marginLeft: 12,
-  },
-  username: {
-    fontWeight: '600',
-    fontSize: 14,
-    color: AppColors.text,
-  },
-  displayName: {
-    color: AppColors.textSecondary,
-    fontSize: 14,
-  },
-  followButton: {
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  followText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });

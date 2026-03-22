@@ -4,7 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { Story } from '../data/mockData';
 import { useRouter } from 'expo-router';
-import { AppColors } from '../constants/theme';
+import { AppColors, layoutPadding } from '../constants/theme';
+import { Typography } from '../constants/typography';
 
 interface StoryBarProps {
   stories: Story[];
@@ -20,7 +21,6 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, onAddStory }) => {
 
   const handleAddStory = () => {
     if (onAddStory) onAddStory();
-    // Could navigate to camera/create story screen
   };
 
   return (
@@ -28,11 +28,12 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, onAddStory }) => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
         <TouchableOpacity style={styles.addStoryItem} onPress={handleAddStory} activeOpacity={0.8}>
           <View style={styles.addStoryCircle}>
-            <Feather name="plus" size={28} color={AppColors.primary} strokeWidth={2.5} />
+            <Feather name="plus" size={26} color={AppColors.primary} strokeWidth={2} />
           </View>
           <Text style={styles.addStoryText}>Add story</Text>
         </TouchableOpacity>
@@ -60,18 +61,20 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, onAddStory }) => {
 };
 
 const styles = StyleSheet.create({
+  /** Outer wrapper only — no chrome so stories sit on the screen background */
   container: {
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    backgroundColor: 'transparent',
+  },
+  scrollView: {
+    backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 12,
   },
   addStoryItem: {
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
     width: 64,
   },
   addStoryCircle: {
@@ -85,18 +88,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addStoryText: {
-    fontSize: 11,
+    ...Typography.meta,
     marginTop: 4,
     color: AppColors.text,
   },
   storyItem: {
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
     width: 64,
   },
   storyUsername: {
-    fontSize: 11,
-    marginTop: 4,
+    ...Typography.meta,
+    marginTop: 3,
     color: AppColors.text,
   },
 });
