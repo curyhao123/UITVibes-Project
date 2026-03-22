@@ -1,40 +1,38 @@
 /**
- * Warm, distinctive UI theme — off-white/beige backgrounds with terracotta/coral accent.
- * Inspired by natural, earthy tones for a cohesive and inviting look.
+ * Earthy Minimalist palette — off-white ground, terracotta accent, charcoal type.
  */
 
 import { Platform } from 'react-native';
+import { layoutPadding } from './typography';
 
-// Warm palette
+export { layoutPadding };
+
 export const AppColors = {
-  // Primary accent — terracotta / warm coral (buttons, active states, likes)
-  primary: '#c97b5a',
-  primaryLight: '#e09a7a',
-  primaryDark: '#a85f42',
+  primary: '#D97757',
+  primaryLight: '#E89578',
+  primaryDark: '#C45F3D',
 
-  // Backgrounds
-  background: '#f8f4f0',      // Warm off-white / beige
-  surface: '#fdfbf9',        // Cards, sheets (slightly warm white)
-  surfaceElevated: '#ffffff', // Modals, headers
+  background: '#F9F8F6',
+  surface: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
 
-  // Borders & dividers
-  border: '#e8e2db',
-  borderLight: '#f0ebe5',
+  border: '#E8E4DF',
+  borderLight: '#F2EFEB',
 
-  // Text
-  text: '#2c2520',
-  textSecondary: '#7a6f66',
-  textMuted: '#9a8f85',
+  text: '#2D3748',
+  textSecondary: '#4A5568',
+  /** Muted copy */
+  textMuted: '#718096',
+  /** Inactive tab icons & de-emphasized chrome */
+  iconMuted: '#A0AEC0',
 
-  // Semantic
-  like: '#c97b5a',           // Use primary for likes (warm orange heart)
-  error: '#c75c5c',
-  success: '#6b8f71',
+  like: '#D97757',
+  error: '#C75C5C',
+  success: '#6B8F71',
 };
 
-// Legacy compatibility with existing useThemeColor
 const tintColorLight = AppColors.primary;
-const tintColorDark = '#e09a7a';
+const tintColorDark = '#E89578';
 
 export const Colors = {
   light: {
@@ -42,7 +40,7 @@ export const Colors = {
     background: AppColors.background,
     tint: tintColorLight,
     icon: AppColors.textSecondary,
-    tabIconDefault: AppColors.textMuted,
+    tabIconDefault: AppColors.iconMuted,
     tabIconSelected: tintColorLight,
   },
   dark: {
@@ -76,11 +74,11 @@ export const Fonts = Platform.select({
   },
 });
 
-// Common border radius for soft, friendly look
+/** Card corners — friendly, soft */
 export const borderRadius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
+  sm: 8,
+  md: 12,
+  lg: 16,
   xl: 20,
   full: 9999,
 };

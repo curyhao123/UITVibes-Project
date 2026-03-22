@@ -1,23 +1,35 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { Post } from '../data/mockData';
 import { useApp } from '../context/AppContext';
 import { useRouter } from 'expo-router';
-import { AppColors, borderRadius } from '../constants/theme';
+import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { Typography } from '../constants/typography';
+
+const ACTION_ICON = 24;
+const ACTION_GAP = 14;
 
 interface PostCardProps {
   post: Post;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const { toggleLike } = useApp();
+  const { toggleLike, toggleBookmark } = useApp();
   const router = useRouter();
 
   const handleLike = async () => {
     await toggleLike(post.id);
+  };
+
+  const handleBookmark = async () => {
+    await toggleBookmark(post.id);
+  };
+
+  const handleShare = () => {
+    console.log('Share post:', post.id);
   };
 
   const handleProfilePress = () => {
@@ -26,16 +38,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleCommentPress = () => {
     router.push(`/post/${post.id}` as any);
-  };
-
-  const formatLikes = (count: number): string => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
-    return count.toString();
   };
 
   const formatTimeAgo = (dateString: string): string => {
@@ -49,61 +51,80 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     return date.toLocaleDateString('en-US');
   };
 
-  const shareCount = 0; // placeholder – add to Post type if needed
+  const formatCount = (count: number): string => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
 
   return (
     <View style={styles.container}>
       <Pressable onPress={handleCommentPress} style={styles.imageWrap}>
         <Image
           source={{ uri: post.image }}
-          style={[styles.postImage, { borderTopLeftRadius: borderRadius.lg, borderTopRightRadius: borderRadius.lg }]}
+          style={styles.postImage}
           contentFit="cover"
         />
-        {/* Overlay bottom-left: avatar + name + handle */}
         <View style={styles.overlayBottomLeft}>
           <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
             <Avatar user={post.user} size="small" />
             <View style={styles.overlayUserText}>
-              <Text style={styles.overlayName} numberOfLines={1}>{post.user.displayName || post.user.username}</Text>
-              <Text style={styles.overlayHandle} numberOfLines={1}>@{post.user.username}</Text>
+              <Text style={styles.overlayName} numberOfLines={1}>
+                {post.user.displayName || post.user.username}
+              </Text>
+              <Text style={styles.overlayHandle} numberOfLines={1}>
+                @{post.user.username}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
-        {/* Right side: vertical action icons + counts */}
+        {/* Like → Comment → Share → Save (consistent Feather sizing) */}
         <View style={styles.actionsRight}>
-          <TouchableOpacity onPress={handleLike} style={styles.actionVertical}>
+          <TouchableOpacity onPress={handleLike} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
             <Feather
               name="heart"
-              size={26}
-              color={post.isLiked ? AppColors.primary : 'white'}
+              size={ACTION_ICON}
+              color={post.isLiked ? AppColors.primary : '#FFFFFF'}
               fill={post.isLiked ? AppColors.primary : 'transparent'}
+              strokeWidth={2}
             />
-            <Text style={styles.actionCount}>{formatLikes(post.likes)}</Text>
+            <Text style={styles.actionCount}>{formatCount(post.likes)}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionVertical}>
-            <Feather name="send" size={24} color="white" />
-            <Text style={styles.actionCount}>{shareCount}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleCommentPress} style={styles.actionVertical}>
-            <Feather name="message-circle" size={24} color="white" />
+          <TouchableOpacity
+            onPress={handleCommentPress}
+            style={styles.actionVertical}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Feather name="message-circle" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
             <Text style={styles.actionCount}>{post.comments.length}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Feather name="send" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
+            <Text style={styles.actionCount}>{post.shareCount ?? 0}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBookmark} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Feather
+              name="bookmark"
+              size={ACTION_ICON}
+              color={post.isBookmarked ? AppColors.primary : '#FFFFFF'}
+              fill={post.isBookmarked ? AppColors.primary : 'transparent'}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
         </View>
       </Pressable>
 
-      {/* Caption below image */}
       <View style={styles.captionContainer}>
         <Text style={styles.caption}>
           <Text style={styles.captionUsername}>{post.user.username}</Text>
-          {' '}{post.caption}
+          {' '}
+          {post.caption}
         </Text>
       </View>
 
       {post.comments.length > 0 && (
         <TouchableOpacity onPress={handleCommentPress}>
-          <Text style={styles.viewComments}>
-            View all {post.comments.length} comments
-          </Text>
+          <Text style={styles.viewComments}>View all {post.comments.length} comments</Text>
         </TouchableOpacity>
       )}
 
@@ -115,11 +136,22 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: AppColors.surface,
-    marginBottom: 10,
+    marginBottom: 14,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    marginHorizontal: 12,
+    marginHorizontal: 0,
     marginTop: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#2D3748',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.035,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   imageWrap: {
     position: 'relative',
@@ -128,81 +160,88 @@ const styles = StyleSheet.create({
   postImage: {
     width: '100%',
     aspectRatio: 1,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
   },
   overlayBottomLeft: {
     position: 'absolute',
-    bottom: 12,
-    left: 12,
+    bottom: 14,
+    left: layoutPadding,
     right: 56,
   },
   overlayUser: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   overlayUserText: {
-    marginLeft: 10,
     flex: 1,
   },
   overlayName: {
+    ...Typography.captionSemibold,
     fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
   },
   overlayHandle: {
+    ...Typography.meta,
     fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.92)',
     marginTop: 1,
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
   },
   actionsRight: {
     position: 'absolute',
-    right: 10,
-    bottom: 16,
+    right: layoutPadding - 2,
+    bottom: 18,
     alignItems: 'center',
-    gap: 16,
+    gap: ACTION_GAP,
   },
   actionVertical: {
     alignItems: 'center',
+    minWidth: 36,
   },
   actionCount: {
+    ...Typography.meta,
     fontSize: 11,
-    color: 'white',
-    marginTop: 2,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    color: '#FFFFFF',
+    marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
   },
   captionContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 6,
+    paddingHorizontal: layoutPadding,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
   caption: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...Typography.caption,
     color: AppColors.text,
   },
   captionUsername: {
-    fontWeight: '600',
-    marginRight: 4,
+    ...Typography.captionSemibold,
+    color: AppColors.text,
   },
   viewComments: {
-    paddingHorizontal: 12,
+    paddingHorizontal: layoutPadding,
     paddingBottom: 6,
-    color: AppColors.textSecondary,
-    fontSize: 14,
+    ...Typography.caption,
+    color: AppColors.iconMuted,
   },
   timeAgo: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    color: AppColors.textMuted,
+    paddingHorizontal: layoutPadding,
+    paddingBottom: 14,
+    ...Typography.meta,
     fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    color: AppColors.iconMuted,
     textTransform: 'uppercase',
   },
 });

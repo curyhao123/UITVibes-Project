@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { Header } from '../../components';
 import { mockReels } from '../../data/mockData';
+import { AppColors } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,9 +57,19 @@ export default function ReelsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Reels</Text>
-      </View>
+      <Header
+        title="Reels"
+        showAvatar={false}
+        rightAction={
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.reelsCameraBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="camera" size={20} color={AppColors.text} strokeWidth={2} />
+          </TouchableOpacity>
+        }
+      />
       <FlatList
         data={mockReels}
         renderItem={renderItem}
@@ -79,18 +91,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'black',
   },
-  header: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+  reelsCameraBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   backgroundImage: {
     width: width,
