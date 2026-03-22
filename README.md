@@ -63,8 +63,14 @@ dotnet user-secrets set "Parameters:cloudinary-apikey" "your-api-key"
 
 dotnet user-secrets set "Parameters:cloudinary-apisecret" "your-api-secret"
 
+# 4. Khởi động hạ tầng (Postgres, Redis, RabbitMQ)
+Tại thư mục chứa `docker-compose.yml`:
+docker compose up -d
 
-# 4. Chạy ứng dụng
+Lưu ý: Đảm bảo Docker Desktop đang chạy vì .NET Aspire sẽ tự động khởi tạo các container cho PostgreSQL, Redis và RabbitMQ.
+
+
+# 5. Chạy ứng dụng
 Mở solution bằng Visual Studio hoặc chạy lệnh sau tại thư mục gốc: dotnet run --project UITVibes-Microservices.AppHost
 
 Lưu ý: Đảm bảo Docker Desktop đang chạy vì .NET Aspire sẽ tự động khởi tạo các container cho PostgreSQL, Redis và RabbitMQ.
