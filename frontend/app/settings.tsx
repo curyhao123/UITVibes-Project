@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors } from '../constants/theme';
+import { useApp } from '../context/AppContext';
 
 interface SettingsItemProps {
   icon: string;
@@ -65,6 +66,7 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { logout } = useApp();
   const [privateAccount, setPrivateAccount] = React.useState(false);
   const [mutedAccounts, setMutedAccounts] = React.useState(false);
   const [activityStatus, setActivityStatus] = React.useState(true);
@@ -79,8 +81,8 @@ export default function SettingsScreen() {
           text: 'Log Out',
           style: 'destructive',
           onPress: () => {
-            // In a real app, clear auth state and redirect to login
-            Alert.alert('Logged Out', 'You have been logged out.');
+            logout();
+            router.replace('/auth/login');
           },
         },
       ]

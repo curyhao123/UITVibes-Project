@@ -15,13 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../context/AppContext';
-import { Avatar, PostGrid, Header } from '../../components';
+import { Avatar, PostGrid, Header, EmptyPostsState } from '../../components';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, posts, updateProfile } = useApp();
+  const { currentUser, posts, updateProfile, isNewUser } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
@@ -120,22 +120,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.bioContainer}>
+        <View style={styles.nameSection}>
           <Text style={styles.displayName}>{currentUser.displayName}</Text>
-          <Text style={styles.bio}>{currentUser.bio}</Text>
+          {currentUser.bio && <Text style={styles.bio}>{currentUser.bio}</Text>}
           {currentUser.website && (
             <Text style={styles.website}>{currentUser.website}</Text>
           )}
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
-            <Feather name="user" size={16} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.editButtonText}> Edit Profile</Text>
+          <TouchableOpacity style={styles.editButton} onPress={openEditModal} activeOpacity={0.75}>
+            <Text style={styles.editButtonText}>Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.editButton} onPress={handleShareProfile}>
-            <Feather name="share" size={16} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.editButtonText}> Share</Text>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile} activeOpacity={0.75}>
+            <Feather name="share" size={15} color={AppColors.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
@@ -148,16 +146,21 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.tabsContainer}>
-          <View style={[styles.tab, styles.activeTab]}>
-            <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
-          </View>
-          <View style={styles.tab}>
-            <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
-        </View>
-
-        <PostGrid posts={userPosts.length > 0 ? userPosts : posts.slice(0, 9)} />
+        {userPosts.length === 0 || isNewUser ? (
+          <EmptyPostsState isNewUser={isNewUser} />
+        ) : (
+          <>
+            <View style={styles.tabsContainer}>
+              <View style={[styles.tab, styles.activeTab]}>
+                <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
+              </View>
+              <View style={styles.tab}>
+                <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
+              </View>
+            </View>
+            <PostGrid posts={userPosts} />
+          </>
+        )}
       </ScrollView>
 
       {/* ─── Edit Profile Modal ─────────────────────────────── */}
@@ -283,44 +286,51 @@ const styles = StyleSheet.create({
     color: AppColors.iconMuted,
     marginTop: 2,
   },
-  bioContainer: {
+  nameSection: {
     paddingHorizontal: layoutPadding,
-    paddingBottom: 16,
+    paddingBottom: 14,
   },
   displayName: {
     ...Typography.captionSemibold,
-    marginBottom: 2,
     color: AppColors.text,
+    marginBottom: 2,
   },
   bio: {
     ...Typography.caption,
-    lineHeight: 20,
     color: AppColors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 2,
   },
   website: {
     ...Typography.caption,
     color: AppColors.primary,
-    marginTop: 4,
     textDecorationLine: 'underline',
   },
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: layoutPadding,
     marginBottom: 20,
+    gap: 8,
   },
   editButton: {
     flex: 1,
     backgroundColor: AppColors.border,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
-    marginRight: 8,
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
   },
   editButtonText: {
     ...Typography.captionSemibold,
     color: AppColors.text,
+  },
+  shareButton: {
+    width: 36,
+    height: 36,
+    backgroundColor: AppColors.border,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   highlights: {
     flexDirection: 'row',

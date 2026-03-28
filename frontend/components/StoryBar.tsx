@@ -9,11 +9,15 @@ import { Typography } from '../constants/typography';
 
 interface StoryBarProps {
   stories: Story[];
+  isNewUser?: boolean;
   onAddStory?: () => void;
 }
 
-export const StoryBar: React.FC<StoryBarProps> = ({ stories, onAddStory }) => {
+export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, onAddStory }) => {
   const router = useRouter();
+
+  const displayedStories = isNewUser ? [] : stories;
+  const hasNoStories = displayedStories.length === 0;
 
   const handleStoryPress = (story: Story) => {
     router.push(`/story/${story.id}` as any);
@@ -32,29 +36,35 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, onAddStory }) => {
         contentContainerStyle={styles.scrollContent}
       >
         <TouchableOpacity style={styles.addStoryItem} onPress={handleAddStory} activeOpacity={0.8}>
-          <View style={styles.addStoryCircle}>
-            <Feather name="plus" size={26} color={AppColors.primary} strokeWidth={2} />
+          <View style={[styles.addStoryCircle, hasNoStories && styles.addStoryCircleEmpty]}>
+            <Feather
+              name="plus"
+              size={26}
+              color={hasNoStories ? AppColors.primary : AppColors.primary}
+              strokeWidth={2}
+            />
           </View>
           <Text style={styles.addStoryText}>Add story</Text>
         </TouchableOpacity>
 
-        {stories.map((story) => (
-          <TouchableOpacity
-            key={story.id}
-            onPress={() => handleStoryPress(story)}
-            style={styles.storyItem}
-          >
-            <Avatar
-              user={story.user}
-              size="story"
-              showBorder
-              isViewed={story.isViewed}
-            />
-            <Text style={styles.storyUsername} numberOfLines={1}>
-              {story.user.username}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {!hasNoStories &&
+          displayedStories.map((story) => (
+            <TouchableOpacity
+              key={story.id}
+              onPress={() => handleStoryPress(story)}
+              style={styles.storyItem}
+            >
+              <Avatar
+                user={story.user}
+                size="story"
+                showBorder
+                isViewed={story.isViewed}
+              />
+              <Text style={styles.storyUsername} numberOfLines={1}>
+                {story.user.username}
+              </Text>
+            </TouchableOpacity>
+          ))}
       </ScrollView>
     </View>
   );
@@ -86,6 +96,11 @@ const styles = StyleSheet.create({
     borderColor: AppColors.border,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  addStoryCircleEmpty: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderColor: AppColors.primary,
+    borderWidth: 2,
   },
   addStoryText: {
     ...Typography.meta,

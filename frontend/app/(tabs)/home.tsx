@@ -7,12 +7,12 @@ import { PostCard, StoryBar, Avatar, Header } from '../../components';
 import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import { currentUserFollowingIds } from '../../data/mockData';
+import { activeUserFollowingIds } from '../../data/mockData';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
-  const { currentUser, posts, stories, isLoading, refreshPosts, refreshStories, feedTab, setFeedTab, unreadCount } = useApp();
+  const { currentUser, posts, stories, isLoading, refreshPosts, refreshStories, feedTab, setFeedTab, unreadCount, isNewUser } = useApp();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -24,7 +24,7 @@ export default function HomeScreen() {
   const displayedPosts = useMemo(() => {
     if (feedTab === 'following') {
       return posts.filter(
-        (post) => post.userId === 'current' || currentUserFollowingIds.has(post.userId)
+        (post) => post.userId === 'current' || activeUserFollowingIds.has(post.userId)
       );
     }
     return posts;
@@ -89,7 +89,9 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={
-          stories.length > 0 && feedTab === 'foryou' ? <StoryBar stories={stories} /> : null
+          feedTab === 'foryou' ? (
+            <StoryBar stories={stories} isNewUser={isNewUser} />
+          ) : null
         }
         refreshControl={
           <RefreshControl
@@ -100,17 +102,36 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyFeed}>
-            <Feather name="users" size={40} color={AppColors.iconMuted} strokeWidth={1.8} />
-            <Text style={styles.emptyFeedTitle}>
-              {feedTab === 'following' ? 'No posts from people you follow' : 'No posts yet'}
-            </Text>
-            <Text style={styles.emptyFeedSubtitle}>
-              {feedTab === 'following'
-                ? 'Follow more people to see their posts here'
-                : 'Be the first to share something!'}
-            </Text>
-          </View>
+          isNewUser && feedTab === 'foryou' ? (
+            <View style={styles.emptyFeed}>
+              <View style={styles.welcomeIconWrap}>
+                <Feather name="send" size={32} color={AppColors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={styles.welcomeTitle}>Welcome to UITVibes!</Text>
+              <Text style={styles.emptyFeedSubtitle}>
+                Be the first to share something with the community.
+              </Text>
+              <TouchableOpacity
+                style={styles.createPostBtn}
+                activeOpacity={0.8}
+                onPress={() => router.push('/create-post' as any)}
+              >
+                <Text style={styles.createPostBtnText}>Create Your First Post</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyFeed}>
+              <Feather name="users" size={40} color={AppColors.iconMuted} strokeWidth={1.8} />
+              <Text style={styles.emptyFeedTitle}>
+                {feedTab === 'following' ? 'No posts from people you follow' : 'No posts yet'}
+              </Text>
+              <Text style={styles.emptyFeedSubtitle}>
+                {feedTab === 'following'
+                  ? 'Follow more people to see their posts here'
+                  : 'Be the first to share something!'}
+              </Text>
+            </View>
+          )
         }
         contentContainerStyle={styles.feedContent}
       />
@@ -195,6 +216,34 @@ const styles = StyleSheet.create({
     color: AppColors.iconMuted,
     textAlign: 'center',
     marginTop: 6,
+  },
+  // New user welcome state
+  welcomeIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${AppColors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  welcomeTitle: {
+    ...Typography.screenTitle,
+    color: AppColors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  createPostBtn: {
+    marginTop: 24,
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  createPostBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
   },
   loadingContainer: {
     flex: 1,
