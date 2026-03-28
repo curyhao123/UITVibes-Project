@@ -20,6 +20,29 @@ interface AppContextType {
   // Auth / User
   currentUser: User | null;
   isLoading: boolean;
+  isNewUser: boolean;
+  markUserActive: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, username: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+
+  // Onboarding
+  onboardingStep: number;
+  onboardingData: {
+    fullName: string;
+    username: string;
+    bio: string;
+    avatar: string;
+  };
+  saveOnboardingData: (data: Partial<AppContextType['onboardingData']>) => void;
+  completeOnboardingStep: () => void;
+  resetOnboarding: () => void;
+
+  // Suggested Users
+  suggestedUsers: User[];
+  fetchSuggestedUsers: () => Promise<void>;
+  followSuggestedUser: (userId: string) => Promise<void>;
 
   // Feed
   posts: Post[];
@@ -36,7 +59,7 @@ interface AppContextType {
   toggleBookmark: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
-  createPost: (image: string, caption: string) => Promise<Post | null>;
+  createPost: (image: string, caption: string, location?: string) => Promise<Post | null>;
   updatePost: (postId: string, caption: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
 
@@ -54,7 +77,7 @@ interface AppContextType {
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   setActiveConversation: (conv: Conversation | null) => void;
   markMessagesRead: (conversationId: string) => Promise<void>;
-  startConversation: (userId: string) => Promise<void>;
+  startConversation: (userId: string) => Promise<Conversation | null>;
 
   // Notifications
   notifications: Notification[];
@@ -82,6 +105,115 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Auth / User ────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
+
+  const markUserActive = useCallback(() => setIsNewUser(false), []);
+
+  // ─── Onboarding ─────────────────────────────────────────
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingData, setOnboardingData] = useState({
+    fullName: '',
+    username: '',
+    bio: '',
+    avatar: '',
+  });
+
+  // ─── Suggested Users ─────────────────────────────────────
+  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+
+  const fetchSuggestedUsers = useCallback(async () => {
+    try {
+      const users = await api.getSuggestedUsers();
+      setSuggestedUsers(users);
+    } catch (error) {
+      console.error('Failed to fetch suggested users:', error);
+    }
+  }, []);
+
+  const followSuggestedUser = useCallback(async (userId: string) => {
+    setSuggestedUsers((prev) => prev.filter((u) => u.id !== userId));
+    try {
+      await api.toggleFollow(userId);
+    } catch (error) {
+      await fetchSuggestedUsers();
+      console.error('Failed to follow user:', error);
+    }
+  }, [fetchSuggestedUsers]);
+
+  // ─── Auth Actions ────────────────────────────────────────
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const user = await api.login(email, password);
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
+      setIsNewUser(user.posts === 0);
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, password: string, username: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const user = await api.register(email, password, username);
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setIsNewUser(true); // Tài khoản mới → posts = 0
+      setOnboardingStep(0);
+      return true;
+    } catch (error) {
+      console.error('Registration failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await api.logout();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setIsNewUser(false);
+    setOnboardingStep(0);
+    setPosts([]);
+    setStories([]);
+    setConversations([]);
+    setNotifications([]);
+  }, []);
+
+  const saveOnboardingData = useCallback(
+    (data: Partial<AppContextType['onboardingData']>) => {
+      setOnboardingData((prev) => ({ ...prev, ...data }));
+      if (typeof data.username === 'string' && data.username.trim()) {
+        const handle = data.username.trim();
+        setCurrentUser((prev) => (prev ? { ...prev, username: handle } : prev));
+        api.patchCurrentUserLocal({ username: handle });
+      }
+      if (typeof data.fullName === 'string' && data.fullName.trim()) {
+        const name = data.fullName.trim();
+        setCurrentUser((prev) => (prev ? { ...prev, displayName: name } : prev));
+        api.patchCurrentUserLocal({ displayName: name });
+      }
+    },
+    []
+  );
+
+  const completeOnboardingStep = useCallback(() => {
+    setOnboardingStep((prev) => prev + 1);
+  }, []);
+
+  const resetOnboarding = useCallback(() => {
+    setOnboardingStep(0);
+    setIsNewUser(false);
+    setOnboardingData({ fullName: '', username: '', bio: '', avatar: '' });
+  }, []);
 
   // ─── Feed ────────────────────────────────────────────────
   const [posts, setPosts] = useState<Post[]>([]);
@@ -180,10 +312,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 
   const createPost = useCallback(
-    async (image: string, caption: string): Promise<Post | null> => {
+    async (image: string, caption: string, location?: string): Promise<Post | null> => {
       try {
-        const newPost = await api.createPost(image, caption);
+        const newPost = await api.createPost(image, caption, location);
         setPosts((prev) => [newPost, ...prev]);
+        setIsNewUser(false); // Đã có bài viết → không còn là new user
         return newPost;
       } catch (error) {
         console.error('Failed to create post:', error);
@@ -307,7 +440,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [refreshConversations]
   );
 
-  // ─── Notifications ────────────────────────────────────────
+  // ─── Notifications ───────────────────────────────────────
   const refreshNotifications = useCallback(async () => {
     try {
       const [notifs, count] = await Promise.all([
@@ -346,28 +479,54 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // ─── Init ─────────────────────────────────────────────────
+  // ─── Init: thử restore session từ JWT đã lưu ─────────────
   useEffect(() => {
     const initializeData = async () => {
       setIsLoading(true);
       try {
-        const [user, notifs] = await Promise.all([
-          api.getCurrentUser(),
-          api.getNotifications(),
-        ]);
-        setCurrentUser(user);
-        setNotifications(notifs);
-        setUnreadCount(notifs.filter((n) => !n.isRead).length);
-        await Promise.all([refreshPosts(), refreshStories(), refreshConversations()]);
+        // Thử khôi phục session từ token đã lưu
+        const restoredUser = await api.refreshSession();
+
+        if (restoredUser) {
+          // Có token hợp lệ → khôi phục session
+          setCurrentUser(restoredUser);
+          setIsAuthenticated(true);
+          setIsNewUser(restoredUser.posts === 0);
+
+          // Load dữ liệu song song
+          await Promise.all([
+            refreshPosts(),
+            refreshStories(),
+            refreshConversations(),
+            refreshNotifications(),
+            fetchSuggestedUsers(),
+          ]);
+        } else {
+          // Không có token hoặc token hết hạn → chưa đăng nhập
+          // Vẫn load dữ liệu mẫu để preview app (nếu cần)
+          await Promise.all([
+            refreshPosts(),
+            refreshStories(),
+            refreshConversations(),
+            refreshNotifications(),
+          ]);
+        }
       } catch (error) {
         console.error('Failed to initialize data:', error);
+        // Fallback: load mock data
+        await Promise.all([
+          refreshPosts(),
+          refreshStories(),
+          refreshConversations(),
+          refreshNotifications(),
+        ]);
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeData();
-  }, [refreshPosts, refreshStories, refreshConversations, refreshNotifications]);
+  }, [refreshPosts, refreshStories, refreshConversations, refreshNotifications, fetchSuggestedUsers]);
 
   // ─── Provider ──────────────────────────────────────────────
   return (
@@ -375,6 +534,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       value={{
         currentUser,
         isLoading,
+        isNewUser,
+        markUserActive,
+        login,
+        register,
+        logout,
+        isAuthenticated,
+        onboardingStep,
+        onboardingData,
+        saveOnboardingData,
+        completeOnboardingStep,
+        resetOnboarding,
+        suggestedUsers,
+        fetchSuggestedUsers,
+        followSuggestedUser,
         posts,
         stories,
         refreshPosts,

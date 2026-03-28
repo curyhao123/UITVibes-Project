@@ -32,11 +32,15 @@ export default function MessageScreen() {
     setActiveConversation,
     markMessagesRead,
     startConversation,
+    suggestedUsers,
+    fetchSuggestedUsers,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [messageText, setMessageText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showNewMsg, setShowNewMsg] = useState(false);
+  const [newMsgSearch, setNewMsgSearch] = useState('');
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -319,6 +323,10 @@ export default function MessageScreen() {
             activeOpacity={0.7}
             style={styles.headerAction}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => {
+              fetchSuggestedUsers();
+              setShowNewMsg(true);
+            }}
           >
             <Feather name="edit-2" size={20} color={AppColors.text} strokeWidth={2} />
           </TouchableOpacity>
@@ -359,15 +367,108 @@ export default function MessageScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.convList}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Feather name="message-circle" size={48} color={AppColors.iconMuted} strokeWidth={1.8} />
-            <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Start a conversation by following someone and sending them a message
-            </Text>
-          </View>
+          conversations.length === 0 ? (
+            <View style={styles.emptyInbox}>
+              <View style={styles.emptyInboxIcon}>
+                <Feather name="send" size={36} color={AppColors.iconMuted} strokeWidth={1.5} />
+              </View>
+              <Text style={styles.emptyInboxTitle}>Messages</Text>
+              <Text style={styles.emptyInboxSubtitle}>
+                No messages yet.{'\n'}Start a conversation with your friends.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyInboxBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  fetchSuggestedUsers();
+                  setShowNewMsg(true);
+                }}
+              >
+                <Text style={styles.emptyInboxBtnText}>Send Message</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Feather name="search" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>No results</Text>
+              <Text style={styles.emptySubtitle}>
+                Try searching for someone by name or username
+              </Text>
+            </View>
+          )
         }
       />
+
+      {/* ─── New Message Sheet ─────────────────────────────── */}
+      {showNewMsg && (
+        <View style={styles.newMsgOverlay}>
+          <TouchableOpacity
+            style={styles.newMsgBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowNewMsg(false)}
+          />
+          <View style={styles.newMsgSheet}>
+            <View style={styles.newMsgSheetHeader}>
+              <Text style={styles.newMsgSheetTitle}>New Message</Text>
+              <TouchableOpacity onPress={() => setShowNewMsg(false)}>
+                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.newMsgSearchContainer}>
+              <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+              <TextInput
+                style={styles.newMsgSearchInput}
+                placeholder="Search people..."
+                placeholderTextColor={AppColors.iconMuted}
+                value={newMsgSearch}
+                onChangeText={setNewMsgSearch}
+                autoFocus
+              />
+            </View>
+
+            <FlatList
+              data={
+                newMsgSearch.length > 0
+                  ? suggestedUsers.filter(
+                      (u) =>
+                        u.username.toLowerCase().includes(newMsgSearch.toLowerCase()) ||
+                        u.displayName.toLowerCase().includes(newMsgSearch.toLowerCase())
+                    )
+                  : suggestedUsers
+              }
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.newMsgUserItem}
+                  activeOpacity={0.7}
+                  onPress={async () => {
+                    await startConversation(item.id);
+                    setShowNewMsg(false);
+                    setNewMsgSearch('');
+                    refreshConversations();
+                  }}
+                >
+                  <Image source={{ uri: item.avatar }} style={styles.newMsgAvatar} />
+                  <View style={styles.newMsgUserInfo}>
+                    <Text style={styles.newMsgUserName}>{item.username}</Text>
+                    <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.newMsgEmpty}>
+                  {newMsgSearch.length > 0
+                    ? 'No users found'
+                    : 'No suggested users'}
+                </Text>
+              }
+              contentContainerStyle={{ paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -543,6 +644,124 @@ const styles = StyleSheet.create({
     color: AppColors.iconMuted,
     textAlign: 'center',
     marginTop: 8,
+  },
+
+  // ─── Empty Inbox (No Conversations) ───────────────────────
+  emptyInbox: {
+    alignItems: 'center',
+    paddingTop: 100,
+    paddingHorizontal: 40,
+  },
+  emptyInboxIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: `${AppColors.primary}12`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyInboxTitle: {
+    ...Typography.screenTitle,
+    color: AppColors.text,
+    marginBottom: 8,
+  },
+  emptyInboxSubtitle: {
+    ...Typography.body,
+    color: AppColors.iconMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  emptyInboxBtn: {
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyInboxBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  // ─── New Message Sheet ───────────────────────────────────
+  newMsgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  newMsgBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  newMsgSheet: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    maxHeight: '70%',
+    paddingBottom: 34,
+  },
+  newMsgSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  newMsgSheetTitle: {
+    ...Typography.bodySemibold,
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  newMsgSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppColors.borderLight,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    gap: 8,
+  },
+  newMsgSearchInput: {
+    ...Typography.body,
+    flex: 1,
+    color: AppColors.text,
+    padding: 0,
+  },
+  newMsgUserItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  newMsgAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  newMsgUserInfo: {
+    flex: 1,
+  },
+  newMsgUserName: {
+    ...Typography.bodySemibold,
+    fontSize: 15,
+    color: AppColors.text,
+  },
+  newMsgUserDisplay: {
+    ...Typography.caption,
+    color: AppColors.iconMuted,
+    marginTop: 2,
+  },
+  newMsgEmpty: {
+    ...Typography.body,
+    color: AppColors.iconMuted,
+    textAlign: 'center',
+    paddingVertical: 32,
   },
 
   // ─── Chat Header ──────────────────────────────────────────
