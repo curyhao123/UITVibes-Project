@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,63 +7,66 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { FormInput } from '../../components/FormInput';
-import { Button } from '../../components/Button';
-import { useApp } from '../../context/AppContext';
-import { AppColors, borderRadius } from '../../constants/theme';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { FormInput } from "../../components/FormInput";
+import { Button } from "../../components/Button";
+import { useApp } from "../../context/AppContext";
+import { AppColors, borderRadius } from "../../constants/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register } = useApp();
+  const { register, authError } = useApp();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [confirmError, setConfirmError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmError, setConfirmError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const isFormFilled = email.trim().length > 0 && password.length > 0 && confirmPassword.length > 0;
+  const isFormFilled =
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    confirmPassword.length > 0;
 
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value.trim()) {
-      setEmailError('Email is required.');
+      setEmailError("Email is required.");
     } else if (!emailRegex.test(value)) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError("Please enter a valid email address.");
     } else {
-      setEmailError('');
+      setEmailError("");
     }
   };
 
   const validatePassword = (value: string) => {
     if (!value) {
-      setPasswordError('Password is required.');
+      setPasswordError("Password is required.");
     } else if (value.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+      setPasswordError("Password must be at least 6 characters.");
     } else {
-      setPasswordError('');
+      setPasswordError("");
       if (confirmPassword && confirmPassword !== value) {
-        setConfirmError('Passwords do not match.');
+        setConfirmError("Passwords do not match.");
       } else {
-        setConfirmError('');
+        setConfirmError("");
       }
     }
   };
 
   const validateConfirm = (value: string) => {
     if (!value) {
-      setConfirmError('Please confirm your password.');
+      setConfirmError("Please confirm your password.");
     } else if (value !== password) {
-      setConfirmError('Passwords do not match.');
+      setConfirmError("Passwords do not match.");
     } else {
-      setConfirmError('');
+      setConfirmError("");
     }
   };
 
@@ -76,17 +79,17 @@ export default function RegisterScreen() {
     setIsLoading(true);
     // Backend requires username; use email prefix as placeholder
     // Real username will be set during onboarding
-    const success = await register(email, password, email.split('@')[0]);
+    const success = await register(email, password, email.split("@")[0]);
     setIsLoading(false);
     if (success) {
-      router.replace('/auth/onboarding-name');
+      router.replace("/auth/onboarding-name");
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -141,7 +144,7 @@ export default function RegisterScreen() {
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Feather
-                    name={showPassword ? 'eye-off' : 'eye'}
+                    name={showPassword ? "eye-off" : "eye"}
                     size={18}
                     color={AppColors.iconMuted}
                   />
@@ -164,6 +167,10 @@ export default function RegisterScreen() {
               autoCorrect={false}
               autoComplete="password-new"
             />
+
+            {authError ? (
+              <Text style={styles.authError}>{authError}</Text>
+            ) : null}
           </View>
 
           {/* Register Button */}
@@ -178,8 +185,8 @@ export default function RegisterScreen() {
 
           {/* Terms */}
           <Text style={styles.termsText}>
-            By creating an account, you agree to our{' '}
-            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+            By creating an account, you agree to our{" "}
+            <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
             <Text style={styles.termsLink}>Privacy Policy</Text>.
           </Text>
         </ScrollView>
@@ -187,10 +194,10 @@ export default function RegisterScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Already have an account?{' '}
+            Already have an account?{" "}
             <Text
               style={styles.logInLink}
-              onPress={() => router.push('/auth/login')}
+              onPress={() => router.push("/auth/login")}
             >
               Log in
             </Text>
@@ -220,7 +227,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     color: AppColors.text,
     marginBottom: 6,
     letterSpacing: -0.6,
@@ -240,20 +247,25 @@ const styles = StyleSheet.create({
   termsText: {
     fontSize: 12,
     color: AppColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   termsLink: {
     color: AppColors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  authError: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#D64545",
   },
   footer: {
     paddingHorizontal: 28,
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: AppColors.border,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: 14,
@@ -262,6 +274,6 @@ const styles = StyleSheet.create({
   },
   logInLink: {
     color: AppColors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

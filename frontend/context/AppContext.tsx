@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useCallback,
   ReactNode,
-} from 'react';
+} from "react";
 import {
   User,
   Post,
@@ -13,17 +13,22 @@ import {
   Conversation,
   Message,
   Notification,
-} from '../data/mockData';
-import * as api from '../services/api';
+} from "../data/mockData";
+import * as api from "../services/api";
 
 interface AppContextType {
   // Auth / User
   currentUser: User | null;
   isLoading: boolean;
   isNewUser: boolean;
+  authError: string | null;
   markUserActive: () => void;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, username: string) => Promise<boolean>;
+  register: (
+    email: string,
+    password: string,
+    username: string,
+  ) => Promise<boolean>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 
@@ -35,7 +40,7 @@ interface AppContextType {
     bio: string;
     avatar: string;
   };
-  saveOnboardingData: (data: Partial<AppContextType['onboardingData']>) => void;
+  saveOnboardingData: (data: Partial<AppContextType["onboardingData"]>) => void;
   completeOnboardingStep: () => void;
   resetOnboarding: () => void;
 
@@ -51,22 +56,30 @@ interface AppContextType {
   refreshStories: () => Promise<void>;
 
   // Feed filter
-  feedTab: 'foryou' | 'following';
-  setFeedTab: (tab: 'foryou' | 'following') => void;
+  feedTab: "foryou" | "following";
+  setFeedTab: (tab: "foryou" | "following") => void;
 
   // Post interactions
   toggleLike: (postId: string) => Promise<void>;
   toggleBookmark: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
-  createPost: (image: string, caption: string, location?: string) => Promise<Post | null>;
+  createPost: (
+    image: string,
+    caption: string,
+    location?: string,
+  ) => Promise<Post | null>;
   updatePost: (postId: string, caption: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
 
   // User / Follow
   refreshUser: () => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
-  updateProfile: (updates: { displayName?: string; bio?: string; website?: string }) => Promise<void>;
+  updateProfile: (updates: {
+    displayName?: string;
+    bio?: string;
+    website?: string;
+  }) => Promise<void>;
 
   // Messages
   conversations: Conversation[];
@@ -92,7 +105,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const useApp = (): AppContextType => {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
+    throw new Error("useApp must be used within an AppProvider");
   }
   return context;
 };
@@ -107,16 +120,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const markUserActive = useCallback(() => setIsNewUser(false), []);
 
   // ─── Onboarding ─────────────────────────────────────────
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingData, setOnboardingData] = useState({
-    fullName: '',
-    username: '',
-    bio: '',
-    avatar: '',
+    fullName: "",
+    username: "",
+    bio: "",
+    avatar: "",
   });
 
   // ─── Suggested Users ─────────────────────────────────────
@@ -127,60 +141,86 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const users = await api.getSuggestedUsers();
       setSuggestedUsers(users);
     } catch (error) {
-      console.error('Failed to fetch suggested users:', error);
+      console.error("Failed to fetch suggested users:", error);
     }
   }, []);
 
-  const followSuggestedUser = useCallback(async (userId: string) => {
-    setSuggestedUsers((prev) => prev.filter((u) => u.id !== userId));
-    try {
-      await api.toggleFollow(userId);
-    } catch (error) {
-      await fetchSuggestedUsers();
-      console.error('Failed to follow user:', error);
-    }
-  }, [fetchSuggestedUsers]);
+  const followSuggestedUser = useCallback(
+    async (userId: string) => {
+      setSuggestedUsers((prev) => prev.filter((u) => u.id !== userId));
+      try {
+        await api.toggleFollow(userId);
+      } catch (error) {
+        await fetchSuggestedUsers();
+        console.error("Failed to follow user:", error);
+      }
+    },
+    [fetchSuggestedUsers],
+  );
 
   // ─── Auth Actions ────────────────────────────────────────
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const user = await api.login(email, password);
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
-      setIsNewUser(user.posts === 0);
-      return true;
-    } catch (error) {
-      console.error('Login failed:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      setIsLoading(true);
+      setAuthError(null);
+      try {
+        const user = await api.login(email, password);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
+        setIsNewUser(user.posts === 0);
+        return true;
+      } catch (error) {
+        console.error("Login failed:", error);
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Login failed. Please check your credentials and try again.";
+        setAuthError(message);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
-  const register = useCallback(async (email: string, password: string, username: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const user = await api.register(email, password, username);
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      setIsNewUser(true); // Tài khoản mới → posts = 0
-      setOnboardingStep(0);
-      return true;
-    } catch (error) {
-      console.error('Registration failed:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const register = useCallback(
+    async (
+      email: string,
+      password: string,
+      username: string,
+    ): Promise<boolean> => {
+      setIsLoading(true);
+      setAuthError(null);
+      try {
+        const user = await api.register(email, password, username);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        setIsNewUser(true); // Tài khoản mới → posts = 0
+        setOnboardingStep(0);
+        return true;
+      } catch (error) {
+        console.error("Registration failed:", error);
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Registration failed. Please try again.";
+        setAuthError(message);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     await api.logout();
     setCurrentUser(null);
     setIsAuthenticated(false);
     setIsNewUser(false);
+    setAuthError(null);
     setOnboardingStep(0);
     setPosts([]);
     setStories([]);
@@ -189,20 +229,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, []);
 
   const saveOnboardingData = useCallback(
-    (data: Partial<AppContextType['onboardingData']>) => {
+    (data: Partial<AppContextType["onboardingData"]>) => {
       setOnboardingData((prev) => ({ ...prev, ...data }));
-      if (typeof data.username === 'string' && data.username.trim()) {
+      if (typeof data.username === "string" && data.username.trim()) {
         const handle = data.username.trim();
         setCurrentUser((prev) => (prev ? { ...prev, username: handle } : prev));
         api.patchCurrentUserLocal({ username: handle });
       }
-      if (typeof data.fullName === 'string' && data.fullName.trim()) {
+      if (typeof data.fullName === "string" && data.fullName.trim()) {
         const name = data.fullName.trim();
-        setCurrentUser((prev) => (prev ? { ...prev, displayName: name } : prev));
+        setCurrentUser((prev) =>
+          prev ? { ...prev, displayName: name } : prev,
+        );
         api.patchCurrentUserLocal({ displayName: name });
       }
     },
-    []
+    [],
   );
 
   const completeOnboardingStep = useCallback(() => {
@@ -212,17 +254,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
-    setOnboardingData({ fullName: '', username: '', bio: '', avatar: '' });
+    setOnboardingData({ fullName: "", username: "", bio: "", avatar: "" });
   }, []);
 
   // ─── Feed ────────────────────────────────────────────────
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
-  const [feedTab, setFeedTab] = useState<'foryou' | 'following'>('foryou');
+  const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
 
   // ─── Messages ────────────────────────────────────────────
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+  const [activeConversation, setActiveConversation] =
+    useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
 
   // ─── Notifications ───────────────────────────────────────
@@ -235,7 +278,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const data = await api.getPosts();
       setPosts(data);
     } catch (error) {
-      console.error('Failed to fetch posts:', error);
+      console.error("Failed to fetch posts:", error);
     }
   }, []);
 
@@ -244,60 +287,69 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const data = await api.getStories();
       setStories(data);
     } catch (error) {
-      console.error('Failed to fetch stories:', error);
+      console.error("Failed to fetch stories:", error);
     }
   }, []);
 
-  const toggleLike = useCallback(async (postId: string) => {
-    // Optimistic update
-    setPosts((prev) =>
-      prev.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            isLiked: !post.isLiked,
-            likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-          };
-        }
-        return post;
-      })
-    );
-    try {
-      await api.toggleLike(postId);
-    } catch (error) {
-      // Revert on failure
-      await refreshPosts();
-      console.error('Failed to toggle like:', error);
-    }
-  }, [refreshPosts]);
-
-  const toggleBookmark = useCallback(async (postId: string) => {
-    setPosts((prev) =>
-      prev.map((post) => {
-        if (post.id === postId) {
-          return { ...post, isBookmarked: !post.isBookmarked };
-        }
-        return post;
-      })
-    );
-    try {
-      await api.toggleBookmark(postId);
-    } catch (error) {
-      await refreshPosts();
-      console.error('Failed to toggle bookmark:', error);
-    }
-  }, [refreshPosts]);
-
-  const addComment = useCallback(async (postId: string, text: string) => {
-    try {
-      const result = await api.addComment(postId, text);
-      if (result.success) {
+  const toggleLike = useCallback(
+    async (postId: string) => {
+      // Optimistic update
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              isLiked: !post.isLiked,
+              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+            };
+          }
+          return post;
+        }),
+      );
+      try {
+        await api.toggleLike(postId);
+      } catch (error) {
+        // Revert on failure
         await refreshPosts();
+        console.error("Failed to toggle like:", error);
       }
-    } catch (error) {
-      console.error('Failed to add comment:', error);
-    }
-  }, [refreshPosts]);
+    },
+    [refreshPosts],
+  );
+
+  const toggleBookmark = useCallback(
+    async (postId: string) => {
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id === postId) {
+            return { ...post, isBookmarked: !post.isBookmarked };
+          }
+          return post;
+        }),
+      );
+      try {
+        await api.toggleBookmark(postId);
+      } catch (error) {
+        await refreshPosts();
+        console.error("Failed to toggle bookmark:", error);
+      }
+    },
+    [refreshPosts],
+  );
+
+  const addComment = useCallback(
+    async (postId: string, text: string) => {
+      try {
+        const result = await api.addComment(postId, text);
+        if (result.success) {
+          await refreshPosts();
+        }
+      } catch (error) {
+        console.error("Failed to add comment:", error);
+      }
+    },
+    [refreshPosts],
+  );
 
   const deleteComment = useCallback(
     async (postId: string, commentId: string) => {
@@ -305,25 +357,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.deleteComment(postId, commentId);
         await refreshPosts();
       } catch (error) {
-        console.error('Failed to delete comment:', error);
+        console.error("Failed to delete comment:", error);
       }
     },
-    [refreshPosts]
+    [refreshPosts],
   );
 
   const createPost = useCallback(
-    async (image: string, caption: string, location?: string): Promise<Post | null> => {
+    async (
+      image: string,
+      caption: string,
+      location?: string,
+    ): Promise<Post | null> => {
       try {
         const newPost = await api.createPost(image, caption, location);
         setPosts((prev) => [newPost, ...prev]);
         setIsNewUser(false); // Đã có bài viết → không còn là new user
         return newPost;
       } catch (error) {
-        console.error('Failed to create post:', error);
+        console.error("Failed to create post:", error);
         return null;
       }
     },
-    []
+    [],
   );
 
   const updatePost = useCallback(
@@ -332,23 +388,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.updatePost(postId, caption);
         await refreshPosts();
       } catch (error) {
-        console.error('Failed to update post:', error);
+        console.error("Failed to update post:", error);
       }
     },
-    [refreshPosts]
+    [refreshPosts],
   );
 
-  const deletePost = useCallback(
-    async (postId: string) => {
-      try {
-        await api.deletePost(postId);
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
-      } catch (error) {
-        console.error('Failed to delete post:', error);
-      }
-    },
-    []
-  );
+  const deletePost = useCallback(async (postId: string) => {
+    try {
+      await api.deletePost(postId);
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    } catch (error) {
+      console.error("Failed to delete post:", error);
+    }
+  }, []);
 
   // ─── User / Follow ───────────────────────────────────────
   const refreshUser = useCallback(async () => {
@@ -356,30 +409,37 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const user = await api.getCurrentUser();
       setCurrentUser(user);
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      console.error("Failed to refresh user:", error);
     }
   }, []);
 
-  const toggleFollow = useCallback(async (userId: string) => {
-    try {
-      await api.toggleFollow(userId);
-      await refreshUser();
-      await refreshPosts();
-    } catch (error) {
-      console.error('Failed to toggle follow:', error);
-    }
-  }, [refreshUser, refreshPosts]);
+  const toggleFollow = useCallback(
+    async (userId: string) => {
+      try {
+        await api.toggleFollow(userId);
+        await refreshUser();
+        await refreshPosts();
+      } catch (error) {
+        console.error("Failed to toggle follow:", error);
+      }
+    },
+    [refreshUser, refreshPosts],
+  );
 
   const updateProfile = useCallback(
-    async (updates: { displayName?: string; bio?: string; website?: string }) => {
+    async (updates: {
+      displayName?: string;
+      bio?: string;
+      website?: string;
+    }) => {
       try {
         await api.updateProfile(updates);
         await refreshUser();
       } catch (error) {
-        console.error('Failed to update profile:', error);
+        console.error("Failed to update profile:", error);
       }
     },
-    [refreshUser]
+    [refreshUser],
   );
 
   // ─── Messages ─────────────────────────────────────────────
@@ -388,7 +448,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const data = await api.getConversations();
       setConversations(data);
     } catch (error) {
-      console.error('Failed to fetch conversations:', error);
+      console.error("Failed to fetch conversations:", error);
     }
   }, []);
 
@@ -397,7 +457,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const data = await api.getMessages(conversationId);
       setMessages(data);
     } catch (error) {
-      console.error('Failed to load messages:', error);
+      console.error("Failed to load messages:", error);
     }
   }, []);
 
@@ -408,10 +468,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setMessages((prev) => [...prev, newMsg]);
         await refreshConversations();
       } catch (error) {
-        console.error('Failed to send message:', error);
+        console.error("Failed to send message:", error);
       }
     },
-    [refreshConversations]
+    [refreshConversations],
   );
 
   const markMessagesRead = useCallback(
@@ -420,10 +480,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.markMessagesRead(conversationId);
         await refreshConversations();
       } catch (error) {
-        console.error('Failed to mark messages read:', error);
+        console.error("Failed to mark messages read:", error);
       }
     },
-    [refreshConversations]
+    [refreshConversations],
   );
 
   const startConversation = useCallback(
@@ -433,11 +493,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await refreshConversations();
         return conv;
       } catch (error) {
-        console.error('Failed to start conversation:', error);
+        console.error("Failed to start conversation:", error);
         return null;
       }
     },
-    [refreshConversations]
+    [refreshConversations],
   );
 
   // ─── Notifications ───────────────────────────────────────
@@ -450,24 +510,21 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setNotifications(notifs);
       setUnreadCount(count);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      console.error("Failed to fetch notifications:", error);
     }
   }, []);
 
-  const markNotificationRead = useCallback(
-    async (id: string) => {
-      try {
-        await api.markNotificationRead(id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch (error) {
-        console.error('Failed to mark notification read:', error);
-      }
-    },
-    []
-  );
+  const markNotificationRead = useCallback(async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark notification read:", error);
+    }
+  }, []);
 
   const markAllNotificationsRead = useCallback(async () => {
     try {
@@ -475,7 +532,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error('Failed to mark all notifications read:', error);
+      console.error("Failed to mark all notifications read:", error);
     }
   }, []);
 
@@ -512,7 +569,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           ]);
         }
       } catch (error) {
-        console.error('Failed to initialize data:', error);
+        console.error("Failed to initialize data:", error);
         // Fallback: load mock data
         await Promise.all([
           refreshPosts(),
@@ -526,7 +583,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     };
 
     initializeData();
-  }, [refreshPosts, refreshStories, refreshConversations, refreshNotifications, fetchSuggestedUsers]);
+  }, [
+    refreshPosts,
+    refreshStories,
+    refreshConversations,
+    refreshNotifications,
+    fetchSuggestedUsers,
+  ]);
 
   // ─── Provider ──────────────────────────────────────────────
   return (
@@ -535,6 +598,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         currentUser,
         isLoading,
         isNewUser,
+        authError,
         markUserActive,
         login,
         register,

@@ -1,0 +1,145 @@
+// Shared backend DTO types used by multiple service modules
+
+export interface BE_RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+}
+
+export interface BE_LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface BE_AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+  };
+}
+
+export interface BE_UserProfile {
+  id: string;
+  userId: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  coverImageUrl: string;
+  dateOfBirth: string | null;
+  location: string;
+  website: string;
+  socialLinks: Array<{ platform: string; url: string }>;
+}
+
+export interface BE_FollowStats {
+  userId: string;
+  followersCount: number;
+  followingCount: number;
+  postsCount: number;
+}
+
+export interface BE_PostResponse {
+  id: string;
+  userId: string;
+  content: string;
+  visibility: string;
+  location: string;
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  viewsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  media: Array<{
+    id: string;
+    type: string;
+    url: string;
+    thumbnailUrl: string | null;
+    displayOrder: number;
+    width: number | null;
+    height: number | null;
+    duration: number | null;
+  }>;
+  hashtags: string[];
+  isLikedByCurrentUser: boolean;
+  isBookmarkedByCurrentUser: boolean;
+  originalPost: BE_PostResponse | null;
+}
+
+export interface BE_CommentResponse {
+  id: string;
+  userId: string;
+  content: string;
+  likesCount: number;
+  isLikedByCurrentUser: boolean;
+  createdAt: string;
+  replies: BE_CommentResponse[];
+  parentId: string | null;
+}
+
+export interface BE_ConversationResponse {
+  id: string;
+  type: "Private" | "Group";
+  name: string;
+  avatarUrl: string;
+  members: Array<{
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+  }>;
+  lastMessageContent: string;
+  lastMessageSenderId: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isMuted: boolean;
+  isPinned: boolean;
+  adminIds: string[];
+}
+
+export interface BE_MessageResponse {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  type: string;
+  mediaUrl: string;
+  fileName: string;
+  fileSize: number;
+  replyToMessageId: string;
+  replyToMessage: BE_MessageResponse | null;
+  isEdited: boolean;
+  isDeleted: boolean;
+  readBy: Array<{ userId: string; readAt: string }>;
+  createdAt: string;
+  editedAt: string;
+}
+
+export interface BE_LikeResponse {
+  likeId: string;
+  postId: string;
+  userId: string;
+  totalLikes: number;
+  createdAt: string;
+}
+
+export interface CreatePostBody {
+  content: string;
+  location?: string;
+  visibility?: number;
+  media?: Array<{
+    type: number;
+    url: string;
+    publicId?: string;
+    thumbnailUrl?: string;
+    displayOrder?: number;
+    width?: number;
+    height?: number;
+  }>;
+}
