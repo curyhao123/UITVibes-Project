@@ -10,8 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { mockStories } from '../../data/mockData';
-import { Story } from '../../data/mockData';
+import { mockStories, Story } from '../../data/mockData';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 const { width, height } = Dimensions.get('window');
 
@@ -118,7 +118,7 @@ export default function StoryViewerScreen() {
         <View style={styles.header}>
           <View style={styles.userInfo}>
             <Image
-              source={{ uri: currentStory.user.avatar }}
+              source={currentStory.user.avatar ? { uri: currentStory.user.avatar } : defaultAvatar}
               style={styles.avatar}
             />
             <Text style={styles.username}>{currentStory.user.username}</Text>

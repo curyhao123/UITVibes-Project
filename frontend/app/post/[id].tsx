@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * PostDetailScreen — full post with comments, enhanced with:
+ * 1. Spring like animation on the heart button
+ * 2. Smooth skeleton loader on initial load
+ * 3. Animated comment input focus
+ */
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,12 +19,101 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { getPostById } from '../../services/api';
 import { Post } from '../../data/mockData';
 import { Avatar, CommentItem } from '../../components';
 import { useApp } from '../../context/AppContext';
 import { AppColors } from '../../constants/theme';
+import { SPRING_BOUNCE, SPRING_GENTLE } from '../../animations/spring';
+import { SkeletonShimmer } from '../../components/SkeletonLoader';
 
+const AnimatedFeather = Animated.createAnimatedComponent(Feather);
+
+// ─── Animated like button with spring bounce ──────────────────────────────────
+const LikeButton = ({
+  isLiked,
+  onPress,
+}: {
+  isLiked: boolean;
+  onPress: () => void;
+}) => {
+  const scale = useSharedValue(1);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.8, SPRING_GENTLE);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1.0, SPRING_GENTLE);
+  };
+  const handlePress = () => {
+    // Extra bounce on tap
+    scale.value = withSpring(1.3, SPRING_BOUNCE, () => {
+      scale.value = withSpring(1.0, SPRING_BOUNCE);
+    });
+    onPress();
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={styles.actionButton}
+    >
+      <Animated.View style={animatedStyle}>
+        <Feather
+          name="heart"
+          size={26}
+          color={isLiked ? AppColors.primary : AppColors.textMuted}
+          fill={isLiked ? AppColors.primary : 'transparent'}
+        />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+// ─── Skeleton for initial load ────────────────────────────────────────────────
+const PostDetailSkeleton = () => (
+  <SafeAreaView style={styles.container}>
+    <Stack.Screen options={{ headerShown: false }} />
+    {/* Header skeleton */}
+    <View style={skelStyles.header}>
+      <SkeletonShimmer width={36} height={36} borderRadius={18} />
+      <SkeletonShimmer width={100} height={14} style={{ marginLeft: 10 }} />
+    </View>
+    {/* Image skeleton */}
+    <SkeletonShimmer
+      width="100%"
+      height={320}
+      borderRadius={0}
+    />
+    {/* Actions skeleton */}
+    <View style={skelStyles.actionsRow}>
+      <SkeletonShimmer width={28} height={28} borderRadius={14} />
+      <SkeletonShimmer width={28} height={28} borderRadius={14} style={{ marginLeft: 16 }} />
+      <SkeletonShimmer width={28} height={28} borderRadius={14} style={{ marginLeft: 16 }} />
+    </View>
+    {/* Likes skeleton */}
+    <SkeletonShimmer width={80} height={14} style={{ margin: 12 }} />
+    {/* Caption skeleton */}
+    <View style={skelStyles.captionArea}>
+      <SkeletonShimmer width="60%" height={13} />
+      <SkeletonShimmer width="40%" height={13} style={{ marginTop: 6 }} />
+    </View>
+  </SafeAreaView>
+);
+
+// ─── Main screen ────────────────────────────────────────────────────────────
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams();
   const [post, setPost] = useState<Post | null>(null);
@@ -41,11 +136,15 @@ export default function PostDetailScreen() {
   const handleLike = async () => {
     if (post) {
       await toggleLike(post.id);
-      setPost((prev) => prev ? {
-        ...prev,
-        isLiked: !prev.isLiked,
-        likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1,
-      } : null);
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              isLiked: !prev.isLiked,
+              likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1,
+            }
+          : null
+      );
     }
   };
 
@@ -58,21 +157,13 @@ export default function PostDetailScreen() {
   };
 
   const formatLikes = (count: number): string => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   };
 
   if (isLoading || !post) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>Loading post...</Text>
-      </SafeAreaView>
-    );
+    return <PostDetailSkeleton />;
   }
 
   const renderHeader = () => (
@@ -88,13 +179,8 @@ export default function PostDetailScreen() {
       </View>
       <Image source={{ uri: post.image }} style={styles.postImage} />
       <View style={styles.actions}>
-        <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-          <Feather
-            name="heart"
-            size={24}
-            color={post.isLiked ? AppColors.primary : AppColors.textMuted}
-          />
-        </TouchableOpacity>
+        {/* Spring-bouncing like button */}
+        <LikeButton isLiked={post.isLiked} onPress={handleLike} />
         <TouchableOpacity style={styles.actionButton}>
           <Feather name="message-circle" size={24} color={AppColors.text} />
         </TouchableOpacity>
@@ -249,5 +335,23 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     color: AppColors.textMuted,
+  },
+});
+
+const skelStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    padding: 12,
+  },
+  captionArea: {
+    padding: 12,
   },
 });

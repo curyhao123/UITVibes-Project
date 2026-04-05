@@ -6,7 +6,7 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
-
+ 
 var authDb = postgres.AddDatabase("authdb");
 var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");
@@ -24,6 +24,7 @@ var cloudinaryApiSecret = builder.AddParameter("cloudinary-apisecret", secret: t
 
 // Auth Service - shares JWT key
 var authService = builder.AddProject<Projects.AuthService>("authservice")
+    .WithExternalHttpEndpoints()
     .WithReference(authDb)
     .WaitFor(authDb)
     .WithReference(cache)
@@ -34,6 +35,7 @@ var authService = builder.AddProject<Projects.AuthService>("authservice")
     .WithHttpHealthCheck("/health");
 
 var userService = builder.AddProject<Projects.UserService>("userservice")
+    .WithExternalHttpEndpoints()
     .WithReference(userDb)
     .WaitFor(userDb)
     .WithReference(cache)
@@ -47,6 +49,7 @@ var userService = builder.AddProject<Projects.UserService>("userservice")
 
 
 var postService = builder.AddProject<Projects.PostService>("postservice")
+    .WithExternalHttpEndpoints()
     .WithReference(postDb)
     .WaitFor(postDb)
     .WithReference(cache)
@@ -61,6 +64,7 @@ var postService = builder.AddProject<Projects.PostService>("postservice")
 
 
 var messageService = builder.AddProject<Projects.MessageService>("messageservice")
+    .WithExternalHttpEndpoints()
     .WithReference(messageDb)
     .WaitFor(messageDb)
     .WithReference(cache)
@@ -71,6 +75,7 @@ var messageService = builder.AddProject<Projects.MessageService>("messageservice
 
 // ===== API GATEWAY WITH JWT =====
 var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>("apiservice")
+    .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithReference(cache)
     .WaitFor(cache)
@@ -82,7 +87,7 @@ var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>(
     .WaitFor(postService)
     .WithReference(messageService)
     .WaitFor(messageService)
-    .WithEnvironment("Jwt__Key", jwtKey); // ✅ Add JWT Key to Gateway
+    .WithEnvironment("Jwt__Key", jwtKey);
 
 
 

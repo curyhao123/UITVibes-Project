@@ -151,7 +151,7 @@ namespace MessageService.ServiceLayer.Implementation
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Private conversation {ConversationId} created between {User1} and {User2}",
-                conversation.Id, userId, request.OtherUserId);
+                 conversation.Id, userId, request.OtherUserId);
 
             return await GetConversationByIdAsync(conversation.Id, userId);
         }

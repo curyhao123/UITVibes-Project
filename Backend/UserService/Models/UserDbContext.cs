@@ -37,7 +37,7 @@ public class UserDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Platform).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
-
+            
             entity.HasOne(e => e.UserProfile)
                 .WithMany(u => u.SocialLinks)
                 .HasForeignKey(e => e.UserProfileId)
@@ -47,10 +47,10 @@ public class UserDbContext : DbContext
         modelBuilder.Entity<Follow>(entity =>
         {
             entity.HasKey(e => e.Id);
-
+            
             // Composite index to prevent duplicate follows
             entity.HasIndex(e => new { e.FollowerId, e.FollowingId }).IsUnique();
-
+            
             // Index for queries
             entity.HasIndex(e => e.FollowerId);
             entity.HasIndex(e => e.FollowingId);

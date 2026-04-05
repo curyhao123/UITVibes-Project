@@ -19,10 +19,12 @@ import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Header } from '../../components';
 import { formatDistanceToNow } from '../../utils/time';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function MessageScreen() {
   const router = useRouter();
   const {
+    currentUser,
     conversations,
     activeConversation,
     messages,
@@ -112,7 +114,7 @@ export default function MessageScreen() {
           </View>
         ) : (
           <Image
-            source={{ uri: other?.avatar }}
+            source={other?.avatar ? { uri: other.avatar } : defaultAvatar}
             style={styles.avatar}
           />
         )}
@@ -160,7 +162,7 @@ export default function MessageScreen() {
         {!isMine && (
           <View style={styles.msgAvatarContainer}>
             {showAvatar ? (
-              <Image source={{ uri: sender.avatar }} style={styles.msgAvatar} />
+              <Image source={sender.avatar ? { uri: sender.avatar } : defaultAvatar} style={styles.msgAvatar} />
             ) : (
               <View style={styles.msgAvatarPlaceholder} />
             )}
@@ -222,7 +224,7 @@ export default function MessageScreen() {
             }}
           >
             {otherUser ? (
-              <Image source={{ uri: otherUser.avatar }} style={styles.chatAvatar} />
+              <Image source={otherUser.avatar ? { uri: otherUser.avatar } : defaultAvatar} style={styles.chatAvatar} />
             ) : (
               <View style={styles.chatAvatarGroup}>
                 <Feather name="users" size={18} color="white" />
@@ -317,7 +319,7 @@ export default function MessageScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title="Messages"
-        showAvatar={false}
+        avatarUser={currentUser}
         rightAction={
           <TouchableOpacity
             activeOpacity={0.7}
@@ -449,7 +451,7 @@ export default function MessageScreen() {
                     refreshConversations();
                   }}
                 >
-                  <Image source={{ uri: item.avatar }} style={styles.newMsgAvatar} />
+                  <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.newMsgAvatar} />
                   <View style={styles.newMsgUserInfo}>
                     <Text style={styles.newMsgUserName}>{item.username}</Text>
                     <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>

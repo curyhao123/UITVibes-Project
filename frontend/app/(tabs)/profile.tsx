@@ -11,23 +11,28 @@ import {
   Share,
   ActivityIndicator,
 } from 'react-native';
+import { Image as RNImage } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../../context/AppContext';
 import { Avatar, PostGrid, Header, EmptyPostsState } from '../../components';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, posts, updateProfile, isNewUser } = useApp();
+  const { currentUser, posts, updateProfile, updateAvatar, isNewUser } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const userPosts = posts.filter((post) => post.userId === 'current').slice(0, 9);
 
@@ -77,6 +82,73 @@ export default function ProfileScreen() {
     }
   };
 
+  const requestMediaPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to change your profile photo.',
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const handleChangePhoto = async () => {
+    const hasPermission = await requestMediaPermission();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+
+    const selectedUri = result.assets[0].uri;
+    setAvatarPreview(selectedUri);
+    setIsUploadingAvatar(true);
+
+    try {
+      await updateAvatar(selectedUri);
+      setAvatarPreview(null);
+    } catch {
+      setAvatarPreview(null);
+      Alert.alert('Upload Failed', 'Could not update your profile photo. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    if (!currentUser?.avatar) return;
+    Alert.alert(
+      'Remove Photo',
+      'Are you sure you want to remove your profile photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setAvatarPreview(null);
+            setIsUploadingAvatar(true);
+            try {
+              await updateAvatar('');
+              setAvatarPreview(null);
+            } catch {
+              Alert.alert('Failed', 'Could not remove your profile photo.');
+            } finally {
+              setIsUploadingAvatar(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (!currentUser) {
     return null;
   }
@@ -85,7 +157,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title={currentUser.username}
-        showAvatar={false}
+        avatarUser={currentUser}
         rightAction={
           <TouchableOpacity
             activeOpacity={0.7}
@@ -120,20 +192,22 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.nameSection}>
+        <View style={styles.bioContainer}>
           <Text style={styles.displayName}>{currentUser.displayName}</Text>
-          {currentUser.bio && <Text style={styles.bio}>{currentUser.bio}</Text>}
+          <Text style={styles.bio}>{currentUser.bio}</Text>
           {currentUser.website && (
             <Text style={styles.website}>{currentUser.website}</Text>
           )}
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton} onPress={openEditModal} activeOpacity={0.75}>
-            <Text style={styles.editButtonText}>Edit Profile</Text>
+          <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
+            <Feather name="user" size={16} color={AppColors.text} strokeWidth={2} />
+            <Text style={styles.editButtonText}> Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShareProfile} activeOpacity={0.75}>
-            <Feather name="share" size={15} color={AppColors.text} strokeWidth={2} />
+          <TouchableOpacity style={styles.editButton} onPress={handleShareProfile}>
+            <Feather name="share" size={16} color={AppColors.text} strokeWidth={2} />
+            <Text style={styles.editButtonText}> Share</Text>
           </TouchableOpacity>
         </View>
 
@@ -143,6 +217,15 @@ export default function ProfileScreen() {
               <Feather name="plus" size={20} color={AppColors.text} strokeWidth={2} />
             </View>
             <Text style={styles.highlightText}>New Story</Text>
+          </View>
+        </View>
+
+        <View style={styles.tabsContainer}>
+          <View style={[styles.tab, styles.activeTab]}>
+            <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
+          </View>
+          <View style={styles.tab}>
+            <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
           </View>
         </View>
 
@@ -197,10 +280,44 @@ export default function ProfileScreen() {
 
           <ScrollView style={styles.modalForm}>
             <View style={styles.modalAvatarSection}>
-              <Avatar user={currentUser} size="large" />
-              <TouchableOpacity>
-                <Text style={styles.changePhotoText}>Change Photo</Text>
-              </TouchableOpacity>
+              <View style={styles.avatarWrapper}>
+                {(avatarPreview || currentUser.avatar) ? (
+                  <RNImage
+                    source={avatarPreview
+                      ? { uri: avatarPreview }
+                      : { uri: currentUser.avatar }
+                    }
+                    style={styles.avatarPreview}
+                  />
+                ) : (
+                  <RNImage source={defaultAvatar} style={styles.avatarPreview} />
+                )}
+                {isUploadingAvatar && (
+                  <View style={styles.avatarOverlay}>
+                    <ActivityIndicator size="small" color="white" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.photoActions}>
+                <TouchableOpacity
+                  onPress={handleChangePhoto}
+                  disabled={isUploadingAvatar}
+                >
+                  <Text style={[styles.changePhotoText, isUploadingAvatar && styles.textMuted]}>
+                    {currentUser.avatar || avatarPreview ? 'Change Photo' : 'Add Photo'}
+                  </Text>
+                </TouchableOpacity>
+                {(currentUser.avatar || avatarPreview) && (
+                  <TouchableOpacity
+                    onPress={handleRemovePhoto}
+                    disabled={isUploadingAvatar}
+                    style={styles.removePhotoBtn}
+                  >
+                    <Feather name="trash-2" size={16} color={AppColors.error} strokeWidth={2} />
+                    <Text style={styles.removePhotoText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             <View style={styles.formGroup}>
@@ -286,51 +403,44 @@ const styles = StyleSheet.create({
     color: AppColors.iconMuted,
     marginTop: 2,
   },
-  nameSection: {
+  bioContainer: {
     paddingHorizontal: layoutPadding,
-    paddingBottom: 14,
+    paddingBottom: 16,
   },
   displayName: {
     ...Typography.captionSemibold,
-    color: AppColors.text,
     marginBottom: 2,
+    color: AppColors.text,
   },
   bio: {
     ...Typography.caption,
-    color: AppColors.textSecondary,
     lineHeight: 20,
-    marginBottom: 2,
+    color: AppColors.textSecondary,
   },
   website: {
     ...Typography.caption,
     color: AppColors.primary,
+    marginTop: 4,
     textDecorationLine: 'underline',
   },
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: layoutPadding,
     marginBottom: 20,
-    gap: 8,
   },
   editButton: {
     flex: 1,
     backgroundColor: AppColors.border,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
+    marginRight: 8,
     alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'center',
   },
   editButtonText: {
     ...Typography.captionSemibold,
     color: AppColors.text,
-  },
-  shareButton: {
-    width: 36,
-    height: 36,
-    backgroundColor: AppColors.border,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   highlights: {
     flexDirection: 'row',
@@ -411,10 +521,45 @@ const styles = StyleSheet.create({
     borderBottomColor: AppColors.borderLight,
     marginBottom: 8,
   },
+  avatarWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  avatarPreview: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: AppColors.border,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoActions: {
+    alignItems: 'center',
+    gap: 12,
+  },
   changePhotoText: {
     ...Typography.bodySemibold,
     color: AppColors.primary,
-    marginTop: 10,
+  },
+  textMuted: {
+    opacity: 0.5,
+  },
+  removePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  removePhotoText: {
+    ...Typography.caption,
+    color: AppColors.error,
   },
   formGroup: {
     paddingHorizontal: layoutPadding,

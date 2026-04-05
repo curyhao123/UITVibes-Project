@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using PostService.DTOs;
 using PostService.ServiceLayer.Interface;
+using RabbitMQ.Client;
 
 namespace PostService.Controllers;
 
@@ -9,8 +10,8 @@ namespace PostService.Controllers;
 public class PostController : ControllerBase
 {
     private readonly IPostService _postService;
-    private readonly ILogger<PostController> _logger;
     private readonly IBookmarkService _bookmarkService;
+    private readonly ILogger<PostController> _logger;
 
     public PostController(IPostService postService, ILogger<PostController> logger, IBookmarkService bookmarkService)
     {
@@ -266,7 +267,6 @@ public class PostController : ControllerBase
             return NotFound(new { message = ex.Message });
         }
     }
-
     [HttpPost("{postId}/bookmark")]
     public async Task<ActionResult<BookmarkDto>> BookmarkPost(Guid postId, [FromBody] string? collection = null)
     {
@@ -297,13 +297,15 @@ public class PostController : ControllerBase
     }
 
     [HttpDelete("{postId}/bookmark")]
-    public async Task<IActionResult> RemoveBookmark(Guid postId)
+    public async Task<IActionResult> RemoveBookmark(Guid postId) // ✅ Correct parameter
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
+
         try
         {
             await _bookmarkService.DeleteBookmarkAsync(postId, userId);
@@ -333,7 +335,7 @@ public class PostController : ControllerBase
         }
         try
         {
-            var bookmarks = await _bookmarkService.GetBookmarksByUserAsync(userId, collection, skip, take);
+            var bookmarks = await _bookmarkService.GetBookmarksByUserAsync(userId,collection,skip,take);
             return Ok(bookmarks);
         }
         catch (Exception ex)

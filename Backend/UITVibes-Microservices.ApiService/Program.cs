@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +13,19 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+// YARP must use HTTP when downstream services are HTTP-only. Override with Aspire URLs when present.
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["ReverseProxy:Clusters:auth-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:authservice:http:0"] ?? "http://localhost:5158",
+    ["ReverseProxy:Clusters:user-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:userservice:http:0"] ?? "http://localhost:5016",
+    ["ReverseProxy:Clusters:post-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:postservice:http:0"] ?? "http://localhost:5078",
+    ["ReverseProxy:Clusters:message-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:messageservice:http:0"] ?? "http://localhost:5240",
+});
 
 // ===== REGISTER SERVICE DISCOVERY =====
 builder.Services.AddSingleton<IServiceDiscovery, ServiceDiscovery>();
@@ -202,7 +215,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 // ===== AUTHENTICATION & AUTHORIZATION =====

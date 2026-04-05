@@ -14,6 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { User } from '../../data/mockData';
 import { getFollowers, getFollowing, toggleFollow } from '../../services/api';
 import { AppColors } from '../../constants/theme';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function FollowersScreen() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function FollowersScreen() {
       style={styles.userItem}
       onPress={() => router.push(`/profile/${item.id}` as any)}
     >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.avatar} />
       <View style={styles.userInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.displayName} numberOfLines={1}>

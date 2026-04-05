@@ -13,7 +13,7 @@ public class UserProfileService : IUserProfileService
     private readonly IBlockService _blockService;
 
     public UserProfileService(
-        UserDbContext context,
+        UserDbContext context, 
         ILogger<UserProfileService> logger,
         ICloudinaryService cloudinaryService,
         IBlockService blockService)
@@ -24,7 +24,7 @@ public class UserProfileService : IUserProfileService
         _blockService = blockService;
     }
 
-    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId, Guid userId)
+    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId,Guid userId)
     {
         var blocked = await _blockService.IsBlockedAsync(currentUserId, userId);
         if (blocked)
@@ -90,22 +90,22 @@ public class UserProfileService : IUserProfileService
         // Update basic fields
         if (request.DisplayName != null)
             profile.DisplayName = request.DisplayName;
-
+        
         if (request.Bio != null)
             profile.Bio = request.Bio;
-
+        
         if (request.AvatarUrl != null)
             profile.AvatarUrl = request.AvatarUrl;
-
+        
         if (request.CoverImageUrl != null)
             profile.CoverImageUrl = request.CoverImageUrl;
-
+        
         if (request.DateOfBirth.HasValue)
             profile.DateOfBirth = request.DateOfBirth.Value;
-
+        
         if (request.Location != null)
             profile.Location = request.Location;
-
+        
         if (request.Website != null)
             profile.Website = request.Website;
 
@@ -114,7 +114,7 @@ public class UserProfileService : IUserProfileService
         {
             // Remove existing links
             _context.SocialLinks.RemoveRange(profile.SocialLinks);
-
+            
             // Add new links
             foreach (var linkDto in request.SocialLinks)
             {
@@ -233,7 +233,7 @@ public class UserProfileService : IUserProfileService
         return MapToDto(profile);
     }
 
-
+    
     private static string? ExtractPublicIdFromUrl(string url)
     {
         // Extract public ID from Cloudinary URL

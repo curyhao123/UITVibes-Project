@@ -563,7 +563,7 @@
           "contentType": "application/json",
           "requestBody": {
             "groupName": "Group Name",
-            "participantIds": ["guid1", "guid2"]
+            "participantIds": [ "guid1", "guid2" ]
           }
         },
         {
