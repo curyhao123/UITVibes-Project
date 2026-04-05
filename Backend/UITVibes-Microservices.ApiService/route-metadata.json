@@ -530,6 +530,148 @@
           }
         }
       ]
+    },
+    {
+      "name": "MessageService - Conversations",
+      "description": "Direct messaging and conversation management",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/message/conversations",
+          "description": "Get all conversations for current user",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/message/conversations/private",
+          "description": "Create a new private conversation with a user",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "otherUserId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/message/conversations/group",
+          "description": "Create a new group conversation",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "groupName": "Group Name",
+            "participantIds": [ "guid1", "guid2" ]
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/message/conversations/{conversationId}",
+          "description": "Get conversation details by ID",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/message/conversations/{conversationId}/members/{targetUserId}",
+          "description": "Add member to group conversation",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid",
+            "targetUserId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/message/conversations/{conversationId}/members/{targetUserId}",
+          "description": "Remove member from group conversation",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid",
+            "targetUserId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/message/conversations/{conversationId}/leave",
+          "description": "Leave a group conversation",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid"
+          }
+        }
+      ]
+    },
+    {
+      "name": "MessageService - Messages",
+      "description": "Send, receive, and manage messages",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/message/conversations/{conversationId}/messages",
+          "description": "Get all messages in a conversation",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/message/conversations/{conversationId}/messages",
+          "description": "Send a new message to a conversation",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "conversationId": "guid"
+          },
+          "requestBody": {
+            "content": "Message text content",
+            "messageType": "text"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/message/conversations/{conversationId}/messages/{messageId}",
+          "description": "Edit a message (sender only)",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "conversationId": "guid",
+            "messageId": "guid"
+          },
+          "requestBody": {
+            "content": "Edited message content"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/message/conversations/{conversationId}/messages/{messageId}",
+          "description": "Delete a message (soft delete, sender only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid",
+            "messageId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/message/conversations/{conversationId}/messages/{messageId}/read",
+          "description": "Mark a message as read",
+          "requiresAuth": true,
+          "pathParameters": {
+            "conversationId": "guid",
+            "messageId": "guid"
+          }
+        }
+      ]
     }
   ]
 }

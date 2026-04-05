@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList } from 'react
 import { Feather } from '@expo/vector-icons';
 import { Post, User } from '../data/mockData';
 import { AppColors } from '../constants/theme';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 export const PostGrid: React.FC<{ posts: Post[] }> = ({ posts }) => {
   const renderItem = ({ item, index }: { item: Post; index: number }) => (
@@ -29,7 +30,7 @@ export const PostGrid: React.FC<{ posts: Post[] }> = ({ posts }) => {
 export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({ user, onPress }) => {
   return (
     <TouchableOpacity style={styles.userItem} onPress={onPress}>
-      <Image source={{ uri: user.avatar }} style={styles.avatar} />
+      <Image source={user.avatar ? { uri: user.avatar } : defaultAvatar} style={styles.avatar} />
       <View style={styles.userInfo}>
         <Text style={styles.username}>{user.username}</Text>
         <Text style={styles.displayName}>{user.displayName}</Text>

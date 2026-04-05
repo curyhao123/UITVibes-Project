@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { User } from '../data/mockData';
 import { AppColors } from '../constants/theme';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 interface AvatarProps {
   user: User;
@@ -56,7 +57,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         ]}
       >
         <Image
-          source={{ uri: user.avatar }}
+          source={user.avatar ? { uri: user.avatar } : defaultAvatar}
           style={[
             styles.image,
             {

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using UITVibes_Microservices.ApiService.Models;
 
 namespace UITVibes_Microservices.ApiService.Services;

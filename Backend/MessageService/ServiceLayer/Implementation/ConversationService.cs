@@ -104,7 +104,9 @@ namespace MessageService.ServiceLayer.Implementation
 
         public async Task<ConversationDto> CreatePrivateConversationAsync(Guid userId, CreatePrivateConversationRequest request)
         {
-            if (userId == request.TargetUserId)
+            if (request.OtherUserId == Guid.Empty)
+                throw new ArgumentException("OtherUserId cannot be empty");
+            if (userId == request.OtherUserId)
                 throw new ArgumentException("Cannot create conversation with yourself");
 
             // Check if private conversation already exists between these users
@@ -112,7 +114,7 @@ namespace MessageService.ServiceLayer.Implementation
                 .Include(c => c.Members)
                 .Where(c => c.Type == ConversationType.Private && !c.IsDeleted)
                 .Where(c => c.Members.Any(m => m.UserId == userId) &&
-                            c.Members.Any(m => m.UserId == request.TargetUserId))
+                            c.Members.Any(m => m.UserId == request.OtherUserId))
                 .FirstOrDefaultAsync();
 
             if (existingConversation != null)
@@ -140,7 +142,7 @@ namespace MessageService.ServiceLayer.Implementation
             {
                 Id = Guid.NewGuid(),
                 ConversationId = conversation.Id,
-                UserId = request.TargetUserId,
+                UserId = request.OtherUserId,
                 Role = MemberRole.Member,
                 JoinedAt = DateTime.UtcNow
             });
@@ -149,7 +151,7 @@ namespace MessageService.ServiceLayer.Implementation
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Private conversation {ConversationId} created between {User1} and {User2}",
-                conversation.Id, userId, request.TargetUserId);
+                 conversation.Id, userId, request.OtherUserId);
 
             return await GetConversationByIdAsync(conversation.Id, userId);
         }

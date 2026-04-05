@@ -12,12 +12,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Header } from '../../components';
+import { useApp } from '../../context/AppContext';
 import { getTracks, toggleTrackLike, getMusicArtists, toggleMusicArtistFollow } from '../../services/api';
 import { Track, MusicArtist } from '../../data/mockData';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function MusicScreen() {
+  const { currentUser } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'tracks' | 'artists'>('tracks');
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -118,7 +121,7 @@ export default function MusicScreen() {
 
   const renderArtistItem = ({ item }: { item: MusicArtist }) => (
     <TouchableOpacity style={styles.artistItem}>
-      <Image source={{ uri: item.avatar }} style={styles.artistAvatar} />
+      <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.artistAvatar} />
       <View style={styles.artistInfo}>
         <Text style={styles.artistName}>{item.name}</Text>
         <Text style={styles.artistFollowers}>{item.followers} followers</Text>
@@ -148,7 +151,7 @@ export default function MusicScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title="Music"
-        showAvatar={false}
+        avatarUser={currentUser}
         rightAction={
           <View style={styles.searchIconWrap}>
             <Feather name="search" size={20} color={AppColors.iconMuted} strokeWidth={2} />

@@ -22,6 +22,8 @@ public class ConversationController : ControllerBase
     {
         var userId = GetUserId();
         if (userId == Guid.Empty) return Unauthorized(new { message = "User ID not found" });
+        if (request == null || request.OtherUserId == Guid.Empty)
+            return BadRequest(new { message = "OtherUserId is required and cannot be empty" });
 
         try
         {

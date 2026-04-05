@@ -14,6 +14,7 @@ import { useApp } from '../context/AppContext';
 import { Notification } from '../data/mockData';
 import { AppColors } from '../constants/theme';
 import { formatDistanceToNow } from '../utils/time';
+import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function NotificationsScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarWrap}>
-          <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
+          <Image source={item.user.avatar ? { uri: item.user.avatar } : defaultAvatar} style={styles.avatar} />
           <View style={[styles.iconBadge, { backgroundColor: icon.color }]}>
             <Feather name={icon.name as any} size={10} color="white" />
           </View>

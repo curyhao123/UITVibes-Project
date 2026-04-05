@@ -80,6 +80,7 @@ interface AppContextType {
     bio?: string;
     website?: string;
   }) => Promise<void>;
+  updateAvatar: (avatarUri: string) => Promise<void>;
 
   // Messages
   conversations: Conversation[];
@@ -437,6 +438,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await refreshUser();
       } catch (error) {
         console.error("Failed to update profile:", error);
+        throw error;
+      }
+    },
+    [refreshUser],
+  );
+
+  const updateAvatar = useCallback(
+    async (avatarUri: string) => {
+      // Optimistic update
+      setCurrentUser((prev) => (prev ? { ...prev, avatar: avatarUri } : prev));
+      try {
+        await api.updateAvatar(avatarUri);
+        await refreshUser();
+      } catch (error) {
+        // Revert on failure
+        await refreshUser();
+        console.error("Failed to update avatar:", error);
+        throw error;
       }
     },
     [refreshUser],
@@ -628,6 +647,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         refreshUser,
         toggleFollow,
         updateProfile,
+        updateAvatar,
         conversations,
         activeConversation,
         messages,

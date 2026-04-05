@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,11 +8,23 @@ import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { activeUserFollowingIds } from '../../data/mockData';
+import { FeedSkeleton } from '../../components/SkeletonLoader';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
-  const { currentUser, posts, stories, isLoading, refreshPosts, refreshStories, feedTab, setFeedTab, unreadCount, isNewUser } = useApp();
+  const {
+    currentUser,
+    posts,
+    stories,
+    isLoading,
+    refreshPosts,
+    refreshStories,
+    feedTab,
+    setFeedTab,
+    unreadCount,
+    isNewUser,
+  } = useApp();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -32,8 +44,32 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Header
+          title="Discover"
+          showAvatar
+          avatarUser={currentUser}
+          rightAction={
+            <TouchableOpacity
+              style={styles.notificationButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="bell" size={22} color={AppColors.text} strokeWidth={2} />
+            </TouchableOpacity>
+          }
+          bottomContent={
+            <View style={styles.feedTabs}>
+              <View style={[styles.feedTab, styles.feedTabActive]}>
+                <Text style={[styles.feedTabText, styles.feedTabTextActive]}>For You</Text>
+              </View>
+              <View style={styles.feedTab}>
+                <Text style={styles.feedTabText}>Following</Text>
+              </View>
+            </View>
+          }
+        />
+        <FeedSkeleton count={3} />
       </SafeAreaView>
     );
   }
@@ -244,11 +280,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 15,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: AppColors.background,
   },
 });

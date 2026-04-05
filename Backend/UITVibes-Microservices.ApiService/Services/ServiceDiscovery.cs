@@ -13,22 +13,27 @@ public class ServiceDiscovery : IServiceDiscovery
 
     public string GetAuthServiceUrl()
     {
-        // Aspire injects service URLs via configuration
-        return _configuration["services:authservice:https:0"] 
-            ?? _configuration["services:authservice:http:0"]
-            ?? "https://localhost:7233";
+        return _configuration["services:authservice:http:0"]
+            ?? _configuration["services:authservice:https:0"]
+            ?? "http://localhost:5158";
     }
 
     public string GetUserServiceUrl()
     {
-        return _configuration["services:userservice:https:0"] 
-            ?? _configuration["services:userservice:http:0"]
-            ?? "https://localhost:7234";
+        return _configuration["services:userservice:http:0"]
+            ?? _configuration["services:userservice:https:0"]
+            ?? "http://localhost:5016";
     }
     public string GetPostServiceUrl()
     {
-        return _configuration["services:postservice:https:0"]
-            ?? _configuration["services:postservice:http:0"]
-            ?? "https://localhost:7146"; // Default port
+        return _configuration["services:postservice:http:0"]
+            ?? _configuration["services:postservice:https:0"]
+            ?? "http://localhost:5078";
+    }
+    public string GetMessageServiceUrl()
+    {
+        return _configuration["services:messageservice:http:0"]
+            ?? _configuration["services:messageservice:https:0"]
+            ?? "http://localhost:5240";
     }
 }

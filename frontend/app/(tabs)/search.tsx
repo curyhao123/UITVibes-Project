@@ -17,10 +17,11 @@ import { searchUsers, getPosts, toggleFollow as apiToggleFollow } from '../../se
 import { User, Post } from '../../data/mockData';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { toggleFollow } = useApp();
+  const { toggleFollow, currentUser } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -82,7 +83,7 @@ export default function SearchScreen() {
       style={styles.userItem}
       onPress={() => router.push(`/profile/${item.id}` as any)}
     >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.avatar} />
       <View style={styles.userInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.username}>{item.username}</Text>
@@ -107,7 +108,7 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title="Search"
-        showAvatar={false}
+        avatarUser={currentUser}
         rightAction={
           <View style={styles.searchIconWrap}>
             <Feather name="search" size={20} color={AppColors.iconMuted} strokeWidth={2} />
