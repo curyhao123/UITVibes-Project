@@ -10,5 +10,7 @@ public interface IUserProfileService
     Task<UserProfileDto> UpdateAvatarAsync(Guid userId, string avatarUrl);
     Task<UserProfileDto> UpdateCoverImageAsync(Guid userId, string coverImageUrl);
     Task<UserProfileDto> UpdateBioAsync(Guid userId, string? bio);
+    Task<UserProfileDto> DeleteAvatarAsync(Guid userId);
+    Task<UserProfileDto> DeleteCoverImageAsync(Guid userId);
     Task DeleteProfileAsync(Guid userId);
 }

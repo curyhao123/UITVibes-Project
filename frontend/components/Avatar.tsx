@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { User } from '../data/mockData';
@@ -18,6 +18,11 @@ export const Avatar: React.FC<AvatarProps> = ({
   showBorder = false,
   isViewed = false,
 }) => {
+  const [loadFailed, setLoadFailed] = useState(false);
+  useEffect(() => {
+    setLoadFailed(false);
+  }, [user.avatar]);
+
   const getSize = (): number => {
     switch (size) {
       case 'small':
@@ -32,6 +37,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   };
 
   const avatarSize = getSize();
+  const uri = user.avatar?.trim();
+  const showRemote = Boolean(uri) && !loadFailed;
 
   const getBorderStyle = (): object => {
     if (!showBorder) return {};
@@ -57,7 +64,8 @@ export const Avatar: React.FC<AvatarProps> = ({
         ]}
       >
         <Image
-          source={user.avatar ? { uri: user.avatar } : defaultAvatar}
+          source={showRemote ? { uri: uri! } : defaultAvatar}
+          onError={() => setLoadFailed(true)}
           style={[
             styles.image,
             {

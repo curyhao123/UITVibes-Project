@@ -10,17 +10,95 @@ import apiClient, { delay } from "./httpClient";
 import {
   applyLocalUsernameToUser,
   cacheUser,
+  clearPersistedAvatarUrl,
   getCachedUser,
   getCurrentAccount,
   getCurrentUser,
   getCurrentUserId,
+  mergePersistedAvatarIfMissing,
   setCurrentUser,
 } from "./session";
 import {
   BE_UserProfile,
   BE_FollowStats,
   BE_PostResponse,
+  BE_UpdateProfileRequest,
+  BE_UpdateBioRequest,
+  normalizeAvatarUrlFromProfile,
+  normalizeCoverUrlFromProfile,
 } from "./backendTypes";
+
+/** URL dùng cho PUT /me — không bao giờ là blob:/data:/file: (blob là tạm, không lưu DB được) */
+function isPermanentHttpAvatarUrl(uri: string): boolean {
+  const u = uri.trim();
+  if (!u) return false;
+  if (
+    u.startsWith("blob:") ||
+    u.startsWith("data:") ||
+    u.startsWith("file:") ||
+    u.startsWith("content:")
+  ) {
+    return false;
+  }
+  return u.startsWith("https://") || u.startsWith("http://");
+}
+
+/** Cần upload multipart (ảnh local / blob web), không được gửi URL vào JSON */
+function needsMultipartImageUpload(uri: string): boolean {
+  if (!uri?.trim()) return false;
+  return (
+    uri.startsWith("file://") ||
+    uri.startsWith("blob:") ||
+    uri.startsWith("data:") ||
+    uri.startsWith("content://") ||
+    uri.startsWith("ph://")
+  );
+}
+
+/**
+ * Web: ImagePicker trả blob:http://... — phải fetch blob rồi append FormData.
+ * Native: file:// dùng object { uri, type, name }.
+ */
+async function buildMultipartFileField(
+  uri: string,
+  fallbackFilename: string,
+): Promise<FormData> {
+  const formData = new FormData();
+
+  // Native: Android thường là content://, iOS là file://
+  if (uri.startsWith("file://") || uri.startsWith("content://")) {
+    const name = uri.split("/").pop() || fallbackFilename;
+    formData.append("File", {
+      uri,
+      type: "image/jpeg",
+      name,
+    } as any);
+    return formData;
+  }
+
+  if (
+    typeof fetch !== "undefined" &&
+    (uri.startsWith("blob:") || uri.startsWith("data:"))
+  ) {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    const ext = blob.type?.includes("png") ? "png" : "jpg";
+    const name = fallbackFilename.endsWith(".jpg")
+      ? fallbackFilename.replace(/\.(jpe?g|png)$/i, `.${ext}`)
+      : `upload.${ext}`;
+    if (typeof File !== "undefined") {
+      formData.append(
+        "File",
+        new File([blob], name, { type: blob.type || "image/jpeg" }),
+      );
+    } else {
+      formData.append("File", blob as unknown as Blob, name);
+    }
+    return formData;
+  }
+
+  throw new Error("Không thể đóng gói ảnh để upload (URI không hỗ trợ).");
+}
 
 export async function getSuggestedUsers(): Promise<User[]> {
   try {
@@ -35,6 +113,7 @@ export async function getSuggestedUsers(): Promise<User[]> {
       username: "",
       displayName: p.displayName,
       avatar: p.avatarUrl || "",
+      coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
       followers: 0,
       following: 0,
@@ -58,6 +137,7 @@ export async function getUsers(): Promise<User[]> {
       username: "",
       displayName: p.displayName,
       avatar: p.avatarUrl || "",
+      coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
       followers: 0,
       following: 0,
@@ -80,6 +160,7 @@ export async function searchUsers(query: string): Promise<User[]> {
       username: "",
       displayName: p.displayName,
       avatar: p.avatarUrl || "",
+      coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
       followers: 0,
       following: 0,
@@ -105,7 +186,8 @@ function transformBEUserProfile(
     id: profile.userId,
     username: "",
     displayName: profile.displayName,
-    avatar: profile.avatarUrl || "",
+    avatar: normalizeAvatarUrlFromProfile(profile),
+    coverImage: normalizeCoverUrlFromProfile(profile),
     bio: profile.bio || "",
     website: profile.website || undefined,
     followers: stats.followersCount,
@@ -134,6 +216,7 @@ export async function fetchUserById(id: string): Promise<User> {
       username: "",
       displayName: "User",
       avatar: "",
+      coverImage: "",
       bio: "",
       followers: 0,
       following: 0,
@@ -171,6 +254,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
         username: "anhvu",
         displayName: "Anh Vu",
         avatar: "https://i.pravatar.cc/150?img=33",
+        coverImage: "",
         bio: "Software engineer \\ud83d\\udcbb",
         followers: 1240,
         following: 380,
@@ -221,19 +305,36 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
 }
 
 export async function getCurrentUserProfile(): Promise<User> {
-  const existing = getCurrentUser();
-  if (existing) return existing;
-  return {
-    id: "current",
-    username: "anhvu",
-    displayName: "Anh Vu",
-    avatar: "https://i.pravatar.cc/150?img=33",
-    bio: "Software engineer \\ud83d\\udcbb",
-    followers: 1240,
-    following: 380,
-    posts: 45,
-    isVerified: false,
-  };
+  try {
+    const { data } = await apiClient.get<BE_UserProfile>("/user/userprofile/me");
+    const statsRes = await apiClient.get<BE_FollowStats>(
+      `/user/follow/${data.userId}/stats`,
+    );
+    let user = transformBEUserProfile(data, statsRes.data);
+    user = await applyLocalUsernameToUser(user);
+    user = await mergePersistedAvatarIfMissing(user);
+    setCurrentUser(user);
+    return user;
+  } catch {
+    const existing = getCurrentUser();
+    if (existing) {
+      const merged = await mergePersistedAvatarIfMissing(existing);
+      if (merged.avatar !== existing.avatar) setCurrentUser(merged);
+      return merged;
+    }
+    return {
+      id: "current",
+      username: "anhvu",
+      displayName: "Anh Vu",
+      avatar: "https://i.pravatar.cc/150?img=33",
+      coverImage: "",
+      bio: "Software engineer \\ud83d\\udcbb",
+      followers: 1240,
+      following: 380,
+      posts: 45,
+      isVerified: false,
+    } as User;
+  }
 }
 
 export async function followUser(userId: string): Promise<boolean> {
@@ -318,6 +419,7 @@ export async function getFollowers(userId: string): Promise<User[]> {
       username: "",
       displayName: p.displayName,
       avatar: p.avatarUrl || "",
+      coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
       followers: 0,
       following: 0,
@@ -342,6 +444,7 @@ export async function getFollowing(userId: string): Promise<User[]> {
       username: "",
       displayName: p.displayName,
       avatar: p.avatarUrl || "",
+      coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
       followers: 0,
       following: 0,
@@ -354,13 +457,49 @@ export async function getFollowing(userId: string): Promise<User[]> {
   }
 }
 
+/**
+ * PUT /user/userprofile/me/bio — chỉ cập nhật bio (khớp API trong spec).
+ */
+export async function updateMyBio(bio: string | null): Promise<User> {
+  try {
+    const { data } = await apiClient.put<BE_UserProfile>(
+      "/user/userprofile/me/bio",
+      { bio } satisfies BE_UpdateBioRequest,
+    );
+    const statsRes = await apiClient.get<BE_FollowStats>(
+      `/user/follow/${data.userId}/stats`,
+    );
+    let user = transformBEUserProfile(data, statsRes.data);
+    user = await applyLocalUsernameToUser(user);
+    setCurrentUser(user);
+    return user;
+  } catch {
+    await delay(400);
+    const existing = getCurrentUser();
+    if (existing) {
+      existing.bio = bio ?? "";
+      setCurrentUser(existing);
+      return existing;
+    }
+    return {} as User;
+  }
+}
+
 export async function updateProfile(updates: {
   displayName?: string;
   bio?: string;
   website?: string;
 }): Promise<User> {
   try {
-    const body: Record<string, string> = {};
+    const onlyBio =
+      updates.bio !== undefined &&
+      updates.displayName === undefined &&
+      updates.website === undefined;
+    if (onlyBio) {
+      return updateMyBio(updates.bio ?? null);
+    }
+
+    const body: BE_UpdateProfileRequest = {};
     if (updates.displayName !== undefined)
       body.displayName = updates.displayName;
     if (updates.bio !== undefined) body.bio = updates.bio;
@@ -394,12 +533,63 @@ export async function updateProfile(updates: {
 }
 
 export async function updateAvatar(avatarUri: string): Promise<User> {
-  try {
-    const { data } = await apiClient.put<BE_UserProfile>(
+  if (!avatarUri?.trim()) {
+    return getCurrentUser() ?? ({} as User);
+  }
+
+  // Web thường là blob: — bắt buộc multipart lên BE (Cloudinary), không PUT JSON
+  if (needsMultipartImageUpload(avatarUri)) {
+    const formData = await buildMultipartFileField(avatarUri, "avatar.jpg");
+    const { data } = await apiClient.post<BE_UserProfile>(
       "/user/userprofile/me/avatar",
-      {
-        avatarUrl: avatarUri,
-      },
+      formData,
+    );
+    const statsRes = await apiClient.get<BE_FollowStats>(
+      `/user/follow/${data.userId}/stats`,
+    );
+    let user = transformBEUserProfile(data, statsRes.data);
+    user = await applyLocalUsernameToUser(user);
+    setCurrentUser(user);
+    return user;
+  }
+
+  if (isPermanentHttpAvatarUrl(avatarUri)) {
+    const { data } = await apiClient.put<BE_UserProfile>(
+      "/user/userprofile/me",
+      { avatarUrl: avatarUri },
+    );
+    const statsRes = await apiClient.get<BE_FollowStats>(
+      `/user/follow/${data.userId}/stats`,
+    );
+    let user = transformBEUserProfile(data, statsRes.data);
+    user = await applyLocalUsernameToUser(user);
+    setCurrentUser(user);
+    return user;
+  }
+
+  throw new Error(
+    "Ảnh đại diện phải upload file hoặc URL https công khai (không dùng blob tạm).",
+  );
+}
+
+export async function deleteAvatar(): Promise<User> {
+  const { data } = await apiClient.delete<BE_UserProfile>(
+    "/user/userprofile/me/avatar",
+  );
+  await clearPersistedAvatarUrl(data.userId);
+  const statsRes = await apiClient.get<BE_FollowStats>(
+    `/user/follow/${data.userId}/stats`,
+  );
+  let user = transformBEUserProfile(data, statsRes.data);
+  user = await applyLocalUsernameToUser(user);
+  setCurrentUser(user);
+  return user;
+}
+
+export async function deleteCover(): Promise<User> {
+  try {
+    const { data } = await apiClient.delete<BE_UserProfile>(
+      "/user/userprofile/me/cover",
     );
     const statsRes = await apiClient.get<BE_FollowStats>(
       `/user/follow/${data.userId}/stats`,
@@ -409,10 +599,9 @@ export async function updateAvatar(avatarUri: string): Promise<User> {
     setCurrentUser(user);
     return user;
   } catch {
-    await delay(500);
+    await delay(400);
     const existingUser = getCurrentUser();
     if (existingUser) {
-      existingUser.avatar = avatarUri;
       setCurrentUser(existingUser);
       return existingUser;
     }
@@ -421,12 +610,15 @@ export async function updateAvatar(avatarUri: string): Promise<User> {
 }
 
 export async function updateCover(coverUri: string): Promise<User> {
-  try {
-    const { data } = await apiClient.put<BE_UserProfile>(
+  if (!coverUri?.trim()) {
+    return getCurrentUser() ?? ({} as User);
+  }
+
+  if (needsMultipartImageUpload(coverUri)) {
+    const formData = await buildMultipartFileField(coverUri, "cover.jpg");
+    const { data } = await apiClient.post<BE_UserProfile>(
       "/user/userprofile/me/cover",
-      {
-        coverImageUrl: coverUri,
-      },
+      formData,
     );
     const statsRes = await apiClient.get<BE_FollowStats>(
       `/user/follow/${data.userId}/stats`,
@@ -435,13 +627,23 @@ export async function updateCover(coverUri: string): Promise<User> {
     user = await applyLocalUsernameToUser(user);
     setCurrentUser(user);
     return user;
-  } catch {
-    await delay(500);
-    const existingUser = getCurrentUser();
-    if (existingUser) {
-      setCurrentUser(existingUser);
-      return existingUser;
-    }
-    return {} as User;
   }
+
+  if (isPermanentHttpAvatarUrl(coverUri)) {
+    const { data } = await apiClient.put<BE_UserProfile>(
+      "/user/userprofile/me",
+      { coverImageUrl: coverUri },
+    );
+    const statsRes = await apiClient.get<BE_FollowStats>(
+      `/user/follow/${data.userId}/stats`,
+    );
+    let user = transformBEUserProfile(data, statsRes.data);
+    user = await applyLocalUsernameToUser(user);
+    setCurrentUser(user);
+    return user;
+  }
+
+  throw new Error(
+    "Ảnh bìa phải upload file hoặc URL https công khai (không dùng blob tạm).",
+  );
 }

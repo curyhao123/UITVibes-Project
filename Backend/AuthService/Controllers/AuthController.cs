@@ -1,6 +1,8 @@
-﻿using AuthService.DTOs;
+using System.Security.Claims;
+using AuthService.DTOs;
 using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
@@ -87,6 +89,28 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during token revocation");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpPost("delete-account")]
+        public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid or missing user identity" });
+            }
+
+            try
+            {
+                await _authService.DeleteAccountAsync(userId, request?.Password ?? string.Empty);
+                return Ok(new { message = "Account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting account for user {UserId}", userId);
                 return BadRequest(new { message = ex.Message });
             }
         }

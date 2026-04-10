@@ -9,8 +9,50 @@ let currentUser: User | null = null;
 const userCache: Map<string, User> = new Map();
 
 const LOCAL_HANDLE_KEY = "@uitvibes_local_username_handle";
+/** URL avatar đã xác nhận từ BE — dùng khi login/refresh tạm thời không trả avatarUrl */
+const AVATAR_URL_PREFIX = "@uitvibes_avatar_url_";
 
 type LocalHandlePayload = { userId: string; username: string };
+
+export async function persistUserAvatarUrl(
+  userId: string,
+  url: string,
+): Promise<void> {
+  const u = url?.trim();
+  if (!userId || !u) return;
+  try {
+    await AsyncStorage.setItem(`${AVATAR_URL_PREFIX}${userId}`, u);
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function getPersistedAvatarUrl(
+  userId: string,
+): Promise<string | null> {
+  try {
+    const v = await AsyncStorage.getItem(`${AVATAR_URL_PREFIX}${userId}`);
+    return v?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPersistedAvatarUrl(userId: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(`${AVATAR_URL_PREFIX}${userId}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Nếu BE không trả avatar (lỗi tạm / mapping) nhưng đã từng có URL trên máy → gắn lại */
+export async function mergePersistedAvatarIfMissing(user: User): Promise<User> {
+  if (user.avatar?.trim()) return user;
+  const cached = await getPersistedAvatarUrl(user.id);
+  if (cached) return { ...user, avatar: cached };
+  return user;
+}
 
 export function getCurrentAccount(): AccountType {
   return currentAccount;
@@ -34,6 +76,9 @@ export function getCurrentUser(): User | null {
 
 export function setCurrentUser(user: User | null): void {
   currentUser = user;
+  if (user?.id && user.avatar?.trim()) {
+    void persistUserAvatarUrl(user.id, user.avatar);
+  }
 }
 
 export function getCachedUser(id: string): User | undefined {
@@ -42,6 +87,10 @@ export function getCachedUser(id: string): User | undefined {
 
 export function cacheUser(user: User): void {
   userCache.set(user.id, user);
+}
+
+export function clearUserCache(): void {
+  userCache.clear();
 }
 
 async function readLocalHandle(userId: string): Promise<string | null> {

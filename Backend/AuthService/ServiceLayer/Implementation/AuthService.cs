@@ -1,4 +1,4 @@
-﻿using AuthService.DTOs;
+using AuthService.DTOs;
 using AuthService.Messaging;
 using AuthService.Models;
 using AuthService.ServiceLayer.Interface;
@@ -213,6 +213,24 @@ namespace AuthService.ServiceLayer.Implementation
                 token.IsRevoked = true;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        public async Task DeleteAccountAsync(Guid userId, string password)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                throw new Exception("User not found");
+            }
+
+            if (string.IsNullOrWhiteSpace(password) ||
+                !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            {
+                throw new Exception("Invalid password");
+            }
+
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
         }
 
     }
