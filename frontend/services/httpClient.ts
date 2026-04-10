@@ -1,4 +1,8 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  InternalAxiosRequestConfig,
+} from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
@@ -75,6 +79,20 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Instance default is application/json — breaks multipart: server gets no file / wrong boundary
+    if (
+      typeof FormData !== "undefined" &&
+      config.data instanceof FormData &&
+      config.headers
+    ) {
+      const h = config.headers;
+      if (h instanceof AxiosHeaders) {
+        h.delete("Content-Type");
+      } else {
+        delete (h as Record<string, unknown>)["Content-Type"];
+        delete (h as Record<string, unknown>)["content-type"];
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error),
@@ -92,8 +110,9 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = await getRefreshTokenFromStorage();
         if (refreshToken) {
+          // Phải khớp gateway: /auth/{**catch-all} → /api/{**catch-all} (AuthController = /api/Auth/...)
           const { data } = await axios.post(
-            `${API_BASE_URL}/auth/refresh-token`,
+            `${API_BASE_URL}/auth/auth/refresh-token`,
             { refreshToken },
           );
           await saveTokens(data.accessToken, data.refreshToken);

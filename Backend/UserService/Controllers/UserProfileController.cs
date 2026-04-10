@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using UserService.DTOs;
@@ -226,6 +226,58 @@ public class UserProfileController : ControllerBase
         {
             _logger.LogError(ex, "Error updating bio for user {UserId}", userId);
             return StatusCode(500, new { message = "An error occurred while updating bio" });
+        }
+    }
+
+    [HttpDelete("me/avatar")]
+    public async Task<ActionResult<UserProfileDto>> DeleteAvatar()
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            var updatedProfile = await _userProfileService.DeleteAvatarAsync(userId);
+            return Ok(updatedProfile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Profile not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting avatar for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while deleting avatar" });
+        }
+    }
+
+    [HttpDelete("me/cover")]
+    public async Task<ActionResult<UserProfileDto>> DeleteCoverImage()
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            var updatedProfile = await _userProfileService.DeleteCoverImageAsync(userId);
+            return Ok(updatedProfile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Profile not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting cover image for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while deleting cover image" });
         }
     }
 }

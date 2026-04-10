@@ -22,32 +22,61 @@ import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import defaultAvatar from '../../assets/images/default-avatar.png';
 
+/** Snapshot khi mở Edit Profile — Cancel/đóng modal khôi phục về đây, chỉ Save mới gọi API */
+type EditFormSnapshot = {
+  displayName: string;
+  bio: string;
+  website: string;
+  avatar: string;
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, posts, updateProfile, updateAvatar, isNewUser } = useApp();
+  const { currentUser, posts, updateProfile, updateAvatar, deleteAvatar, isNewUser } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  /** Ảnh đã chọn trong modal, chưa upload — chỉ gửi khi Save */
+  const [avatarDraftUri, setAvatarDraftUri] = useState<string | null>(null);
+  /** User bấm Remove trong modal — chỉ xóa trên server khi Save */
+  const [avatarDraftRemoved, setAvatarDraftRemoved] = useState(false);
+  const [removePhotoConfirmVisible, setRemovePhotoConfirmVisible] = useState(false);
 
   const userPosts = posts.filter((post) => post.userId === 'current').slice(0, 9);
 
-  const formatCount = (count: number): string => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
+  const formatCount = (count: number | undefined | null): string => {
+    const n = Number(count) || 0;
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
   };
 
   const openEditModal = () => {
     if (!currentUser) return;
+    setEditSnapshot({
+      displayName: currentUser.displayName,
+      bio: currentUser.bio,
+      website: currentUser.website || '',
+      avatar: currentUser.avatar || '',
+    });
     setEditDisplayName(currentUser.displayName);
     setEditBio(currentUser.bio);
     setEditWebsite(currentUser.website || '');
+    setAvatarDraftUri(null);
+    setAvatarDraftRemoved(false);
     setShowEditModal(true);
+  };
+
+  const discardEditModal = () => {
+    setRemovePhotoConfirmVisible(false);
+    setShowEditModal(false);
+    setEditSnapshot(null);
+    setAvatarDraftUri(null);
+    setAvatarDraftRemoved(false);
   };
 
   const handleSave = async () => {
@@ -55,14 +84,28 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Display name cannot be empty.');
       return;
     }
+    if (!editSnapshot) return;
+
     setIsSaving(true);
     try {
+      const hadServerAvatar = Boolean(editSnapshot.avatar?.trim());
+
+      if (avatarDraftRemoved && hadServerAvatar) {
+        await deleteAvatar();
+      } else if (avatarDraftUri) {
+        await updateAvatar(avatarDraftUri);
+      }
+
       await updateProfile({
         displayName: editDisplayName.trim(),
         bio: editBio.trim(),
         website: editWebsite.trim() || undefined,
       });
+
       setShowEditModal(false);
+      setEditSnapshot(null);
+      setAvatarDraftUri(null);
+      setAvatarDraftRemoved(false);
     } catch {
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
@@ -108,45 +151,27 @@ export default function ProfileScreen() {
     if (result.canceled || !result.assets?.[0]?.uri) return;
 
     const selectedUri = result.assets[0].uri;
-    setAvatarPreview(selectedUri);
-    setIsUploadingAvatar(true);
-
-    try {
-      await updateAvatar(selectedUri);
-      setAvatarPreview(null);
-    } catch {
-      setAvatarPreview(null);
-      Alert.alert('Upload Failed', 'Could not update your profile photo. Please try again.');
-    } finally {
-      setIsUploadingAvatar(false);
-    }
+    setAvatarDraftUri(selectedUri);
+    setAvatarDraftRemoved(false);
   };
 
+  /** Ảnh đang xem trong modal (draft), chưa lưu server */
+  const baseAvatarInModal = editSnapshot?.avatar?.trim() || '';
+  const hasAvatarInEditor =
+    !avatarDraftRemoved &&
+    (Boolean(avatarDraftUri) || Boolean(baseAvatarInModal));
+
   const handleRemovePhoto = () => {
-    if (!currentUser?.avatar) return;
-    Alert.alert(
-      'Remove Photo',
-      'Are you sure you want to remove your profile photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setAvatarPreview(null);
-            setIsUploadingAvatar(true);
-            try {
-              await updateAvatar('');
-              setAvatarPreview(null);
-            } catch {
-              Alert.alert('Failed', 'Could not remove your profile photo.');
-            } finally {
-              setIsUploadingAvatar(false);
-            }
-          },
-        },
-      ],
-    );
+    const hasBase = Boolean(baseAvatarInModal);
+    const hasDraftPic = Boolean(avatarDraftUri);
+    if (!hasBase && !hasDraftPic) return;
+    setRemovePhotoConfirmVisible(true);
+  };
+
+  const confirmRemovePhoto = () => {
+    setRemovePhotoConfirmVisible(false);
+    setAvatarDraftUri(null);
+    setAvatarDraftRemoved(true);
   };
 
   if (!currentUser) {
@@ -251,48 +276,58 @@ export default function ProfileScreen() {
         visible={showEditModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowEditModal(false)}
+        onRequestClose={discardEditModal}
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowEditModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isSaving || !editDisplayName.trim()}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <Text
-                  style={[
-                    styles.modalSave,
-                    (!editDisplayName.trim() || isSaving) && styles.modalSaveDisabled,
-                  ]}
-                >
-                  Save
-                </Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.modalTitleLayer} pointerEvents="none">
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+            </View>
+            <View style={styles.modalHeaderRow}>
+              <TouchableOpacity onPress={discardEditModal} disabled={isSaving}>
+                <Text style={[styles.modalCancel, isSaving && styles.textMuted]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={isSaving || !editDisplayName.trim()}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.modalSave,
+                      (!editDisplayName.trim() || isSaving) && styles.modalSaveDisabled,
+                    ]}
+                  >
+                    Save
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <ScrollView style={styles.modalForm}>
+          <ScrollView
+            style={styles.modalForm}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalAvatarSection}>
               <View style={styles.avatarWrapper}>
-                {(avatarPreview || currentUser.avatar) ? (
+                {avatarDraftRemoved ? (
+                  <RNImage source={defaultAvatar} style={styles.avatarPreview} />
+                ) : avatarDraftUri || baseAvatarInModal ? (
                   <RNImage
-                    source={avatarPreview
-                      ? { uri: avatarPreview }
-                      : { uri: currentUser.avatar }
+                    source={
+                      avatarDraftUri
+                        ? { uri: avatarDraftUri }
+                        : { uri: baseAvatarInModal }
                     }
                     style={styles.avatarPreview}
                   />
                 ) : (
                   <RNImage source={defaultAvatar} style={styles.avatarPreview} />
                 )}
-                {isUploadingAvatar && (
+                {isSaving && (
                   <View style={styles.avatarOverlay}>
                     <ActivityIndicator size="small" color="white" />
                   </View>
@@ -301,16 +336,16 @@ export default function ProfileScreen() {
               <View style={styles.photoActions}>
                 <TouchableOpacity
                   onPress={handleChangePhoto}
-                  disabled={isUploadingAvatar}
+                  disabled={isSaving}
                 >
-                  <Text style={[styles.changePhotoText, isUploadingAvatar && styles.textMuted]}>
-                    {currentUser.avatar || avatarPreview ? 'Change Photo' : 'Add Photo'}
+                  <Text style={[styles.changePhotoText, isSaving && styles.textMuted]}>
+                    {hasAvatarInEditor ? 'Change Photo' : 'Add Photo'}
                   </Text>
                 </TouchableOpacity>
-                {(currentUser.avatar || avatarPreview) && (
+                {hasAvatarInEditor && (
                   <TouchableOpacity
                     onPress={handleRemovePhoto}
-                    disabled={isUploadingAvatar}
+                    disabled={isSaving}
                     style={styles.removePhotoBtn}
                   >
                     <Feather name="trash-2" size={16} color={AppColors.error} strokeWidth={2} />
@@ -329,6 +364,7 @@ export default function ProfileScreen() {
                 placeholder="Enter your display name"
                 placeholderTextColor={AppColors.textMuted}
                 maxLength={50}
+                editable={!isSaving}
               />
             </View>
 
@@ -343,6 +379,7 @@ export default function ProfileScreen() {
                 multiline
                 numberOfLines={4}
                 maxLength={200}
+                editable={!isSaving}
               />
             </View>
 
@@ -357,10 +394,42 @@ export default function ProfileScreen() {
                 keyboardType="url"
                 autoCapitalize="none"
                 maxLength={100}
+                editable={!isSaving}
               />
             </View>
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Web: Alert.alert thường không hiện — dùng Modal xác nhận xóa ảnh */}
+      <Modal
+        visible={removePhotoConfirmVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setRemovePhotoConfirmVisible(false)}
+      >
+        <View style={styles.removeConfirmBackdrop}>
+          <View style={styles.removeConfirmCard}>
+            <Text style={styles.removeConfirmTitle}>Remove photo?</Text>
+            <Text style={styles.removeConfirmBody}>
+              Your profile picture will be removed when you tap Save. Cancel discards this change.
+            </Text>
+            <View style={styles.removeConfirmActions}>
+              <TouchableOpacity
+                style={styles.removeConfirmBtnGhost}
+                onPress={() => setRemovePhotoConfirmVisible(false)}
+              >
+                <Text style={styles.removeConfirmBtnGhostText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.removeConfirmBtnDanger}
+                onPress={() => void confirmRemovePhoto()}
+              >
+                <Text style={styles.removeConfirmBtnDangerText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -485,14 +554,27 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.background,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    position: 'relative',
     paddingHorizontal: layoutPadding,
     paddingVertical: 14,
+    minHeight: 48,
+    justifyContent: 'center',
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
     backgroundColor: AppColors.surfaceElevated,
+  },
+  /** Tiêu đề căn giữa màn hình; nút Cancel/Save nằm layer trên (zIndex) */
+  modalTitleLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    zIndex: 1,
   },
   modalCancel: {
     ...Typography.body,
@@ -502,6 +584,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     ...Typography.sectionTitle,
     color: AppColors.text,
+    textAlign: 'center',
   },
   modalSave: {
     ...Typography.bodySemibold,
@@ -515,8 +598,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalAvatarSection: {
+    width: '100%',
     alignItems: 'center',
     paddingVertical: 24,
+    paddingHorizontal: layoutPadding,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.borderLight,
     marginBottom: 8,
@@ -584,5 +669,54 @@ const styles = StyleSheet.create({
   formInputMultiline: {
     height: 80,
     textAlignVertical: 'top',
+  },
+  removeConfirmBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  removeConfirmCard: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  removeConfirmTitle: {
+    ...Typography.bodySemibold,
+    fontSize: 18,
+    color: AppColors.text,
+    marginBottom: 8,
+  },
+  removeConfirmBody: {
+    ...Typography.caption,
+    fontSize: 14,
+    color: AppColors.textMuted,
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  removeConfirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  removeConfirmBtnGhost: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  removeConfirmBtnGhostText: {
+    ...Typography.bodySemibold,
+    color: AppColors.textMuted,
+  },
+  removeConfirmBtnDanger: {
+    backgroundColor: AppColors.error,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+  },
+  removeConfirmBtnDangerText: {
+    ...Typography.bodySemibold,
+    color: '#fff',
   },
 });

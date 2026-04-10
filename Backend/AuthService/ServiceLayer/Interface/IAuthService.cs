@@ -1,4 +1,4 @@
-﻿using AuthService.DTOs;
+using AuthService.DTOs;
 
 namespace AuthService.ServiceLayer.Interface
 {
@@ -9,5 +9,6 @@ namespace AuthService.ServiceLayer.Interface
         Task<AuthResponse> RefreshTokenAsync(string refreshToken);
         Task<bool> ValidateTokenAsync(string token);
         Task RevokeTokenAsync(string refreshToken);
+        Task DeleteAccountAsync(Guid userId, string password);
     }
 }

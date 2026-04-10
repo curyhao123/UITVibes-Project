@@ -7,6 +7,7 @@ export interface User {
   username: string;
   displayName: string;
   avatar: string;
+  coverImage: string;
   bio: string;
   website?: string;
   followers: number;
@@ -171,6 +172,7 @@ export const mockNewUser: User = {
   username: 'newbie',
   displayName: 'New User',
   avatar: 'https://i.pravatar.cc/150?img=47',
+  coverImage: '',
   bio: '',
   followers: 0,
   following: 0,
@@ -187,6 +189,7 @@ export const mockUsers: User[] = [
     username: 'linhphan',
     displayName: 'Linh Phan',
     avatar: 'https://i.pravatar.cc/150?img=5',
+    coverImage: 'https://picsum.photos/seed/cover-u1/800/200',
     bio: 'Travel lover ✈️ Chasing sunsets around Vietnam.',
     website: 'https://linhphan.travel',
     followers: 3400,
@@ -201,6 +204,7 @@ export const mockUsers: User[] = [
     username: 'minhduong',
     displayName: 'Minh Duong',
     avatar: 'https://i.pravatar.cc/150?img=3',
+    coverImage: 'https://picsum.photos/seed/cover-u2/800/200',
     bio: 'Foodie 🍕 Street food hunter in Ho Chi Minh City.',
     followers: 890,
     following: 250,
@@ -214,6 +218,7 @@ export const mockUsers: User[] = [
     username: 'thanhhuyen',
     displayName: 'Thanh Huyen',
     avatar: 'https://i.pravatar.cc/150?img=9',
+    coverImage: 'https://picsum.photos/seed/cover-u3/800/200',
     bio: 'Fitness coach 💪 DM for training programs.',
     website: 'https://thanhhuyen.fit',
     followers: 5200,
@@ -228,6 +233,7 @@ export const mockUsers: User[] = [
     username: 'ductran',
     displayName: 'Duc Tran',
     avatar: 'https://i.pravatar.cc/150?img=11',
+    coverImage: 'https://picsum.photos/seed/cover-u4/800/200',
     bio: 'Music producer 🎵 New EP dropping soon!',
     followers: 2100,
     following: 310,
@@ -241,6 +247,7 @@ export const mockUsers: User[] = [
     username: 'huongle',
     displayName: 'Huong Le',
     avatar: 'https://i.pravatar.cc/150?img=16',
+    coverImage: 'https://picsum.photos/seed/cover-u5/800/200',
     bio: 'Artist 🎨 Commission open! DM for inquiries.',
     website: 'https://huongle.art',
     followers: 7800,
@@ -255,6 +262,7 @@ export const mockUsers: User[] = [
     username: 'khoinguyen',
     displayName: 'Khoi Nguyen',
     avatar: 'https://i.pravatar.cc/150?img=12',
+    coverImage: 'https://picsum.photos/seed/cover-u6/800/200',
     bio: 'Tech geek 💻 Building apps one commit at a time.',
     followers: 1560,
     following: 290,
@@ -268,6 +276,7 @@ export const mockUsers: User[] = [
     username: 'tranhoa',
     displayName: 'Tran Hoa',
     avatar: 'https://i.pravatar.cc/150?img=20',
+    coverImage: 'https://picsum.photos/seed/cover-u7/800/200',
     bio: 'Fashion blogger 👗 Daily outfit inspo. Collabs → DM',
     website: 'https://tranhoa.fashion',
     followers: 9800,
@@ -286,6 +295,7 @@ export const mockActiveUser: User = {
   username: 'anhvu',
   displayName: 'Anh Vu',
   avatar: 'https://i.pravatar.cc/150?img=33',
+  coverImage: 'https://picsum.photos/seed/cover1/800/200',
   bio: 'Software engineer 💻 Coffee addict ☕ Photography 📸',
   website: 'https://anhvu.dev',
   followers: 1240,

@@ -318,7 +318,8 @@ app.MapGet("/gateway/routes", (IServiceDiscovery discovery) =>
                 new { gateway = "/auth/login", proxiedTo = "/api/login", auth = "Public" },
                 new { gateway = "/auth/refresh-token", proxiedTo = "/api/refresh-token", auth = "Public" },
                 new { gateway = "/auth/validate", proxiedTo = "/api/validate", auth = "Public" },
-                new { gateway = "/auth/revoke", proxiedTo = "/api/revoke", auth = "Public" }
+                new { gateway = "/auth/revoke", proxiedTo = "/api/revoke", auth = "Public" },
+                new { gateway = "/auth/auth/delete-account", proxiedTo = "/api/Auth/delete-account", auth = "Bearer required" }
             }
         },
         new
@@ -327,10 +328,11 @@ app.MapGet("/gateway/routes", (IServiceDiscovery discovery) =>
             baseUrl = discovery.GetUserServiceUrl(),
             routes = new[]
             {
-                new { gateway = "/user/userprofile/me", proxiedTo = "/api/userprofile/me", auth = "Required" },
-                new { gateway = "/user/userprofile/{userId}", proxiedTo = "/api/userprofile/{userId}", auth = "Public" },
-                new { gateway = "/user/userprofile/me/avatar", proxiedTo = "/api/userprofile/me/avatar", auth = "Required" },
-                new { gateway = "/user/userprofile/me/bio", proxiedTo = "/api/userprofile/me/bio", auth = "Required" }
+                new { gateway = "/user/userprofile/me", proxiedTo = "/api/userprofile/me", auth = "Required (PUT)" },
+                new { gateway = "/user/userprofile/{userId}", proxiedTo = "/api/userprofile/{userId}", auth = "Public (GET)" },
+                new { gateway = "/user/userprofile/me/avatar", proxiedTo = "/api/userprofile/me/avatar", auth = "Required (POST multipart)" },
+                new { gateway = "/user/userprofile/me/cover", proxiedTo = "/api/userprofile/me/cover", auth = "Required (POST multipart)" },
+                new { gateway = "/user/userprofile/me/bio", proxiedTo = "/api/userprofile/me/bio", auth = "Required (PUT)" }
             }
         },
         new

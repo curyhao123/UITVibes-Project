@@ -35,11 +35,44 @@ export interface BE_UserProfile {
   socialLinks: Array<{ platform: string; url: string }>;
 }
 
+/** BE có thể trả camelCase hoặc PascalCase tùy cấu hình JSON */
+export function normalizeAvatarUrlFromProfile(profile: BE_UserProfile): string {
+  const raw = profile as unknown as Record<string, unknown>;
+  const v = profile.avatarUrl ?? raw.avatarUrl ?? raw.AvatarUrl;
+  return typeof v === "string" ? v.trim() : "";
+}
+
+export function normalizeCoverUrlFromProfile(profile: BE_UserProfile): string {
+  const raw = profile as unknown as Record<string, unknown>;
+  const v = profile.coverImageUrl ?? raw.coverImageUrl ?? raw.CoverImageUrl;
+  return typeof v === "string" ? v.trim() : "";
+}
+
+/** PUT /user/userprofile/me — body matches UpdateProfileRequest (camelCase JSON) */
+export interface BE_UpdateProfileRequest {
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
+  coverImageUrl?: string;
+  dateOfBirth?: string | null;
+  location?: string;
+  website?: string;
+}
+
+/** PUT /user/userprofile/me/bio */
+export interface BE_UpdateBioRequest {
+  bio?: string | null;
+}
+
 export interface BE_FollowStats {
   userId: string;
+  displayName: string;
+  avatarUrl: string;
   followersCount: number;
   followingCount: number;
   postsCount: number;
+  isFollowing: boolean;
+  isFollowedBy: boolean;
 }
 
 export interface BE_PostResponse {

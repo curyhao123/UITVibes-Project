@@ -30,6 +30,7 @@ interface AppContextType {
     username: string,
   ) => Promise<boolean>;
   logout: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
 
   // Onboarding
@@ -81,6 +82,9 @@ interface AppContextType {
     website?: string;
   }) => Promise<void>;
   updateAvatar: (avatarUri: string) => Promise<void>;
+  updateCover: (coverUri: string) => Promise<void>;
+  deleteAvatar: () => Promise<void>;
+  deleteCover: () => Promise<void>;
 
   // Messages
   conversations: Conversation[];
@@ -216,8 +220,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [],
   );
 
-  const logout = useCallback(async () => {
-    await api.logout();
+  const resetSessionAfterSignOut = useCallback(() => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setIsNewUser(false);
@@ -228,6 +231,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setConversations([]);
     setNotifications([]);
   }, []);
+
+  const logout = useCallback(async () => {
+    await api.logout();
+    resetSessionAfterSignOut();
+  }, [resetSessionAfterSignOut]);
+
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await api.deleteAccount(password);
+      resetSessionAfterSignOut();
+    },
+    [resetSessionAfterSignOut],
+  );
 
   const saveOnboardingData = useCallback(
     (data: Partial<AppContextType["onboardingData"]>) => {
@@ -461,6 +477,41 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [refreshUser],
   );
 
+  const deleteAvatar = useCallback(async () => {
+    setCurrentUser((prev) => (prev ? { ...prev, avatar: "" } : prev));
+    try {
+      await api.deleteAvatar();
+      await refreshUser();
+    } catch (error) {
+      await refreshUser();
+      console.error("Failed to delete avatar:", error);
+      throw error;
+    }
+  }, [refreshUser]);
+
+  const updateCover = useCallback(
+    async (coverUri: string) => {
+      try {
+        await api.updateCover(coverUri);
+        await refreshUser();
+      } catch (error) {
+        console.error("Failed to update cover:", error);
+        throw error;
+      }
+    },
+    [refreshUser],
+  );
+
+  const deleteCover = useCallback(async () => {
+    try {
+      await api.deleteCover();
+      await refreshUser();
+    } catch (error) {
+      console.error("Failed to delete cover:", error);
+      throw error;
+    }
+  }, [refreshUser]);
+
   // ─── Messages ─────────────────────────────────────────────
   const refreshConversations = useCallback(async () => {
     try {
@@ -622,6 +673,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         login,
         register,
         logout,
+        deleteAccount,
         isAuthenticated,
         onboardingStep,
         onboardingData,
@@ -648,6 +700,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         toggleFollow,
         updateProfile,
         updateAvatar,
+        deleteAvatar,
+        updateCover,
+        deleteCover,
         conversations,
         activeConversation,
         messages,

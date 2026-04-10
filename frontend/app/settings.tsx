@@ -7,6 +7,11 @@ import {
   StyleSheet,
   Alert,
   Switch,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -66,44 +71,62 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { logout } = useApp();
+  const { logout, deleteAccount } = useApp();
   const [privateAccount, setPrivateAccount] = React.useState(false);
   const [mutedAccounts, setMutedAccounts] = React.useState(false);
   const [activityStatus, setActivityStatus] = React.useState(true);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = React.useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = React.useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = React.useState(false);
+  const [deletePassword, setDeletePassword] = React.useState('');
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [logoutBusy, setLogoutBusy] = React.useState(false);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/auth/login');
-          },
-        },
-      ]
-    );
+    setLogoutConfirmVisible(true);
+  };
+
+  const performLogout = async () => {
+    setLogoutBusy(true);
+    try {
+      await logout();
+      setLogoutConfirmVisible(false);
+      router.replace('/auth/login' as any);
+    } finally {
+      setLogoutBusy(false);
+    }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action cannot be undone. Are you sure you want to delete your account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Account Deleted', 'Your account has been deleted.');
-          },
-        },
-      ]
-    );
+    setDeleteConfirmVisible(true);
+  };
+
+  const openDeletePasswordModal = () => {
+    setDeleteConfirmVisible(false);
+    setDeletePassword('');
+    setDeleteModalVisible(true);
+  };
+
+  const submitDeleteAccount = async () => {
+    const pwd = deletePassword.trim();
+    if (!pwd) {
+      Alert.alert('Error', 'Please enter your password.');
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await deleteAccount(pwd);
+      setDeleteModalVisible(false);
+      setDeletePassword('');
+      router.replace('/auth/login' as any);
+    } catch (e) {
+      Alert.alert(
+        'Could not delete account',
+        e instanceof Error ? e.message : 'Please try again.',
+      );
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   return (
@@ -188,6 +211,128 @@ export default function SettingsScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Log out confirmation — Modal works reliably on Web */}
+      <Modal
+        visible={logoutConfirmVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !logoutBusy && setLogoutConfirmVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Log out?</Text>
+            <Text style={styles.modalHint}>
+              Are you sure you want to log out of your current account?
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalBtnSecondary}
+                onPress={() => !logoutBusy && setLogoutConfirmVisible(false)}
+                disabled={logoutBusy}
+              >
+                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalBtnDanger}
+                onPress={() => void performLogout()}
+                disabled={logoutBusy}
+              >
+                {logoutBusy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalBtnDangerText}>Log out</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete account — step 1: confirm */}
+      <Modal
+        visible={deleteConfirmVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setDeleteConfirmVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete account?</Text>
+            <Text style={styles.modalHint}>
+              This cannot be undone. You will need to enter your password on the next step.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalBtnSecondary}
+                onPress={() => setDeleteConfirmVisible(false)}
+              >
+                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalBtnDanger}
+                onPress={openDeletePasswordModal}
+              >
+                <Text style={styles.modalBtnDangerText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={deleteModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => !deleteBusy && setDeleteModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Confirm account deletion</Text>
+            <Text style={styles.modalHint}>
+              Enter your password to permanently delete your account.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Password"
+              placeholderTextColor={AppColors.textMuted}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              editable={!deleteBusy}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalBtnSecondary}
+                onPress={() => {
+                  if (!deleteBusy) {
+                    setDeleteModalVisible(false);
+                    setDeletePassword('');
+                  }
+                }}
+                disabled={deleteBusy}
+              >
+                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalBtnDanger}
+                onPress={() => void submitDeleteAccount()}
+                disabled={deleteBusy}
+              >
+                {deleteBusy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalBtnDangerText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -279,5 +424,68 @@ const styles = StyleSheet.create({
   dangerText: {
     fontSize: 15,
     color: AppColors.text,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: AppColors.text,
+    marginBottom: 8,
+  },
+  modalHint: {
+    fontSize: 14,
+    color: AppColors.textMuted,
+    marginBottom: 14,
+    lineHeight: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: AppColors.text,
+    marginBottom: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalBtnSecondary: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  modalBtnSecondaryText: {
+    fontSize: 16,
+    color: AppColors.textMuted,
+    fontWeight: '600',
+  },
+  modalBtnDanger: {
+    backgroundColor: AppColors.error,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnDangerText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '700',
   },
 });

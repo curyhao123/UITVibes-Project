@@ -95,10 +95,16 @@ public class UserProfileService : IUserProfileService
             profile.Bio = request.Bio;
         
         if (request.AvatarUrl != null)
+        {
+            ThrowIfEphemeralMediaUrl(nameof(request.AvatarUrl), request.AvatarUrl);
             profile.AvatarUrl = request.AvatarUrl;
+        }
         
         if (request.CoverImageUrl != null)
+        {
+            ThrowIfEphemeralMediaUrl(nameof(request.CoverImageUrl), request.CoverImageUrl);
             profile.CoverImageUrl = request.CoverImageUrl;
+        }
         
         if (request.DateOfBirth.HasValue)
             profile.DateOfBirth = request.DateOfBirth.Value;
@@ -287,5 +293,65 @@ public class UserProfileService : IUserProfileService
         await _context.SaveChangesAsync();
         _logger.LogInformation("Updated bio for user {UserId}", userId);
         return MapToDto(profile);
+    }
+
+    public async Task<UserProfileDto> DeleteAvatarAsync(Guid userId)
+    {
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("Profile not found");
+        }
+
+        if (!string.IsNullOrEmpty(profile.AvatarPublicId))
+        {
+            await _cloudinaryService.DeleteImageAsync(profile.AvatarPublicId);
+        }
+
+        profile.AvatarUrl = null;
+        profile.AvatarPublicId = null;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted avatar for user {UserId}", userId);
+        return MapToDto(profile);
+    }
+
+    public async Task<UserProfileDto> DeleteCoverImageAsync(Guid userId)
+    {
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("Profile not found");
+        }
+
+        if (!string.IsNullOrEmpty(profile.CoverImagePublicId))
+        {
+            await _cloudinaryService.DeleteImageAsync(profile.CoverImagePublicId);
+        }
+
+        profile.CoverImageUrl = null;
+        profile.CoverImagePublicId = null;
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted cover image for user {UserId}", userId);
+        return MapToDto(profile);
+    }
+
+    private static void ThrowIfEphemeralMediaUrl(string fieldName, string url)
+    {
+        var t = url.Trim();
+        if (t.StartsWith("blob:", StringComparison.OrdinalIgnoreCase) ||
+            t.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
+            t.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"{fieldName} must be a permanent https URL or uploaded via the avatar/cover endpoints, not a browser-local blob/data/file URL.");
+        }
     }
 }

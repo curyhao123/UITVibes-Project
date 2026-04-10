@@ -9,6 +9,10 @@ import apiClient, {
 import {
   applyLocalUsernameToUser,
   clearLocalHandle,
+  clearPersistedAvatarUrl,
+  clearUserCache,
+  getCurrentUser,
+  mergePersistedAvatarIfMissing,
   setCurrentAccount,
   setCurrentUser,
   setCurrentUserId,
@@ -20,6 +24,8 @@ import {
   BE_RegisterRequest,
   BE_FollowStats,
   BE_UserProfile,
+  normalizeAvatarUrlFromProfile,
+  normalizeCoverUrlFromProfile,
 } from "./backendTypes";
 
 export async function login(email: string, password: string): Promise<User> {
@@ -32,20 +38,60 @@ export async function login(email: string, password: string): Promise<User> {
     );
     await saveTokens(data.accessToken, data.refreshToken);
 
+    // Bearer từ phản hồi login — tránh race: interceptor đọc AsyncStorage trước khi ghi xong (web/RN) → 401 → không có profile/avatar
+    const authHeaders = {
+      Authorization: `Bearer ${data.accessToken}`,
+    };
+
+    const userId = data.user.id;
+
+    let profile: BE_UserProfile | null = null;
+    let stats: BE_FollowStats | null = null;
+
     const [profileRes, statsRes] = await Promise.allSettled([
-      apiClient.get<BE_UserProfile>("/user/userprofile/me"),
-      apiClient.get<BE_FollowStats>("/user/follow/me/stats"),
+      apiClient.get<BE_UserProfile>("/user/userprofile/me", {
+        headers: authHeaders,
+      }),
+      apiClient.get<BE_FollowStats>(`/user/follow/${userId}/stats`, {
+        headers: authHeaders,
+      }),
     ]);
 
-    const profile =
-      profileRes.status === "fulfilled" ? profileRes.value.data : null;
-    const stats = statsRes.status === "fulfilled" ? statsRes.value.data : null;
+    if (profileRes.status === "fulfilled") {
+      profile = profileRes.value.data;
+    } else {
+      console.warn("[Auth] login: profile fetch failed, retrying once", profileRes.reason);
+      await delay(150);
+      try {
+        const retry = await apiClient.get<BE_UserProfile>("/user/userprofile/me", {
+          headers: authHeaders,
+        });
+        profile = retry.data;
+      } catch (e) {
+        console.warn("[Auth] login: profile retry failed", e);
+      }
+    }
 
-    const user: User = {
+    if (statsRes.status === "fulfilled") {
+      stats = statsRes.value.data;
+    } else {
+      try {
+        const retry = await apiClient.get<BE_FollowStats>(
+          `/user/follow/${userId}/stats`,
+          { headers: authHeaders },
+        );
+        stats = retry.data;
+      } catch {
+        stats = null;
+      }
+    }
+
+    let user: User = {
       id: data.user.id,
       username: data.user.username,
       displayName: profile?.displayName || data.user.username,
-      avatar: profile?.avatarUrl || "",
+      avatar: profile ? normalizeAvatarUrlFromProfile(profile) : "",
+      coverImage: profile ? normalizeCoverUrlFromProfile(profile) : "",
       bio: profile?.bio || "",
       website: profile?.website || undefined,
       followers: stats?.followersCount ?? 0,
@@ -53,6 +99,8 @@ export async function login(email: string, password: string): Promise<User> {
       posts: stats?.postsCount ?? 0,
       isVerified: false,
     };
+
+    user = await mergePersistedAvatarIfMissing(user);
 
     setCurrentUserId(data.user.id);
     setCurrentUser(user);
@@ -89,6 +137,7 @@ export async function register(
       username: data.user.username,
       displayName: data.user.username,
       avatar: "",
+      coverImage: "",
       bio: "",
       followers: 0,
       following: 0,
@@ -111,6 +160,17 @@ export async function register(
   }
 }
 
+async function clearLocalAuthState(): Promise<void> {
+  const prev = getCurrentUser();
+  if (prev?.id) await clearPersistedAvatarUrl(prev.id);
+  clearUserCache();
+  await clearTokens();
+  await clearLocalHandle();
+  setCurrentUserId("current");
+  setCurrentUser(null);
+  setCurrentAccount("activeUser");
+}
+
 export async function logout(): Promise<void> {
   try {
     const refreshToken = await getRefreshTokenFromStorage();
@@ -120,12 +180,31 @@ export async function logout(): Promise<void> {
   } catch {
     // ignore revoke errors
   } finally {
-    await clearTokens();
-    await clearLocalHandle();
-    setCurrentUserId("current");
-    setCurrentUser(null);
-    setCurrentAccount("activeUser");
+    await clearLocalAuthState();
   }
+}
+
+/**
+ * Xóa tài khoản trên server (cần mật khẩu), sau đó dọn local session.
+ * Gọi POST /auth/auth/delete-account với Bearer token.
+ */
+export async function deleteAccount(password: string): Promise<void> {
+  const trimmed = (password ?? "").trim();
+  if (!trimmed) {
+    throw new Error("Password is required");
+  }
+  try {
+    await apiClient.post("/auth/auth/delete-account", { password: trimmed });
+  } catch (error: any) {
+    console.error("[Auth] Delete account failed", error?.response?.data ?? error);
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to delete account";
+    throw new Error(message);
+  }
+  await clearLocalAuthState();
 }
 
 export async function refreshSession(): Promise<User | null> {
@@ -133,23 +212,34 @@ export async function refreshSession(): Promise<User | null> {
     const token = await getAccessToken();
     if (!token) return null;
 
-    const [profileRes, statsRes] = await Promise.allSettled([
-      apiClient.get<BE_UserProfile>("/user/userprofile/me"),
-      apiClient.get<BE_FollowStats>("/user/follow/me/stats"),
-    ]);
+    let profile: BE_UserProfile;
+    try {
+      const profileRes = await apiClient.get<BE_UserProfile>(
+        "/user/userprofile/me",
+      );
+      profile = profileRes.data;
+    } catch (e) {
+      console.warn("[Auth] refreshSession: profile fetch failed", e);
+      return null;
+    }
 
-    const profile =
-      profileRes.status === "fulfilled" ? profileRes.value.data : null;
-    const stats = statsRes.status === "fulfilled" ? statsRes.value.data : null;
-
-    if (!profile) return null;
+    let stats: BE_FollowStats | null = null;
+    try {
+      const statsRes = await apiClient.get<BE_FollowStats>(
+        `/user/follow/${profile.userId}/stats`,
+      );
+      stats = statsRes.data;
+    } catch {
+      stats = null;
+    }
 
     let user: User = {
       id: profile.userId,
       username: "",
-      displayName: profile.displayName,
-      avatar: profile.avatarUrl || "",
-      bio: profile.bio || "",
+      displayName: profile.displayName ?? "",
+      avatar: normalizeAvatarUrlFromProfile(profile),
+      coverImage: normalizeCoverUrlFromProfile(profile),
+      bio: profile.bio ?? "",
       website: profile.website || undefined,
       followers: stats?.followersCount ?? 0,
       following: stats?.followingCount ?? 0,
@@ -157,11 +247,13 @@ export async function refreshSession(): Promise<User | null> {
       isVerified: false,
     };
 
+    user = await mergePersistedAvatarIfMissing(user);
     user = await applyLocalUsernameToUser(user);
     setCurrentUserId(user.id);
     setCurrentUser(user);
     return user;
-  } catch {
+  } catch (e) {
+    console.warn("[Auth] refreshSession failed", e);
     return null;
   }
 }
