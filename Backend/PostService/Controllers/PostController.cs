@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using PostService.DTOs;
 using PostService.ServiceLayer.Interface;
 using RabbitMQ.Client;
@@ -86,6 +86,24 @@ public class PostController : ControllerBase
         return Ok(posts);
     }
 
+    /// Get posts for the currently authenticated user (uses JWT X-User-Id, no URL param needed)
+    [HttpGet("my-posts")]
+    public async Task<ActionResult<List<PostDto>>> GetMyPosts(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        if (take > 50) take = 50;
+
+        var posts = await _postService.GetUserPostsAsync(userId, userId, skip, take);
+        return Ok(posts);
+    }
 
     /// Get feed for current user
     [HttpGet("feed")]

@@ -33,6 +33,11 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  // Mở màn hình tạo story
+  const handleAddStory = () => {
+    router.push('/story/create' as any);
+  };
+
   const displayedPosts = useMemo(() => {
     if (feedTab === 'following') {
       return posts.filter(
@@ -126,7 +131,11 @@ export default function HomeScreen() {
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={
           feedTab === 'foryou' ? (
-            <StoryBar stories={stories} isNewUser={isNewUser} />
+            <StoryBar
+              stories={stories}
+              isNewUser={isNewUser}
+              onAddStory={handleAddStory}
+            />
           ) : null
         }
         refreshControl={
@@ -138,7 +147,7 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          isNewUser && feedTab === 'foryou' ? (
+          posts.length === 0 && feedTab === 'foryou' ? (
             <View style={styles.emptyFeed}>
               <View style={styles.welcomeIconWrap}>
                 <Feather name="send" size={32} color={AppColors.primary} strokeWidth={1.8} />
@@ -150,7 +159,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.createPostBtn}
                 activeOpacity={0.8}
-                onPress={() => router.push('/create-post' as any)}
+                onPress={() => router.push('/(tabs)/create' as any)}
               >
                 <Text style={styles.createPostBtnText}>Create Your First Post</Text>
               </TouchableOpacity>

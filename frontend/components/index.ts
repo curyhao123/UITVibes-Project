@@ -6,6 +6,7 @@ export { CommentItem } from './CommentItem';
 export { PostGrid, UserListItem } from './Lists';
 export { Header } from './Header';
 export { EmptyPostsState } from './EmptyPostsState';
+export { Toast } from './Toast';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {

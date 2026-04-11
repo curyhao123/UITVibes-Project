@@ -1,7 +1,6 @@
 import type { Comment as CommentType, Post, User } from "../data/mockData";
-import { mockPosts } from "../data/mockData";
-import apiClient, { delay } from "./httpClient";
-import { getCurrentAccount, getCurrentUser, getCurrentUserId } from "./session";
+import apiClient from "./httpClient";
+import { getCurrentUser, getCurrentUserId } from "./session";
 import {
   BE_PostResponse,
   BE_CommentResponse,
@@ -10,7 +9,58 @@ import {
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
 
+export async function uploadMedia(
+  uri: string,
+  type: "image" | "video" = "image",
+): Promise<{
+  url: string;
+  publicId?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+}> {
+  if (uri.startsWith("https://res.cloudinary.com") || uri.startsWith("https://")) {
+    return { url: uri };
+  }
+
+  const formData = new FormData();
+
+  if (uri.startsWith("file://") || uri.startsWith("content://")) {
+    const name = uri.split("/").pop() || (type === "video" ? "video.mp4" : "image.jpg");
+    const mimeType = type === "video" ? "video/mp4" : "image/jpeg";
+    (formData as any).append("File", { uri, type: mimeType, name } as any);
+  } else if (typeof fetch !== "undefined" && (uri.startsWith("blob:") || uri.startsWith("data:"))) {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    const mimeType = blob.type || (type === "video" ? "video/mp4" : "image/jpeg");
+    const ext = mimeType.includes("png") ? "png" : type === "video" ? "mp4" : "jpg";
+    const name = `upload.${ext}`;
+    if (typeof File !== "undefined") {
+      (formData as any).append("File", new File([blob], name, { type: mimeType }));
+    } else {
+      (formData as any).append("File", blob as any, name);
+    }
+  } else {
+    throw new Error("Unsupported URI scheme for media upload: " + uri);
+  }
+
+  const { data } = await apiClient.post<{
+    url: string;
+    publicId: string;
+    thumbnailUrl?: string;
+    width?: number;
+    height?: number;
+    duration?: number;
+  }>("/post/media", formData as any, {
+    headers: { "Content-Type": "multipart/form-data" } as any,
+  });
+
+  return data;
+}
+
 function transformBEPost(post: BE_PostResponse, author?: User): Post {
+  console.log("[transformBEPost] post.id:", post.id, "media:", JSON.stringify(post.media));
   return {
     id: post.id,
     userId: post.userId,
@@ -40,40 +90,108 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
 }
 
 export async function getPosts(): Promise<Post[]> {
-  try {
-    const { data } = await apiClient.get<BE_PostResponse[]>("/post/feed", {
-      params: { skip: 0, take: 20 },
-    });
-    const posts = await Promise.all(
-      data.map(async (post) => {
-        const author = await fetchUserById(post.userId);
-        return transformBEPost(post, author);
-      }),
-    );
-    return posts;
-  } catch {
-    await delay(300);
-    if (getCurrentAccount() === "newUser") return [];
-    return [...mockPosts];
-  }
+  const { data } = await apiClient.get<BE_PostResponse[]>("/post/feed", {
+    params: { skip: 0, take: 20 },
+  });
+  const posts = await Promise.all(
+    data.map(async (post) => {
+      const author = await fetchUserById(post.userId);
+      return transformBEPost(post, author);
+    }),
+  );
+  return posts;
 }
 
 export async function getPostById(id: string): Promise<Post | undefined> {
+  const { data } = await apiClient.get<BE_PostResponse>(`/post/${id}`);
+  const author = await fetchUserById(data.userId);
+  return transformBEPost(data, author);
+}
+
+export async function getMyPosts(): Promise<Post[]> {
   try {
-    const { data } = await apiClient.get<BE_PostResponse>(`/post/${id}`);
-    const author = await fetchUserById(data.userId);
-    return transformBEPost(data, author);
-  } catch {
-    await delay(200);
-    return mockPosts.find((post) => post.id === id);
+    const { data, status } = await apiClient.get<BE_PostResponse[]>("/post/my-posts", {
+      params: { skip: 0, take: 50 },
+    });
+    console.log("[getMyPosts] status:", status, "data length:", data?.length, "data:", JSON.stringify(data));
+    
+    if (!data || data.length === 0) {
+      console.log("[getMyPosts] No posts returned from API");
+      return [];
+    }
+    
+    // Xử lý từng post riêng, không throw nếu 1 post lỗi
+    const posts: Post[] = [];
+    for (const post of data) {
+      try {
+        const author = await fetchUserById(post.userId);
+        posts.push(transformBEPost(post, author));
+      } catch (authorError) {
+        console.warn("[getMyPosts] Failed to fetch author for post", post.id, authorError);
+        // Vẫn thêm post vào danh sách, author sẽ là empty user
+        posts.push(transformBEPost(post, undefined));
+      }
+    }
+    console.log("[getMyPosts] Transformed posts:", posts.length, "posts");
+    return posts;
+  } catch (e: any) {
+    console.error("[getMyPosts] FATAL ERROR:", e?.response?.status, e?.response?.data, e?.message);
+    throw e;
   }
 }
 
+export async function getUserPosts(userId: string): Promise<Post[]> {
+  const { data } = await apiClient.get<BE_PostResponse[]>(`/post/user/${userId}`, {
+    params: { skip: 0, take: 50 },
+  });
+  const posts = await Promise.all(
+    data.map(async (post) => {
+      const author = await fetchUserById(post.userId);
+      return transformBEPost(post, author);
+    }),
+  );
+  return posts;
+}
+
+export async function getBookmarkedPosts(): Promise<Post[]> {
+  const { data } = await apiClient.get<BE_PostResponse[]>("/post/bookmarks", {
+    params: { skip: 0, take: 20 },
+  });
+  const posts = await Promise.all(
+    data.map(async (post) => {
+      const author = await fetchUserById(post.userId);
+      return transformBEPost(post, author);
+    }),
+  );
+  return posts;
+}
+
 export async function createPost(
-  image: string,
+  imageUri: string,
   caption: string,
   location?: string,
 ): Promise<Post> {
+  const isLocal =
+    imageUri.startsWith("file://") ||
+    imageUri.startsWith("content://") ||
+    imageUri.startsWith("blob:") ||
+    imageUri.startsWith("data:");
+
+  let mediaUrl = imageUri;
+  let publicId: string | undefined;
+  let thumbnailUrl: string | undefined;
+  let width: number | undefined;
+  let height: number | undefined;
+
+  if (isLocal) {
+    const uploaded = await uploadMedia(imageUri, "image");
+    mediaUrl = uploaded.url;
+    publicId = uploaded.publicId;
+    thumbnailUrl = uploaded.thumbnailUrl;
+    width = uploaded.width;
+    height = uploaded.height;
+  }
+
   const body: CreatePostBody = {
     content: caption,
     location,
@@ -81,227 +199,92 @@ export async function createPost(
     media: [
       {
         type: 0,
-        url: image,
+        url: mediaUrl,
+        publicId,
+        thumbnailUrl,
         displayOrder: 0,
+        width,
+        height,
       },
     ],
   };
 
-  try {
-    const { data } = await apiClient.post<BE_PostResponse>("/post", body);
-    const author =
-      getCurrentUser() ||
-      ({
-        id: getCurrentUserId(),
-        username: "",
-        displayName: "You",
-        avatar: "",
-        bio: "",
-        followers: 0,
-        following: 0,
-        posts: 0,
-        isVerified: false,
-      } as User);
-    return transformBEPost(data, author);
-  } catch {
-    await delay(500);
-    const newPost: Post = {
-      id: `post${Date.now()}`,
-      userId: getCurrentUserId(),
-      user:
-        getCurrentUser() ||
-        ({
-          id: getCurrentUserId(),
-          username: "",
-          displayName: "You",
-          avatar: "",
-          bio: "",
-          followers: 0,
-          following: 0,
-          posts: 0,
-          isVerified: false,
-        } as User),
-      image,
-      caption,
-      likes: 0,
-      comments: [],
-      createdAt: new Date().toISOString(),
-      isLiked: false,
-      isBookmarked: false,
-      shareCount: 0,
-      views: 0,
-    };
-    mockPosts.unshift(newPost);
-    return newPost;
-  }
+  const { data } = await apiClient.post<BE_PostResponse>("/post", body);
+  const author =
+    getCurrentUser() ||
+    ({
+      id: getCurrentUserId(),
+      username: "",
+      displayName: "You",
+      avatar: "",
+      bio: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isVerified: false,
+    } as User);
+  return transformBEPost(data, author);
 }
 
 export async function updatePost(
   postId: string,
   caption: string,
 ): Promise<Post | null> {
-  try {
-    const { data } = await apiClient.put<BE_PostResponse>(`/post/${postId}`, {
-      content: caption,
-      visibility: 0,
-    });
-    const author = await fetchUserById(data.userId);
-    return transformBEPost(data, author);
-  } catch {
-    await delay(300);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      post.caption = caption;
-      return post;
-    }
-    return null;
-  }
+  const { data } = await apiClient.put<BE_PostResponse>(`/post/${postId}`, {
+    content: caption,
+    visibility: 0,
+  });
+  const author = await fetchUserById(data.userId);
+  return transformBEPost(data, author);
 }
 
 export async function deletePost(postId: string): Promise<boolean> {
-  try {
-    await apiClient.delete(`/post/${postId}`);
-    return true;
-  } catch {
-    await delay(300);
-    const index = mockPosts.findIndex((p) => p.id === postId);
-    if (index !== -1) {
-      mockPosts.splice(index, 1);
-      return true;
-    }
-    return false;
-  }
+  await apiClient.delete(`/post/${postId}`);
+  return true;
 }
 
 export async function toggleLike(postId: string): Promise<boolean> {
-  try {
-    const { data } = await apiClient.post<BE_LikeResponse>(
-      `/post/${postId}/like`,
-    );
-    return data.totalLikes > 0;
-  } catch {
-    await delay(100);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      post.isLiked = !post.isLiked;
-      post.likes += post.isLiked ? 1 : -1;
-      return post.isLiked;
-    }
-    return false;
-  }
+  const { data } = await apiClient.post<BE_LikeResponse>(`/post/${postId}/like`);
+  return data.totalLikes > 0;
 }
 
 export async function toggleBookmark(postId: string): Promise<boolean> {
-  try {
-    await apiClient.post(`/post/${postId}/bookmark`);
-    return true;
-  } catch {
-    await delay(100);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      post.isBookmarked = !post.isBookmarked;
-      return post.isBookmarked;
-    }
-    return false;
-  }
-}
-
-export async function getBookmarkedPosts(): Promise<Post[]> {
-  try {
-    const { data } = await apiClient.get<BE_PostResponse[]>("/post/bookmarks", {
-      params: { skip: 0, take: 20 },
-    });
-    const posts = await Promise.all(
-      data.map(async (post) => {
-        const author = await fetchUserById(post.userId);
-        return transformBEPost(post, author);
-      }),
-    );
-    return posts;
-  } catch {
-    await delay(300);
-    return mockPosts.filter((p) => p.isBookmarked);
-  }
+  await apiClient.post(`/post/${postId}/bookmark`);
+  return true;
 }
 
 export async function addComment(
   postId: string,
   text: string,
 ): Promise<{ success: boolean; comment?: CommentType }> {
-  try {
-    const { data } = await apiClient.post<BE_CommentResponse>(
-      `/post/${postId}/comment`,
-      { content: text },
-    );
-    const comment: CommentType = {
-      id: data.id,
-      userId: data.userId,
-      user: getCurrentUser() || ({ id: getCurrentUserId() } as User),
-      text: data.content,
-      createdAt: data.createdAt,
-      likes: data.likesCount,
-      isLiked: data.isLikedByCurrentUser,
-    };
-    return { success: true, comment };
-  } catch {
-    await delay(300);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      const newComment: CommentType = {
-        id: `c${Date.now()}`,
-        userId: getCurrentUserId(),
-        user: getCurrentUser() || ({ id: getCurrentUserId() } as User),
-        text,
-        createdAt: new Date().toISOString(),
-        likes: 0,
-        isLiked: false,
-      };
-      post.comments.push(newComment);
-      return { success: true, comment: newComment };
-    }
-    return { success: false };
-  }
+  const { data } = await apiClient.post<BE_CommentResponse>(
+    `/post/${postId}/comment`,
+    { content: text },
+  );
+  const comment: CommentType = {
+    id: data.id,
+    userId: data.userId,
+    user: getCurrentUser() || ({ id: getCurrentUserId() } as User),
+    text: data.content,
+    createdAt: data.createdAt,
+    likes: data.likesCount,
+    isLiked: data.isLikedByCurrentUser,
+  };
+  return { success: true, comment };
 }
 
 export async function deleteComment(
   postId: string,
   commentId: string,
 ): Promise<boolean> {
-  try {
-    await apiClient.delete(`/post/${postId}/comment/${commentId}`);
-    return true;
-  } catch {
-    await delay(200);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      const idx = post.comments.findIndex((c) => c.id === commentId);
-      if (idx !== -1) {
-        post.comments.splice(idx, 1);
-        return true;
-      }
-    }
-    return false;
-  }
+  await apiClient.delete(`/post/${postId}/comment/${commentId}`);
+  return true;
 }
 
 export async function toggleCommentLike(
   postId: string,
   commentId: string,
 ): Promise<boolean> {
-  try {
-    await apiClient.post(`/post/${postId}/comment/${commentId}/like`);
-    return true;
-  } catch {
-    await delay(100);
-    const post = mockPosts.find((p) => p.id === postId);
-    if (post) {
-      const comment = post.comments.find((c) => c.id === commentId);
-      if (comment) {
-        comment.isLiked = !comment.isLiked;
-        comment.likes += comment.isLiked ? 1 : -1;
-        return comment.isLiked;
-      }
-    }
-    return false;
-  }
+  await apiClient.post(`/post/${postId}/comment/${commentId}/like`);
+  return true;
 }

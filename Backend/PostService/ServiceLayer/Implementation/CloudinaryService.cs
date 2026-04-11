@@ -11,11 +11,11 @@ public class CloudinaryService : ICloudinaryService
 
     public CloudinaryService(IConfiguration configuration, ILogger<CloudinaryService> logger)
     {
-        var cloudName = configuration["Cloudinary:CloudName"] 
+        var cloudName = configuration["Cloudinary:CloudName"]
             ?? throw new InvalidOperationException("Cloudinary CloudName is not configured");
-        var apiKey = configuration["Cloudinary:ApiKey"] 
+        var apiKey = configuration["Cloudinary:ApiKey"]
             ?? throw new InvalidOperationException("Cloudinary ApiKey is not configured");
-        var apiSecret = configuration["Cloudinary:ApiSecret"] 
+        var apiSecret = configuration["Cloudinary:ApiSecret"]
             ?? throw new InvalidOperationException("Cloudinary ApiSecret is not configured");
 
         var account = new Account(cloudName, apiKey, apiSecret);
@@ -24,7 +24,7 @@ public class CloudinaryService : ICloudinaryService
     }
 
     public async Task<(string Url, string PublicId, int? Width, int? Height)> UploadImageAsync(
-        IFormFile file, 
+        IFormFile file,
         string folder = "posts")
     {
         if (file == null || file.Length == 0)
@@ -39,11 +39,15 @@ public class CloudinaryService : ICloudinaryService
 
         try
         {
-            using var stream = file.OpenReadStream();
-            
+            // Đọc toàn bộ bytes vào memory trước — tránh stream bị dispose sớm,
+            // đặc biệt quan trọng khi có proxy/reverse proxy ở giữa.
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
             var uploadParams = new ImageUploadParams
             {
-                File = new FileDescription(file.FileName, stream),
+                File = new FileDescription(file.FileName, memoryStream),
                 Folder = folder,
                 Transformation = new Transformation()
                     .Quality("auto")
@@ -58,9 +62,14 @@ public class CloudinaryService : ICloudinaryService
                 throw new Exception($"Upload failed: {uploadResult.Error.Message}");
             }
 
+            _logger.LogInformation(
+                "Image uploaded to Cloudinary: PublicId={PublicId}, Size={FileSize}KB",
+                uploadResult.PublicId,
+                file.Length / 1024);
+
             return (uploadResult.SecureUrl.ToString(), uploadResult.PublicId, uploadResult.Width, uploadResult.Height);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ArgumentException)
         {
             _logger.LogError(ex, "Error uploading image to Cloudinary");
             throw;
@@ -68,7 +77,7 @@ public class CloudinaryService : ICloudinaryService
     }
 
     public async Task<(string Url, string ThumbnailUrl, string PublicId, int? Duration)> UploadVideoAsync(
-        IFormFile file, 
+        IFormFile file,
         string folder = "posts")
     {
         if (file == null || file.Length == 0)
@@ -83,12 +92,15 @@ public class CloudinaryService : ICloudinaryService
 
         try
         {
-            using var stream = file.OpenReadStream();
-            
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
             var uploadParams = new VideoUploadParams
             {
-                File = new FileDescription(file.FileName, stream),
-                Folder = folder
+                File = new FileDescription(file.FileName, memoryStream),
+                Folder = folder,
+                NotificationUrl = null // Tắt webhook notification để tránh complexity
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -99,15 +111,20 @@ public class CloudinaryService : ICloudinaryService
                 throw new Exception($"Upload failed: {uploadResult.Error.Message}");
             }
 
-            // Generate thumbnail
             var thumbnailUrl = _cloudinary.Api.UrlVideoUp
                 .Transform(new Transformation().Width(300).Height(300).Crop("fill"))
                 .Format("jpg")
                 .BuildUrl(uploadResult.PublicId);
 
+            _logger.LogInformation(
+                "Video uploaded to Cloudinary: PublicId={PublicId}, Duration={Duration}s, Size={FileSize}MB",
+                uploadResult.PublicId,
+                uploadResult.Duration,
+                file.Length / (1024 * 1024));
+
             return (uploadResult.SecureUrl.ToString(), thumbnailUrl, uploadResult.PublicId, (int?)uploadResult.Duration);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ArgumentException)
         {
             _logger.LogError(ex, "Error uploading video to Cloudinary");
             throw;
@@ -123,6 +140,18 @@ public class CloudinaryService : ICloudinaryService
         {
             var deletionParams = new DeletionParams(publicId);
             var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            if (result.Result == "ok")
+            {
+                _logger.LogInformation("Media deleted from Cloudinary: PublicId={PublicId}", publicId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Cloudinary delete returned non-ok for PublicId={PublicId}: {Result}",
+                    publicId,
+                    result.Result);
+            }
 
             return result.Result == "ok";
         }

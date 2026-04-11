@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace PostService.Models;
 
@@ -17,6 +17,11 @@ public class PostDbContext : DbContext
     public DbSet<PostHashtag> PostHashtags { get; set; }
     public DbSet<PostMention> PostMentions { get; set; }
     public DbSet<Bookmark> Bookmarks { get; set; }
+
+    // Story entities
+    public DbSet<StoryGroup> StoryGroups { get; set; }
+    public DbSet<StoryItem> StoryItems { get; set; }
+    public DbSet<StoryView> StoryViews { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -180,6 +185,50 @@ public class PostDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== STORY GROUP CONFIGURATION =====
+        modelBuilder.Entity<StoryGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ExpiresAt);
+            entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
+
+            entity.Property(e => e.OwnerDisplayName).HasMaxLength(100);
+            entity.Property(e => e.OwnerAvatarUrl).HasMaxLength(500);
+
+            entity.HasMany(e => e.Items)
+                .WithOne(i => i.StoryGroup)
+                .HasForeignKey(i => i.StoryGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== STORY ITEM CONFIGURATION =====
+        modelBuilder.Entity<StoryItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.StoryGroupId);
+            entity.HasIndex(e => new { e.StoryGroupId, e.DisplayOrder });
+
+            entity.Property(e => e.Type).HasConversion<int>();
+            entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.PublicId).HasMaxLength(500);
+            entity.Property(e => e.ThumbnailUrl).HasMaxLength(500);
+
+            entity.HasMany(e => e.Views)
+                .WithOne(v => v.StoryItem)
+                .HasForeignKey(v => v.StoryItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== STORY VIEW CONFIGURATION =====
+        modelBuilder.Entity<StoryView>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // Mỗi user chỉ xem 1 item 1 lần
+            entity.HasIndex(e => new { e.StoryItemId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.UserId);
         });
     }
 }

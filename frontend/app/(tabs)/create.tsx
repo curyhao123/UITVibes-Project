@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import { useApp } from '../../context/AppContext';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../../components/Avatar';
+import { Toast } from '../../components/Toast';
 
 type CreateType = 'post' | 'reels';
 
@@ -74,6 +75,9 @@ export default function CreateScreen() {
   const [selectedMedia, setSelectedMedia] = React.useState<string | null>(null);
   const [caption, setCaption] = React.useState('');
   const [isPosting, setIsPosting] = React.useState(false);
+  const [toastVisible, setToastVisible] = React.useState(false);
+  const [toastMessage, setToastMessage] = React.useState('');
+  const [toastType, setToastType] = React.useState<'success' | 'error'>('success');
   const { createPost, currentUser } = useApp();
   const router = useRouter();
 
@@ -146,25 +150,31 @@ export default function CreateScreen() {
 
   const handlePost = async () => {
     if (!selectedMedia) {
-      Alert.alert('Add media', 'Choose a photo or video before sharing.');
+      setToastType('error');
+      setToastMessage('Please select a photo or video before sharing.');
+      setToastVisible(true);
       return;
     }
 
     setIsPosting(true);
     try {
       await createPost(selectedMedia, caption);
-      Alert.alert('Success', createType === 'reels' ? 'Reel has been published!' : 'Post has been published!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setSelectedMedia(null);
-            setCaption('');
-            router.push('/(tabs)/home' as any);
-          },
-        },
-      ]);
+      setToastType('success');
+      setToastMessage(
+        createType === 'reels'
+          ? 'Your reel has been published!'
+          : 'Your post has been published!'
+      );
+      setToastVisible(true);
+      setSelectedMedia(null);
+      setCaption('');
+      setTimeout(() => {
+        router.push('/(tabs)/home');
+      }, 1200);
     } catch {
-      Alert.alert('Error', 'Failed to post, please try again');
+      setToastType('error');
+      setToastMessage('Failed to post. Please try again.');
+      setToastVisible(true);
     } finally {
       setIsPosting(false);
     }
@@ -415,6 +425,13 @@ export default function CreateScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={() => setToastVisible(false)}
+      />
     </SafeAreaView>
   );
 }

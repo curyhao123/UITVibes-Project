@@ -176,3 +176,40 @@ export interface CreatePostBody {
     height?: number;
   }>;
 }
+
+// ============ STORY TYPES ============
+
+export interface BE_StoryMediaUploadResponse {
+  url: string;
+  publicId: string;
+  thumbnailUrl?: string;
+  type: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+export interface BE_StoryFeedItem {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  expiresAt: string;
+  isViewed: boolean;
+  previewUrl: string;
+  totalItems: number;
+  createdAt: string;
+}
+
+export interface BE_CreateStoryRequest {
+  ownerDisplayName: string;
+  ownerAvatarUrl: string;
+  media: Array<{
+    type: number;
+    url: string;
+    publicId?: string;
+    thumbnailUrl?: string;
+    displayOrder?: number;
+    duration?: number;
+  }>;
+}
