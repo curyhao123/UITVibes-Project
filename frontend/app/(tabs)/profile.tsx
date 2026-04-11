@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,11 @@ import {
   Alert,
   Share,
   ActivityIndicator,
+  Image as RNImage,
 } from 'react-native';
-import { Image as RNImage } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../../context/AppContext';
 import { Avatar, PostGrid, Header, EmptyPostsState } from '../../components';
@@ -32,7 +32,7 @@ type EditFormSnapshot = {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, posts, updateProfile, updateAvatar, deleteAvatar, isNewUser } = useApp();
+  const { currentUser, myPosts, refreshMyPosts, updateProfile, updateAvatar, deleteAvatar, isNewUser, deletePost } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);
@@ -40,13 +40,39 @@ export default function ProfileScreen() {
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  /** Ảnh đã chọn trong modal, chưa upload — chỉ gửi khi Save */
+  /** Ảnh đã chọn trong modal, chỉ gửi khi Save */
   const [avatarDraftUri, setAvatarDraftUri] = useState<string | null>(null);
   /** User bấm Remove trong modal — chỉ xóa trên server khi Save */
   const [avatarDraftRemoved, setAvatarDraftRemoved] = useState(false);
-  const [removePhotoConfirmVisible, setRemovePhotoConfirmVisible] = useState(false);
+  const [isRemoveConfirmVisible, setRemoveConfirmVisible] = useState(false);
 
-  const userPosts = posts.filter((post) => post.userId === 'current').slice(0, 9);
+  // Loading state cho posts
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
+  // Posts của user hiện tại — lấy từ AppContext myPosts
+  const userPosts = myPosts.slice(0, 9);
+  console.log("[Profile] Render: myPosts.length =", myPosts.length, "userPosts.length =", userPosts.length);
+
+  // Refresh myPosts khi quay lại profile tab
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[Profile] useFocusEffect: refreshing myPosts");
+      setIsLoadingPosts(true);
+      refreshMyPosts().then(() => {
+        setIsLoadingPosts(false);
+      }).catch(() => {
+        setIsLoadingPosts(false);
+      });
+    }, []), // Empty deps - chỉ chạy khi mount/unmount
+  );
+
+  // Wrapper xóa post
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      await deletePost(postId);
+    },
+    [deletePost],
+  );
 
   const formatCount = (count: number | undefined | null): string => {
     const n = Number(count) || 0;
@@ -72,7 +98,7 @@ export default function ProfileScreen() {
   };
 
   const discardEditModal = () => {
-    setRemovePhotoConfirmVisible(false);
+    setRemoveConfirmVisible(false);
     setShowEditModal(false);
     setEditSnapshot(null);
     setAvatarDraftUri(null);
@@ -165,11 +191,11 @@ export default function ProfileScreen() {
     const hasBase = Boolean(baseAvatarInModal);
     const hasDraftPic = Boolean(avatarDraftUri);
     if (!hasBase && !hasDraftPic) return;
-    setRemovePhotoConfirmVisible(true);
+    setRemoveConfirmVisible(true);
   };
 
   const confirmRemovePhoto = () => {
-    setRemovePhotoConfirmVisible(false);
+    setRemoveConfirmVisible(false);
     setAvatarDraftUri(null);
     setAvatarDraftRemoved(true);
   };
@@ -246,28 +272,23 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.tabsContainer}>
-          <View style={[styles.tab, styles.activeTab]}>
+          <TouchableOpacity style={[styles.tab, styles.activeTab]}>
             <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
-          </View>
-          <View style={styles.tab}>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tab}>
             <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {userPosts.length === 0 || isNewUser ? (
-          <EmptyPostsState isNewUser={isNewUser} />
+        {/* Grid posts — posts từ AppContext, tự động cập nhật khi tạo/xóa */}
+        {isLoadingPosts ? (
+          <View style={styles.loadingPosts}>
+            <ActivityIndicator size="small" color={AppColors.primary} />
+          </View>
+        ) : userPosts.length === 0 ? (
+          <EmptyPostsState isNewUser={isNewUser ?? false} />
         ) : (
-          <>
-            <View style={styles.tabsContainer}>
-              <View style={[styles.tab, styles.activeTab]}>
-                <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
-              </View>
-              <View style={styles.tab}>
-                <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-              </View>
-            </View>
-            <PostGrid posts={userPosts} />
-          </>
+          <PostGrid posts={userPosts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
         )}
       </ScrollView>
 
@@ -403,10 +424,10 @@ export default function ProfileScreen() {
 
       {/* Web: Alert.alert thường không hiện — dùng Modal xác nhận xóa ảnh */}
       <Modal
-        visible={removePhotoConfirmVisible}
+        visible={isRemoveConfirmVisible}
         animationType="fade"
         transparent
-        onRequestClose={() => setRemovePhotoConfirmVisible(false)}
+        onRequestClose={() => setRemoveConfirmVisible(false)}
       >
         <View style={styles.removeConfirmBackdrop}>
           <View style={styles.removeConfirmCard}>
@@ -417,7 +438,7 @@ export default function ProfileScreen() {
             <View style={styles.removeConfirmActions}>
               <TouchableOpacity
                 style={styles.removeConfirmBtnGhost}
-                onPress={() => setRemovePhotoConfirmVisible(false)}
+                onPress={() => setRemoveConfirmVisible(false)}
               >
                 <Text style={styles.removeConfirmBtnGhostText}>Cancel</Text>
               </TouchableOpacity>
@@ -546,6 +567,28 @@ const styles = StyleSheet.create({
   activeTab: {
     borderTopWidth: 1,
     borderTopColor: AppColors.primary,
+  },
+  loadingPosts: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  postsErrorText: {
+    color: AppColors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 32,
+  },
+  retryButton: {
+    backgroundColor: AppColors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   // Modal

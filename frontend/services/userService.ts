@@ -2,8 +2,6 @@ import {
   User,
   Post,
   mockUsers,
-  mockActiveUserPosts,
-  mockPosts,
   activeUserFollowingIds,
 } from "../data/mockData";
 import apiClient, { delay } from "./httpClient";
@@ -267,41 +265,35 @@ export async function getUserById(id: string): Promise<User | undefined> {
 }
 
 export async function getUserPosts(userId: string): Promise<Post[]> {
-  try {
-    const targetId = userId === "current" ? getCurrentUserId() : userId;
-    const { data } = await apiClient.get<BE_PostResponse[]>(
-      `/post/user/${targetId}`,
-      {
-        params: { skip: 0, take: 20 },
-      },
-    );
-    const posts = await Promise.all(
-      data.map(async (post) => {
-        const author = await fetchUserById(post.userId);
-        return {
-          id: post.id,
-          userId: post.userId,
-          user: author,
-          image: post.media?.[0]?.url || "",
-          caption: post.content,
-          likes: post.likesCount,
-          comments: [],
-          createdAt: post.createdAt,
-          isLiked: post.isLikedByCurrentUser,
-          isBookmarked: post.isBookmarkedByCurrentUser,
-          shareCount: post.sharesCount || 0,
-          views: post.viewsCount || 0,
-          location: post.location || undefined,
-          tags: post.hashtags || [],
-        } as Post;
-      }),
-    );
-    return posts;
-  } catch {
-    await delay(300);
-    if (userId === "current") return [...mockActiveUserPosts];
-    return mockPosts.filter((p) => p.userId === userId);
-  }
+  const targetId = userId === "current" ? getCurrentUserId() : userId;
+  const { data } = await apiClient.get<BE_PostResponse[]>(
+    `/post/user/${targetId}`,
+    {
+      params: { skip: 0, take: 20 },
+    },
+  );
+  const posts = await Promise.all(
+    data.map(async (post) => {
+      const author = await fetchUserById(post.userId);
+      return {
+        id: post.id,
+        userId: post.userId,
+        user: author,
+        image: post.media?.[0]?.url || "",
+        caption: post.content,
+        likes: post.likesCount,
+        comments: [],
+        createdAt: post.createdAt,
+        isLiked: post.isLikedByCurrentUser,
+        isBookmarked: post.isBookmarkedByCurrentUser,
+        shareCount: post.sharesCount || 0,
+        views: post.viewsCount || 0,
+        location: post.location || undefined,
+        tags: post.hashtags || [],
+      } as Post;
+    }),
+  );
+  return posts;
 }
 
 export async function getCurrentUserProfile(): Promise<User> {

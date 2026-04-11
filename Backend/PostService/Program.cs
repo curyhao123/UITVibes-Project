@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
 using PostService.ServiceLayer.Interface;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,8 +20,14 @@ builder.Services.AddScoped < IPostService, PostService.ServiceLayer.Implementati
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 builder.Services.AddScoped<IHashtagService, HashtagService>();
+builder.Services.AddScoped<IStoryService, StoryService>();
 
-builder.Services.AddControllers();
+// Configure JSON to handle enums as numbers (not strings)
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

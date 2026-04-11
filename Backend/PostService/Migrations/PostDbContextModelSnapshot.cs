@@ -353,6 +353,113 @@ namespace PostService.Migrations
                     b.ToTable("PostMentions");
                 });
 
+            modelBuilder.Entity("PostService.Models.StoryGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OwnerAvatarUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("OwnerDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("TotalViews")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "ExpiresAt");
+
+                    b.ToTable("StoryGroups");
+                });
+
+            modelBuilder.Entity("PostService.Models.StoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Duration")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PublicId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("StoryGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoryGroupId");
+
+                    b.HasIndex("StoryGroupId", "DisplayOrder");
+
+                    b.ToTable("StoryItems");
+                });
+
+            modelBuilder.Entity("PostService.Models.StoryView", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StoryItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("StoryItemId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("StoryViews");
+                });
+
             modelBuilder.Entity("PostHashtag", b =>
                 {
                     b.HasOne("PostService.Models.Hashtag", "Hashtag")
@@ -455,6 +562,28 @@ namespace PostService.Migrations
                     b.Navigation("Post");
                 });
 
+            modelBuilder.Entity("PostService.Models.StoryItem", b =>
+                {
+                    b.HasOne("PostService.Models.StoryGroup", "StoryGroup")
+                        .WithMany("Items")
+                        .HasForeignKey("StoryGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StoryGroup");
+                });
+
+            modelBuilder.Entity("PostService.Models.StoryView", b =>
+                {
+                    b.HasOne("PostService.Models.StoryItem", "StoryItem")
+                        .WithMany("Views")
+                        .HasForeignKey("StoryItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StoryItem");
+                });
+
             modelBuilder.Entity("PostService.Models.Comment", b =>
                 {
                     b.Navigation("Likes");
@@ -478,6 +607,16 @@ namespace PostService.Migrations
                     b.Navigation("Media");
 
                     b.Navigation("Mentions");
+                });
+
+            modelBuilder.Entity("PostService.Models.StoryGroup", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("PostService.Models.StoryItem", b =>
+                {
+                    b.Navigation("Views");
                 });
 #pragma warning restore 612, 618
         }

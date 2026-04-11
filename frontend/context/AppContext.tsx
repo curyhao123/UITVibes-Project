@@ -55,6 +55,8 @@ interface AppContextType {
   stories: Story[];
   refreshPosts: () => Promise<void>;
   refreshStories: () => Promise<void>;
+  myPosts: Post[];           // Posts của user hiện tại cho profile
+  refreshMyPosts: () => Promise<void>; // Fetch riêng từ /post/my-posts
 
   // Feed filter
   feedTab: "foryou" | "following";
@@ -278,6 +280,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
+  const [myPosts, setMyPosts] = useState<Post[]>([]); // Posts của user hiện tại cho profile
 
   // ─── Messages ────────────────────────────────────────────
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -305,6 +308,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setStories(data);
     } catch (error) {
       console.error("Failed to fetch stories:", error);
+    }
+  }, []);
+
+  // Fetch posts của user hiện tại cho profile page
+  const refreshMyPosts = useCallback(async () => {
+    console.log("[AppContext] refreshMyPosts: START");
+    try {
+      const data = await api.getMyPosts();
+      console.log("[AppContext] refreshMyPosts: SUCCESS, got", data.length, "posts");
+      setMyPosts(data);
+    } catch (error: any) {
+      console.error("[AppContext] refreshMyPosts: ERROR", error?.response?.status, error?.message);
     }
   }, []);
 
@@ -389,6 +404,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       try {
         const newPost = await api.createPost(image, caption, location);
         setPosts((prev) => [newPost, ...prev]);
+        setMyPosts((prev) => [newPost, ...prev]); // Thêm vào myPosts cho profile
+        // Refresh myPosts từ server để đảm bảo đồng bộ
+        await refreshMyPosts();
+        // Cập nhật số posts trên profile ngay lập tức
+        setCurrentUser((prev) => (prev ? { ...prev, posts: prev.posts + 1 } : prev));
         setIsNewUser(false); // Đã có bài viết → không còn là new user
         return newPost;
       } catch (error) {
@@ -396,7 +416,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return null;
       }
     },
-    [],
+    [refreshMyPosts],
   );
 
   const updatePost = useCallback(
@@ -415,6 +435,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       await api.deletePost(postId);
       setPosts((prev) => prev.filter((p) => p.id !== postId));
+      setMyPosts((prev) => prev.filter((p) => p.id !== postId)); // Xóa khỏi myPosts
+      // Cập nhật số posts trên profile khi xóa
+      setCurrentUser((prev) => (prev ? { ...prev, posts: Math.max(0, prev.posts - 1) } : prev));
     } catch (error) {
       console.error("Failed to delete post:", error);
     }
@@ -623,6 +646,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           // Load dữ liệu song song
           await Promise.all([
             refreshPosts(),
+            refreshMyPosts(),
             refreshStories(),
             refreshConversations(),
             refreshNotifications(),
@@ -684,9 +708,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         fetchSuggestedUsers,
         followSuggestedUser,
         posts,
+        myPosts,
         stories,
         refreshPosts,
-        refreshStories,
+        refreshMyPosts,
         feedTab,
         setFeedTab,
         toggleLike,

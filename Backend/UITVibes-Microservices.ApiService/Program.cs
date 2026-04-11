@@ -357,6 +357,7 @@ app.MapGet("/gateway/routes", (IServiceDiscovery discovery) =>
                 new { gateway = "/post", proxiedTo = "/api/post", auth = "Required (POST)" },
                 new { gateway = "/post/{id}", proxiedTo = "/api/post/{id}", auth = "Public (GET), Required (PUT/DELETE)" },
                 new { gateway = "/post/user/{userId}", proxiedTo = "/api/post/user/{userId}", auth = "Public" },
+                new { gateway = "/post/my-posts", proxiedTo = "/api/post/my-posts", auth = "Required" },
                 new { gateway = "/post/feed", proxiedTo = "/api/post/feed", auth = "Required" },
                 new { gateway = "/post/media", proxiedTo = "/api/post/media", auth = "Required" }
             }
@@ -435,7 +436,7 @@ app.MapReverseProxy(proxyPipeline =>
             method == "GET" &&
             (path.Contains("/user/userprofile/") && !path.Contains("/me")) ||
             (path.Contains("/user/follow/") && (path.Contains("/stats") || path.Contains("/followers") || path.Contains("/following"))) ||
-            (path.Contains("/post/") && !path.Contains("/feed") && !path.Contains("/bookmarks"));
+            (path.Contains("/post/user/") && !path.Contains("/post/user/me"));
         // Require authentication for non-public paths
         if (!isPublicPath && !isPublicGetRequest)
         {
