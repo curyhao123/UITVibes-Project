@@ -13,4 +13,5 @@ public interface IUserProfileService
     Task<UserProfileDto> DeleteAvatarAsync(Guid userId);
     Task<UserProfileDto> DeleteCoverImageAsync(Guid userId);
     Task DeleteProfileAsync(Guid userId);
+    Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string query);
 }

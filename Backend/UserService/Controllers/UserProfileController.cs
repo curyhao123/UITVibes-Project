@@ -280,4 +280,11 @@ public class UserProfileController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while deleting cover image" });
         }
     }
+    [HttpGet("search")]
+    public async Task<ActionResult<List<SearchUserProfileDto>>> SearchProfiles([FromQuery] string query)
+    {
+
+        var results = await _userProfileService.SearchUserProfileAsync(query);
+        return Ok(results);
+    }
 }

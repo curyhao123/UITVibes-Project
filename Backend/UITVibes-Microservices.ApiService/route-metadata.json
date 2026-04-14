@@ -121,6 +121,15 @@
           "requestBody": {
             "file": "[Binary file data - max 5MB]"
           }
+        },
+        {
+          "method": "GET",
+          "path": "/user/userprofile/search",
+          "description": "Search users by username or bio",
+          "requiresAuth": false,
+          "queryParameters": {
+            "q": "search query"
+          }
         }
       ]
     },

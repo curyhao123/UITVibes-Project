@@ -1,3 +1,4 @@
+using CloudinaryDotNet;
 using Microsoft.EntityFrameworkCore;
 using UserService.DTOs;
 using UserService.Models;
@@ -13,7 +14,7 @@ public class UserProfileService : IUserProfileService
     private readonly IBlockService _blockService;
 
     public UserProfileService(
-        UserDbContext context, 
+        UserDbContext context,
         ILogger<UserProfileService> logger,
         ICloudinaryService cloudinaryService,
         IBlockService blockService)
@@ -24,7 +25,7 @@ public class UserProfileService : IUserProfileService
         _blockService = blockService;
     }
 
-    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId,Guid userId)
+    public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId, Guid userId)
     {
         var blocked = await _blockService.IsBlockedAsync(currentUserId, userId);
         if (blocked)
@@ -90,28 +91,28 @@ public class UserProfileService : IUserProfileService
         // Update basic fields
         if (request.DisplayName != null)
             profile.DisplayName = request.DisplayName;
-        
+
         if (request.Bio != null)
             profile.Bio = request.Bio;
-        
+
         if (request.AvatarUrl != null)
         {
             ThrowIfEphemeralMediaUrl(nameof(request.AvatarUrl), request.AvatarUrl);
             profile.AvatarUrl = request.AvatarUrl;
         }
-        
+
         if (request.CoverImageUrl != null)
         {
             ThrowIfEphemeralMediaUrl(nameof(request.CoverImageUrl), request.CoverImageUrl);
             profile.CoverImageUrl = request.CoverImageUrl;
         }
-        
+
         if (request.DateOfBirth.HasValue)
             profile.DateOfBirth = request.DateOfBirth.Value;
-        
+
         if (request.Location != null)
             profile.Location = request.Location;
-        
+
         if (request.Website != null)
             profile.Website = request.Website;
 
@@ -120,7 +121,7 @@ public class UserProfileService : IUserProfileService
         {
             // Remove existing links
             _context.SocialLinks.RemoveRange(profile.SocialLinks);
-            
+
             // Add new links
             foreach (var linkDto in request.SocialLinks)
             {
@@ -239,7 +240,7 @@ public class UserProfileService : IUserProfileService
         return MapToDto(profile);
     }
 
-    
+
     private static string? ExtractPublicIdFromUrl(string url)
     {
         // Extract public ID from Cloudinary URL
@@ -352,6 +353,32 @@ public class UserProfileService : IUserProfileService
         {
             throw new ArgumentException(
                 $"{fieldName} must be a permanent https URL or uploaded via the avatar/cover endpoints, not a browser-local blob/data/file URL.");
+        }
+    }
+
+    public async Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string search)
+    {
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var results = await _context.UserProfiles
+                 .Where(p =>
+                     EF.Functions.ILike(p.DisplayName!, $"%{search}%") ||
+                     (p.Bio != null && EF.Functions.ILike(p.Bio!, $"%{search}%")))
+                 .Select(p => new SearchUserProfileDto
+                 {
+                     UserId = p.UserId,
+                     DisplayName = p.DisplayName,
+                     Bio = p.Bio,
+                     AvatarUrl = p.AvatarUrl,
+                     AvatarPublicId = p.AvatarPublicId,
+                     FollowersCount = p.FollowersCount
+                 })
+                 .ToListAsync();
+            return results;
+        }
+        else
+        {
+            throw new ArgumentException("Search query cannot be empty");
         }
     }
 }
