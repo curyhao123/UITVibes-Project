@@ -5,7 +5,7 @@ using PostService.ServiceLayer.Interface;
 namespace PostService.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/post/story")]
 public class StoryController : ControllerBase
 {
     private readonly IStoryService _storyService;
@@ -46,7 +46,8 @@ public class StoryController : ControllerBase
     /// Tạo story mới
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<StoryDto>> CreateStory([FromBody] CreateStoryRequest request)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<StoryDto>> CreateStory([FromForm] CreateStoryWithMediaRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
 
@@ -55,14 +56,22 @@ public class StoryController : ControllerBase
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
 
-        if (request.Media == null || !request.Media.Any())
+        if (request.Files == null || !request.Files.Any())
         {
             return BadRequest(new { message = "At least one media item is required" });
         }
 
+        var allowedImageTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
+        var allowedVideoTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime" };
+        var allAllowed = allowedImageTypes.Concat(allowedVideoTypes).ToArray();
+        if (request.Files.Any(file => !allAllowed.Contains(file.ContentType.ToLower())))
+        {
+            return BadRequest(new { message = "Invalid file type. Only images and videos are allowed." });
+        }
+
         try
         {
-            var story = await _storyService.CreateStoryAsync(userId, request);
+            var story = await _storyService.CreateStoryWithMediaAsync(userId, request);
             return CreatedAtAction(nameof(GetActiveStories), story);
         }
         catch (Exception ex)
@@ -136,7 +145,7 @@ public class StoryController : ControllerBase
     [HttpPost("media")]
     [RequestSizeLimit(50 * 1024 * 1024)] // 50MB
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<StoryMediaUploadResponse>> UploadStoryMedia([FromForm] IFormFile File)
+    public async Task<ActionResult<StoryMediaUploadResponse>> UploadStoryMedia([FromForm] StoryMediaUploadRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
 
@@ -145,7 +154,7 @@ public class StoryController : ControllerBase
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
 
-        if (File == null || File.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
             return BadRequest(new { message = "No file provided" });
         }
@@ -153,14 +162,14 @@ public class StoryController : ControllerBase
         var allowedImageTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
         var allowedVideoTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime" };
         var allAllowed = allowedImageTypes.Concat(allowedVideoTypes).ToArray();
-        if (!allAllowed.Contains(File.ContentType.ToLower()))
+        if (!allAllowed.Contains(request.File.ContentType.ToLower()))
         {
             return BadRequest(new { message = "Invalid file type. Only images and videos are allowed." });
         }
 
         try
         {
-            var result = await _storyService.UploadStoryMediaAsync(File);
+            var result = await _storyService.UploadStoryMediaAsync(request.File);
             return Ok(result);
         }
         catch (Exception ex)

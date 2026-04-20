@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Http;
+
+using Microsoft.AspNetCore.Http;
+
 namespace PostService.DTOs;
 
 // ============ REQUEST ============
@@ -16,6 +20,24 @@ public class CreateStoryRequest
 
     /// Danh sách media đã upload (URL từ Cloudinary)
     public List<StoryMediaItem> Media { get; set; } = new();
+}
+
+/// <summary>
+/// Upload media và tạo story trong một request
+/// </summary>
+public class CreateStoryWithMediaRequest
+{
+    public List<IFormFile> Files { get; set; } = new();
+
+    public List<int>? DisplayOrders { get; set; }
+}
+
+/// <summary>
+/// Upload media request cho story
+/// </summary>
+public class StoryMediaUploadRequest
+{
+    public IFormFile File { get; set; } = null!;
 }
 
 /// <summary>

@@ -10,6 +10,11 @@ public interface IStoryService
     Task<StoryDto> CreateStoryAsync(Guid userId, CreateStoryRequest request);
 
     /// <summary>
+    /// Upload media và tạo story trong một request
+    /// </summary>
+    Task<StoryDto> CreateStoryWithMediaAsync(Guid userId, CreateStoryWithMediaRequest request);
+
+    /// <summary>
     /// Lấy story đang hoạt động (chưa hết hạn) cho feed
     /// </summary>
     Task<List<StoryFeedDto>> GetActiveStoriesAsync(Guid currentUserId, int limit = 20);
