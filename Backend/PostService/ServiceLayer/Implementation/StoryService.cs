@@ -9,6 +9,7 @@ public class StoryService : IStoryService
 {
     private readonly PostDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly ILogger<StoryService> _logger;
 
     /// Thời gian story tồn tại trước khi hết hạn (24 giờ)
@@ -17,21 +18,25 @@ public class StoryService : IStoryService
     public StoryService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
+        IUserProfileRpcClient userProfileRpcClient,
         ILogger<StoryService> logger)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
+        _userProfileRpcClient = userProfileRpcClient;
         _logger = logger;
     }
 
     public async Task<StoryDto> CreateStoryAsync(Guid userId, CreateStoryRequest request)
     {
+        var now = DateTime.UtcNow;
+
         // Tìm story group hiện tại của user (chưa hết hạn)
         var existingGroup = await _context.StoryGroups
             .Include(g => g.Items)
             .FirstOrDefaultAsync(g =>
                 g.UserId == userId &&
-                g.ExpiresAt > DateTime.UtcNow);
+                g.ExpiresAt > now);
 
         if (existingGroup != null)
         {
@@ -42,25 +47,28 @@ public class StoryService : IStoryService
                 existingGroup.OwnerAvatarUrl = request.OwnerAvatarUrl;
 
             // Thêm items vào group hiện tại
-            foreach (var media in request.Media)
+            var newItems = request.Media.Select(media => new StoryItem
             {
-                existingGroup.Items.Add(new StoryItem
-                {
-                    Id = Guid.NewGuid(),
-                    StoryGroupId = existingGroup.Id,
-                    Type = (MediaType)media.Type,
-                    Url = media.Url,
-                    PublicId = media.PublicId,
-                    ThumbnailUrl = media.ThumbnailUrl,
-                    DisplayOrder = media.DisplayOrder,
-                    Duration = media.Duration,
-                    CreatedAt = DateTime.UtcNow
-                });
+                Id = Guid.NewGuid(),
+                StoryGroupId = existingGroup.Id,
+                Type = (MediaType)media.Type,
+                Url = media.Url,
+                PublicId = media.PublicId,
+                ThumbnailUrl = media.ThumbnailUrl,
+                DisplayOrder = media.DisplayOrder,
+                Duration = media.Duration,
+                CreatedAt = now
+            }).ToList();
+
+            foreach (var item in newItems)
+            {
+                existingGroup.Items.Add(item);
+                _context.Entry(item).State = EntityState.Added;
             }
 
             // Extend expiry time về 24h từ now
-            existingGroup.ExpiresAt = DateTime.UtcNow.Add(StoryDuration);
-            existingGroup.CreatedAt = DateTime.UtcNow;
+            existingGroup.ExpiresAt = now.Add(StoryDuration);
+            existingGroup.CreatedAt = now;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation(
@@ -77,8 +85,8 @@ public class StoryService : IStoryService
             UserId = userId,
             OwnerDisplayName = request.OwnerDisplayName,
             OwnerAvatarUrl = request.OwnerAvatarUrl,
-            ExpiresAt = DateTime.UtcNow.Add(StoryDuration),
-            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = now.Add(StoryDuration),
+            CreatedAt = now,
             Items = request.Media.Select(m => new StoryItem
             {
                 Id = Guid.NewGuid(),
@@ -88,7 +96,7 @@ public class StoryService : IStoryService
                 ThumbnailUrl = m.ThumbnailUrl,
                 DisplayOrder = m.DisplayOrder,
                 Duration = m.Duration,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now
             }).ToList()
         };
 
@@ -100,6 +108,45 @@ public class StoryService : IStoryService
             group.Id, group.Items.Count, userId);
 
         return await MapGroupToDto(group);
+    }
+
+    public async Task<StoryDto> CreateStoryWithMediaAsync(Guid userId, CreateStoryWithMediaRequest request)
+    {
+        var profile = await _userProfileRpcClient.GetProfileAsync(userId);
+        if (profile == null || !profile.Found)
+        {
+            throw new KeyNotFoundException("User profile not found");
+        }
+
+        var mediaItems = new List<StoryMediaItem>();
+
+        for (var index = 0; index < request.Files.Count; index++)
+        {
+            var file = request.Files[index];
+            var upload = await UploadStoryMediaAsync(file);
+            var displayOrder = request.DisplayOrders != null && request.DisplayOrders.Count > index
+                ? request.DisplayOrders[index]
+                : index;
+
+            mediaItems.Add(new StoryMediaItem
+            {
+                Type = upload.Type,
+                Url = upload.Url,
+                PublicId = upload.PublicId,
+                ThumbnailUrl = upload.ThumbnailUrl,
+                DisplayOrder = displayOrder,
+                Duration = upload.Duration
+            });
+        }
+
+        var createRequest = new CreateStoryRequest
+        {
+            OwnerDisplayName = profile.DisplayName,
+            OwnerAvatarUrl = profile.AvatarUrl,
+            Media = mediaItems
+        };
+
+        return await CreateStoryAsync(userId, createRequest);
     }
 
     public async Task<List<StoryFeedDto>> GetActiveStoriesAsync(Guid currentUserId, int limit = 20)

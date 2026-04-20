@@ -16,11 +16,13 @@ builder.AddRedisClient("cache");
 builder.AddRabbitMQClient("messaging");
 // Add services to the container.
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
-builder.Services.AddScoped < IPostService, PostService.ServiceLayer.Implementation.PostService>();
+builder.Services.AddScoped<IPostService, PostService.ServiceLayer.Implementation.PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 builder.Services.AddScoped<IHashtagService, HashtagService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
+builder.Services.AddScoped<IUserProfileRpcClient, UserProfileRpcClient>();
+
 
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()
