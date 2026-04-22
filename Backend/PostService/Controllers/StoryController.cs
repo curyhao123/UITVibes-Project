@@ -43,6 +43,47 @@ public class StoryController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy story groups của một user cụ thể (dùng cho profile page)
+    /// </summary>
+    [HttpGet("user/{userId}")]
+    public async Task<ActionResult<List<StoryFeedDto>>> GetUserStories(
+        Guid userId,
+        [FromQuery] int limit = 20)
+    {
+        var viewerIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        var viewerId = Guid.TryParse(viewerIdHeader, out var parsed) ? parsed : Guid.Empty;
+
+        try
+        {
+            var stories = await _storyService.GetUserStoriesAsync(userId, viewerId, limit);
+            return Ok(stories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching stories for user {TargetUserId} by viewer {ViewerId}", userId, viewerId);
+            return StatusCode(500, new { message = "An error occurred while fetching user stories" });
+        }
+    }
+
+    /// <summary>
+    /// Lấy tất cả items của một story group (dùng cho profile StoryGrid)
+    /// </summary>
+    [HttpGet("group/{storyGroupId}/items")]
+    public async Task<ActionResult<List<StoryItemDto>>> GetStoryGroupItems(Guid storyGroupId)
+    {
+        try
+        {
+            var items = await _storyService.GetStoryGroupItemsAsync(storyGroupId);
+            return Ok(items);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching items for story group {GroupId}", storyGroupId);
+            return StatusCode(500, new { message = "An error occurred while fetching story items" });
+        }
+    }
+
+    /// <summary>
     /// Tạo story mới
     /// </summary>
     [HttpPost]
@@ -78,6 +119,28 @@ public class StoryController : ControllerBase
         {
             _logger.LogError(ex, "Error creating story for user {UserId}", userId);
             return StatusCode(500, new { message = "An error occurred while creating story" });
+        }
+    }
+
+    /// <summary>
+    /// Lấy chi tiết một story group (dùng cho story viewer)
+    /// </summary>
+    [HttpGet("{storyGroupId}")]
+    public async Task<ActionResult<StoryDto>> GetStoryDetail(Guid storyGroupId)
+    {
+        try
+        {
+            var story = await _storyService.GetStoryByIdAsync(storyGroupId);
+            if (story == null)
+            {
+                return NotFound(new { message = "Story not found or has expired" });
+            }
+            return Ok(story);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching story detail {StoryGroupId}", storyGroupId);
+            return StatusCode(500, new { message = "An error occurred while fetching story detail" });
         }
     }
 

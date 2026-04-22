@@ -4,6 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { Post, User } from '../data/mockData';
 import { AppColors } from '../constants/theme';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { Story } from '../services/storyService';
+import { useRouter } from 'expo-router';
 
 export const PostGrid: React.FC<{
   posts: Post[];
@@ -243,5 +245,187 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
+  },
+});
+
+// ============================================================
+// STORY GRID — Instagram-style on profile page
+// ============================================================
+
+/** Một cell trong story grid — hiển thị 1 thumbnail (ảnh đầu tiên hoặc video thumbnail) */
+const StoryGridCell: React.FC<{
+  story: Story;
+  isFirstItem?: boolean;
+}> = ({ story, isFirstItem }) => {
+  const router = useRouter();
+  const preview = story.previewUrl;
+
+  const handlePress = () => {
+    router.push(`/story/${story.id}` as any);
+  };
+
+  // Nếu chưa xem → viền gradient/xanh primary; đã xem → viền gray
+  const borderColor = isFirstItem
+    ? AppColors.primary
+    : story.isViewed
+    ? AppColors.border
+    : AppColors.primary;
+
+  return (
+    <TouchableOpacity
+      style={[storyGridStyles.cell, { borderColor }]}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
+      {preview ? (
+        <Image
+          source={{ uri: preview }}
+          style={storyGridStyles.thumbnail}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={[storyGridStyles.thumbnail, storyGridStyles.placeholder]} />
+      )}
+      {/* Overlay hiển thị tổng số items nếu > 1 */}
+      {story.totalItems > 1 && (
+        <View style={storyGridStyles.countBadge}>
+          <Text style={storyGridStyles.countText}>{story.totalItems}</Text>
+        </View>
+      )}
+      {/* Icon video nếu item đầu là video */}
+      {isFirstItem && story.totalItems > 0 && (
+        <View style={storyGridStyles.videoIcon}>
+          <Feather name="play-circle" size={16} color="#fff" strokeWidth={2} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+export const StoryGrid: React.FC<{
+  /** Story groups của user — mỗi group = 1 cell trong grid */
+  stories: Story[];
+  /** User hiện tại đang xem profile — dùng để hiển thị nút "Add Story" nếu là chính mình */
+  isCurrentUser?: boolean;
+  /** Callback khi bấm nút Add Story (navigate tới story/create) */
+  onAddStory?: () => void;
+}> = ({ stories, isCurrentUser = false, onAddStory }) => {
+  // Chia stories thành rows, mỗi row 3 items
+  const rows: Story[][] = [];
+  for (let i = 0; i < stories.length; i += 3) {
+    rows.push(stories.slice(i, i + 3));
+  }
+
+  if (stories.length === 0 && !isCurrentUser) {
+    return null;
+  }
+
+  return (
+    <View style={storyGridStyles.container}>
+      {/* Row 1: "Add Story" + 2 story groups đầu tiên */}
+      <View style={storyGridStyles.row}>
+        {/* Nút Add Story */}
+        {isCurrentUser && (
+          <TouchableOpacity
+            style={[storyGridStyles.cell, storyGridStyles.addCell]}
+            onPress={onAddStory}
+            activeOpacity={0.7}
+          >
+            <View style={storyGridStyles.addCircle}>
+              <Feather name="plus" size={24} color={AppColors.primary} strokeWidth={2.5} />
+            </View>
+            <Text style={storyGridStyles.addLabel}>Add</Text>
+          </TouchableOpacity>
+        )}
+        {/* Story groups */}
+        {stories.slice(0, isCurrentUser ? 2 : 3).map((story) => (
+          <StoryGridCell key={story.id} story={story} />
+        ))}
+      </View>
+
+      {/* Các rows còn lại (mỗi row 3 items) */}
+      {rows.slice(1).map((row, rowIndex) => (
+        <View key={`story-row-${rowIndex + 1}`} style={storyGridStyles.row}>
+          {row.map((story) => (
+            <StoryGridCell key={story.id} story={story} />
+          ))}
+          {/* Fill empty slots */}
+          {Array.from({ length: 3 - row.length }).map((_, idx) => (
+            <View key={`story-empty-${rowIndex + 1}-${idx}`} style={storyGridStyles.cell} />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const storyGridStyles = StyleSheet.create({
+  container: {
+    marginTop: 2,
+  },
+  row: {
+    flexDirection: 'row',
+  flexWrap: 'wrap',
+  // alignItems: 'stretch' giữ aspect ratio = 1:1 cell
+  },
+  cell: {
+    width: `${100 / 3}%`,
+    aspectRatio: 1,
+    borderWidth: 1.5,
+    borderColor: AppColors.border,
+    overflow: 'hidden',
+    backgroundColor: AppColors.surface,
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholder: {
+    backgroundColor: AppColors.borderLight,
+  },
+  countBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  countText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  videoIcon: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  // Add Story cell
+  addCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderStyle: 'dashed',
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  addCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  addLabel: {
+    fontSize: 12,
+    color: AppColors.text,
+    fontWeight: '500',
   },
 });

@@ -188,6 +188,71 @@ public class StoryService : IStoryService
         return result;
     }
 
+    public async Task<List<StoryFeedDto>> GetUserStoriesAsync(Guid userId, Guid currentUserId, int limit = 20)
+    {
+        var now = DateTime.UtcNow;
+
+        // Lấy story groups của user đó (đã hết hạn hoặc chưa đều lấy — profile page hiển thị tất cả)
+        var groups = await _context.StoryGroups
+            .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
+            .Where(g => g.UserId == userId)
+            .OrderByDescending(g => g.CreatedAt)
+            .Take(limit)
+            .ToListAsync();
+
+        var groupIds = groups.Select(g => g.Id).ToList();
+        var allViewsForGroups = new List<Guid>();
+
+        if (groupIds.Any())
+        {
+            var itemIdsInGroups = await _context.StoryItems
+                .Where(item => groupIds.Contains(item.StoryGroupId))
+                .Select(item => item.Id)
+                .ToListAsync();
+
+            allViewsForGroups = await _context.StoryViews
+                .Where(v => v.UserId == currentUserId && itemIdsInGroups.Contains(v.StoryItemId))
+                .Select(v => v.StoryItemId)
+                .ToListAsync();
+        }
+
+        var result = groups.Select(group => {
+            var allViewed = group.Items.All(item => allViewsForGroups.Contains(item.Id));
+            return MapGroupToFeedDto(group, allViewed).Result;
+        }).ToList();
+        return result;
+    }
+
+    public async Task<List<StoryItemDto>> GetStoryGroupItemsAsync(Guid storyGroupId)
+    {
+        var items = await _context.StoryItems
+            .Where(i => i.StoryGroupId == storyGroupId)
+            .OrderBy(i => i.DisplayOrder)
+            .Select(i => new StoryItemDto
+            {
+                Id = i.Id,
+                Type = (int)i.Type,
+                Url = i.Url,
+                ThumbnailUrl = i.ThumbnailUrl,
+                DisplayOrder = i.DisplayOrder,
+                Duration = i.Duration,
+                CreatedAt = i.CreatedAt
+            })
+            .ToListAsync();
+        return items;
+    }
+
+    public async Task<StoryDto?> GetStoryByIdAsync(Guid storyGroupId)
+    {
+        var group = await _context.StoryGroups
+            .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
+            .FirstOrDefaultAsync(g => g.Id == storyGroupId);
+
+        if (group == null) return null;
+
+        return await MapGroupToDto(group);
+    }
+
     public async Task MarkStoryViewedAsync(Guid storyItemId, Guid userId)
     {
         var existing = await _context.StoryViews
@@ -288,6 +353,8 @@ public class StoryService : IStoryService
         {
             Id = group.Id,
             UserId = group.UserId,
+            DisplayName = group.OwnerDisplayName,
+            AvatarUrl = group.OwnerAvatarUrl,
             ExpiresAt = group.ExpiresAt,
             CreatedAt = group.CreatedAt,
             Items = group.Items.OrderBy(i => i.DisplayOrder).Select(i => new StoryItemDto
