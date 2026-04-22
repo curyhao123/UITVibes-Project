@@ -27,7 +27,11 @@ public class CreateStoryRequest
 /// </summary>
 public class CreateStoryWithMediaRequest
 {
-    public List<IFormFile> Files { get; set; } = new();
+    /// <summary>
+    /// IFormFileCollection binds reliably to multiple files with the same field name
+    /// in multipart/form-data (List&lt;IFormFile&gt; has known model-binding issues).
+    /// </summary>
+    public IFormFileCollection Files { get; set; } = null!;
 
     public List<int>? DisplayOrders { get; set; }
 }
@@ -73,6 +77,8 @@ public class StoryDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<StoryItemDto> Items { get; set; } = new();

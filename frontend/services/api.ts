@@ -3,7 +3,17 @@ import apiClient from "./httpClient";
 export * from "./authService";
 export * from "./userService";
 export * from "./postService";
-export * from "./storyService";
+export {
+  getStories,
+  getUserStories,
+  getStoryDetail,
+  getStoryGroupItems,
+  createStory,
+  markStoryViewed,
+  deleteMyStory,
+  type Story,
+  type StoryItem,
+} from "./storyService";
 export * from "./messageService";
 export * from "./notificationService";
 export * from "./musicService";

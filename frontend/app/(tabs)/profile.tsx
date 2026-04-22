@@ -11,16 +11,18 @@ import {
   Share,
   ActivityIndicator,
   Image as RNImage,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../../context/AppContext';
-import { Avatar, PostGrid, Header, EmptyPostsState } from '../../components';
+import { Avatar, PostGrid, StoryGrid, Header, EmptyPostsState } from '../../components';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import defaultAvatar from '../../assets/images/default-avatar.png';
+import * as api from '../../services/api';
 
 /** Snapshot khi mở Edit Profile — Cancel/đóng modal khôi phục về đây, chỉ Save mới gọi API */
 type EditFormSnapshot = {
@@ -49,6 +51,13 @@ export default function ProfileScreen() {
   // Loading state cho posts
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
 
+  // Stories state
+  const [profileStories, setProfileStories] = useState<api.Story[]>([]);
+  const [isLoadingStories, setIsLoadingStories] = useState(false);
+
+  // Profile tab state (posts | stories)
+  const [profileTab, setProfileTab] = useState<'posts' | 'stories'>('posts');
+
   // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
   console.log("[Profile] Render: myPosts.length =", myPosts.length, "userPosts.length =", userPosts.length);
@@ -64,6 +73,24 @@ export default function ProfileScreen() {
         setIsLoadingPosts(false);
       });
     }, []), // Empty deps - chỉ chạy khi mount/unmount
+  );
+
+  // Refresh stories khi profileStories tab được active hoặc mỗi khi focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentUser?.id) return;
+      setIsLoadingStories(true);
+      api.getUserStories(currentUser.id)
+        .then((stories) => {
+          setProfileStories(stories);
+        })
+        .catch(() => {
+          setProfileStories([]);
+        })
+        .finally(() => {
+          setIsLoadingStories(false);
+        });
+    }, [currentUser?.id, profileTab]),
   );
 
   // Wrapper xóa post
@@ -263,32 +290,89 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.highlights}>
-          <View style={styles.highlightItem}>
-            <View style={styles.highlightCircle}>
-              <Feather name="plus" size={20} color={AppColors.text} strokeWidth={2} />
-            </View>
-            <Text style={styles.highlightText}>New Story</Text>
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storyStripScroll}>
+            {/* Nút Add Story */}
+            <TouchableOpacity
+              style={styles.storyStripItem}
+              onPress={() => router.push('/story/create' as any)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.addStoryCircle}>
+                <Feather name="plus" size={22} color={AppColors.primary} strokeWidth={2.5} />
+              </View>
+              <Text style={styles.storyStripLabel} numberOfLines={1}>New</Text>
+            </TouchableOpacity>
+
+            {/* Stories của user */}
+            {profileStories.map((story) => (
+              <TouchableOpacity
+                key={story.id}
+                style={styles.storyStripItem}
+                onPress={() => router.push(`/story/${story.id}` as any)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.storyCircle, !story.isViewed && styles.storyCircleActive]}>
+                  <Image
+                    source={story.previewUrl ? { uri: story.previewUrl } : defaultAvatar}
+                    style={styles.storyCircleImg}
+                  />
+                </View>
+                <Text style={styles.storyStripLabel} numberOfLines={1}>
+                  {story.displayName}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         <View style={styles.tabsContainer}>
-          <TouchableOpacity style={[styles.tab, styles.activeTab]}>
-            <Feather name="grid" size={22} color={AppColors.primary} strokeWidth={2} />
+          <TouchableOpacity
+            style={[styles.tab, profileTab === 'posts' && styles.activeTab]}
+            onPress={() => setProfileTab('posts')}
+          >
+            <Feather name="grid" size={22} color={profileTab === 'posts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tab}>
-            <Feather name="tag" size={22} color={AppColors.iconMuted} strokeWidth={2} />
+          <TouchableOpacity
+            style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
+            onPress={() => setProfileTab('stories')}
+          >
+            <Feather name="layers" size={22} color={profileTab === 'stories' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
-        {/* Grid posts — posts từ AppContext, tự động cập nhật khi tạo/xóa */}
-        {isLoadingPosts ? (
-          <View style={styles.loadingPosts}>
-            <ActivityIndicator size="small" color={AppColors.primary} />
-          </View>
-        ) : userPosts.length === 0 ? (
-          <EmptyPostsState isNewUser={isNewUser ?? false} />
+        {profileTab === 'posts' ? (
+          isLoadingPosts ? (
+            <View style={styles.loadingPosts}>
+              <ActivityIndicator size="small" color={AppColors.primary} />
+            </View>
+          ) : userPosts.length === 0 ? (
+            <EmptyPostsState isNewUser={isNewUser ?? false} />
+          ) : (
+            <PostGrid posts={userPosts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
+          )
         ) : (
-          <PostGrid posts={userPosts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
+          isLoadingStories ? (
+            <View style={styles.loadingPosts}>
+              <ActivityIndicator size="small" color={AppColors.primary} />
+            </View>
+          ) : profileStories.length === 0 ? (
+            <View style={styles.emptyStories}>
+              <Feather name="layers" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
+              <Text style={styles.emptyStoriesText}>No stories yet</Text>
+              <TouchableOpacity
+                style={styles.emptyAddBtn}
+                onPress={() => router.push('/story/create' as any)}
+              >
+                <Text style={styles.emptyAddBtnText}>Create your first story</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <StoryGrid
+              stories={profileStories}
+              isCurrentUser={true}
+              onAddStory={() => router.push('/story/create' as any)}
+            />
+          )
         )}
       </ScrollView>
 
@@ -533,9 +617,48 @@ const styles = StyleSheet.create({
     color: AppColors.text,
   },
   highlights: {
-    flexDirection: 'row',
+    marginBottom: 2,
+  },
+  storyStripScroll: {
     paddingHorizontal: layoutPadding,
-    marginBottom: 20,
+    paddingVertical: 12,
+  },
+  storyStripItem: {
+    alignItems: 'center',
+    marginRight: 16,
+    width: 72,
+  },
+  addStoryCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: AppColors.borderLight,
+    borderWidth: 2,
+    borderColor: AppColors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  storyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: AppColors.border,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  storyCircleActive: {
+    borderColor: AppColors.primary,
+  },
+  storyCircleImg: {
+    width: '100%',
+    height: '100%',
+  },
+  storyStripLabel: {
+    ...Typography.meta,
+    color: AppColors.text,
+    textAlign: 'center',
   },
   highlightItem: {
     alignItems: 'center',
@@ -571,6 +694,27 @@ const styles = StyleSheet.create({
   loadingPosts: {
     paddingVertical: 40,
     alignItems: 'center',
+  },
+  emptyStories: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyStoriesText: {
+    ...Typography.sectionTitle,
+    color: AppColors.iconMuted,
+  },
+  emptyAddBtn: {
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  emptyAddBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
   postsErrorText: {
     color: AppColors.textMuted,

@@ -179,16 +179,6 @@ export interface CreatePostBody {
 
 // ============ STORY TYPES ============
 
-export interface BE_StoryMediaUploadResponse {
-  url: string;
-  publicId: string;
-  thumbnailUrl?: string;
-  type: number;
-  width?: number;
-  height?: number;
-  duration?: number;
-}
-
 export interface BE_StoryFeedItem {
   id: string;
   userId: string;
@@ -201,15 +191,22 @@ export interface BE_StoryFeedItem {
   createdAt: string;
 }
 
-export interface BE_CreateStoryRequest {
-  ownerDisplayName: string;
-  ownerAvatarUrl: string;
-  media: Array<{
-    type: number;
-    url: string;
-    publicId?: string;
-    thumbnailUrl?: string;
-    displayOrder?: number;
-    duration?: number;
-  }>;
+export interface BE_StoryDetailResponse {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  expiresAt: string;
+  createdAt: string;
+  items: BE_StoryItemDetail[];
+}
+
+export interface BE_StoryItemDetail {
+  id: string;
+  type: number; // 0 = image, 1 = video
+  url: string;
+  thumbnailUrl: string | null;
+  displayOrder: number;
+  duration: number | null;
+  createdAt: string;
 }

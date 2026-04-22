@@ -20,7 +20,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { Avatar } from './Avatar';
-import { Story } from '../data/mockData';
+import { Story } from '../services/storyService';
 import { useRouter } from 'expo-router';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
@@ -42,8 +42,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
   const scrollX = useSharedValue(0);
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-  const displayedStories = isNewUser ? [] : stories;
-  const hasNoStories = displayedStories.length === 0;
+  const displayedStories = stories;
 
   // ── Scroll handler — tracks position on UI thread ─────────────────────────
   const scrollHandler = useAnimatedScrollHandler({
@@ -86,7 +85,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
     );
   };
 
-  // ── Story item with scroll-aware scale + fade ──────────────────────────────
+  // Story item with scroll-aware scale + fade ──────────────────────────────
   const StoryItem = ({ story, index }: { story: Story; index: number }) => {
     const pressScale = useSharedValue(1);
 
@@ -131,6 +130,20 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       };
     });
 
+    // Map flat story fields to User shape for Avatar component
+    const storyUser = {
+      id: story.userId,
+      username: story.username,
+      displayName: story.displayName,
+      avatar: story.avatar,
+      coverImage: "",
+      bio: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isVerified: false,
+    };
+
     return (
       <TouchableOpacity
         onPress={() => handleStoryPress(story)}
@@ -141,13 +154,13 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       >
         <Animated.View style={animatedStyle}>
           <Avatar
-            user={story.user}
+            user={storyUser}
             size="story"
             showBorder
             isViewed={story.isViewed}
           />
           <Text style={styles.storyUsername} numberOfLines={1}>
-            {story.user.username}
+            {story.displayName}
           </Text>
         </Animated.View>
       </TouchableOpacity>
@@ -167,10 +180,9 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       >
         <AddStoryCircle />
 
-        {!hasNoStories &&
-          displayedStories.map((story, index) => (
-            <StoryItem key={story.id} story={story} index={index} />
-          ))}
+        {displayedStories.map((story, index) => (
+          <StoryItem key={story.id} story={story} index={index} />
+        ))}
       </AnimatedScrollView>
     </View>
   );

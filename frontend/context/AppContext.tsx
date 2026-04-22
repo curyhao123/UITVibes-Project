@@ -5,32 +5,26 @@ import React, {
   useEffect,
   useCallback,
   ReactNode,
-} from "react";
+} from 'react';
 import {
   User,
   Post,
-  Story,
   Conversation,
   Message,
   Notification,
-} from "../data/mockData";
-import * as api from "../services/api";
+} from '../data/mockData';
+import * as api from '../services/api';
+import type { Story } from '../services/storyService';
 
 interface AppContextType {
   // Auth / User
   currentUser: User | null;
   isLoading: boolean;
   isNewUser: boolean;
-  authError: string | null;
   markUserActive: () => void;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (
-    email: string,
-    password: string,
-    username: string,
-  ) => Promise<boolean>;
+  register: (email: string, password: string, username: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
 
   // Onboarding
@@ -41,7 +35,7 @@ interface AppContextType {
     bio: string;
     avatar: string;
   };
-  saveOnboardingData: (data: Partial<AppContextType["onboardingData"]>) => void;
+  saveOnboardingData: (data: Partial<AppContextType['onboardingData']>) => void;
   completeOnboardingStep: () => void;
   resetOnboarding: () => void;
 
@@ -55,6 +49,7 @@ interface AppContextType {
   stories: Story[];
   refreshPosts: () => Promise<void>;
   refreshStories: () => Promise<void>;
+
   myPosts: Post[];           // Posts của user hiện tại cho profile
   refreshMyPosts: () => Promise<void>; // Fetch riêng từ /post/my-posts
 
@@ -712,6 +707,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         stories,
         refreshPosts,
         refreshMyPosts,
+        refreshStories,
         feedTab,
         setFeedTab,
         toggleLike,
@@ -725,8 +721,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         toggleFollow,
         updateProfile,
         updateAvatar,
-        deleteAvatar,
         updateCover,
+        deleteAvatar,
         deleteCover,
         conversations,
         activeConversation,
