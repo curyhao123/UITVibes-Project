@@ -287,4 +287,43 @@ public class UserProfileController : ControllerBase
         var results = await _userProfileService.SearchUserProfileAsync(query);
         return Ok(results);
     }
+
+    // Call this when user CLICKS on a search result
+    [HttpPost("recent-searches")]
+    public async Task<IActionResult> SaveRecent([FromBody] SearchUserProfileDto user)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        await _userProfileService.SaveRecentSearchAsync(userId, user);
+        return Ok();
+    }
+
+    [HttpGet("recent-searches")]
+    public async Task<IActionResult> GetRecent()
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        var results = await _userProfileService.GetRecentSearchesAsync(userId);
+        return Ok(results);
+    }
+
+    [HttpDelete("recent-searches/{targetUserId}")]
+    public async Task<IActionResult> RemoveRecent(Guid targetUserId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        await _userProfileService.RemoveRecentSearchAsync(userId, targetUserId);
+        return Ok();
+    }
 }
