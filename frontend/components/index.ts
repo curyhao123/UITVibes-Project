@@ -3,7 +3,7 @@ export { Button } from './Button';
 export { PostCard } from './PostCard';
 export { StoryBar } from './StoryBar';
 export { CommentItem } from './CommentItem';
-export { PostGrid, UserListItem } from './Lists';
+export { PostGrid, UserListItem, StoryGrid } from './Lists';
 export { Header } from './Header';
 export { EmptyPostsState } from './EmptyPostsState';
 export { Toast } from './Toast';

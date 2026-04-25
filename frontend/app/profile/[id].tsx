@@ -1,30 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
+import { getUserById, getUserPosts, getUserStories, toggleFollow, type Story } from '../../services/api';
 import { User, Post } from '../../data/mockData';
-import { Avatar, PostGrid } from '../../components';
-import { AppColors } from '../../constants/theme';
+import { Avatar, PostGrid, StoryGrid } from '../../components';
+import { AppColors, layoutPadding } from '../../constants/theme';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileTab, setProfileTab] = useState<'posts' | 'stories'>('posts');
   const router = useRouter();
 
   useEffect(() => {
+    setProfileTab('posts');
     loadUserData();
   }, [id]);
 
   const loadUserData = async () => {
     setIsLoading(true);
-    const userData = await getUserById(id as string);
-    const userPosts = await getUserPosts(id as string);
+    const [userData, userPosts, userStories] = await Promise.all([
+      getUserById(id as string),
+      getUserPosts(id as string),
+      getUserStories(id as string),
+    ]);
     setUser(userData || null);
     setPosts(userPosts);
+    setStories(userStories);
     setIsLoading(false);
   };
 
@@ -131,16 +139,52 @@ export default function UserProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.tabsContainer}>
-            <View style={[styles.tab, styles.activeTab]}>
-              <Feather name="grid" size={24} color={AppColors.primary} />
-            </View>
-            <View style={styles.tab}>
-              <Feather name="tag" size={24} color={AppColors.textMuted} />
-            </View>
+          <View style={styles.storyStripScroll}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {stories.slice(0, 8).map((story) => (
+                <TouchableOpacity
+                  key={story.id}
+                  style={styles.storyStripItem}
+                  onPress={() => router.push(`/story/${story.id}` as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.storyCircle, !story.isViewed && styles.storyCircleActive]}>
+                    <Image
+                      source={story.previewUrl ? { uri: story.previewUrl } : defaultAvatar}
+                      style={styles.storyCircleImg}
+                    />
+                  </View>
+                  <Text style={styles.storyStripLabel} numberOfLines={1}>{story.displayName}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
-          <PostGrid posts={posts} />
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, profileTab === 'posts' && styles.activeTab]}
+              onPress={() => setProfileTab('posts')}
+            >
+              <Feather name="grid" size={24} color={profileTab === 'posts' ? AppColors.primary : AppColors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
+              onPress={() => setProfileTab('stories')}
+            >
+              <Feather name="layers" size={24} color={profileTab === 'stories' ? AppColors.primary : AppColors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {profileTab === 'posts' ? (
+            <PostGrid posts={posts} />
+          ) : stories.length === 0 ? (
+            <View style={styles.emptyStories}>
+              <Feather name="layers" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
+              <Text style={styles.emptyStoriesText}>No stories yet</Text>
+            </View>
+          ) : (
+            <StoryGrid stories={stories} isCurrentUser={false} />
+          )}
         </ScrollView>
       </SafeAreaView>
     </>
@@ -253,5 +297,47 @@ const styles = StyleSheet.create({
   activeTab: {
     borderTopWidth: 1,
     borderTopColor: AppColors.primary,
+  },
+  // Story strip
+  storyStripScroll: {
+    paddingVertical: 12,
+  },
+  storyStripItem: {
+    alignItems: 'center',
+    marginLeft: layoutPadding,
+    marginRight: 8,
+    width: 72,
+  },
+  storyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: AppColors.border,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  storyCircleActive: {
+    borderColor: AppColors.primary,
+  },
+  storyCircleImg: {
+    width: '100%',
+    height: '100%',
+  },
+  storyStripLabel: {
+    fontSize: 12,
+    color: AppColors.text,
+    textAlign: 'center',
+  },
+  // Empty stories
+  emptyStories: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyStoriesText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: AppColors.textMuted,
   },
 });

@@ -298,7 +298,9 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
 
 export async function getCurrentUserProfile(): Promise<User> {
   try {
-    const { data } = await apiClient.get<BE_UserProfile>("/user/userprofile/me");
+    const { data } = await apiClient.get<BE_UserProfile>(
+      "/user/userprofile/me",
+    );
     const statsRes = await apiClient.get<BE_FollowStats>(
       `/user/follow/${data.userId}/stats`,
     );
@@ -332,6 +334,12 @@ export async function getCurrentUserProfile(): Promise<User> {
 export async function followUser(userId: string): Promise<boolean> {
   try {
     await apiClient.post(`/user/follow/${userId}`);
+    activeUserFollowingIds.add(userId);
+    const user = mockUsers.find((u) => u.id === userId);
+    if (user) {
+      user.isFollowing = true;
+      user.followers += 1;
+    }
     return true;
   } catch {
     await delay(300);
@@ -351,6 +359,12 @@ export async function followUser(userId: string): Promise<boolean> {
 export async function unfollowUser(userId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/user/follow/${userId}`);
+    activeUserFollowingIds.delete(userId);
+    const user = mockUsers.find((u) => u.id === userId);
+    if (user) {
+      user.isFollowing = false;
+      user.followers = Math.max(0, user.followers - 1);
+    }
     return true;
   } catch {
     await delay(300);
@@ -372,8 +386,20 @@ export async function toggleFollow(userId: string): Promise<boolean> {
     const isCurrentlyFollowing = activeUserFollowingIds.has(userId);
     if (isCurrentlyFollowing) {
       await apiClient.delete(`/user/follow/${userId}`);
+      activeUserFollowingIds.delete(userId);
+      const user = mockUsers.find((u) => u.id === userId);
+      if (user) {
+        user.isFollowing = false;
+        user.followers = Math.max(0, user.followers - 1);
+      }
     } else {
       await apiClient.post(`/user/follow/${userId}`);
+      activeUserFollowingIds.add(userId);
+      const user = mockUsers.find((u) => u.id === userId);
+      if (user) {
+        user.isFollowing = true;
+        user.followers += 1;
+      }
     }
     return !isCurrentlyFollowing;
   } catch {
@@ -441,6 +467,7 @@ export async function getFollowing(userId: string): Promise<User[]> {
       followers: 0,
       following: 0,
       posts: 0,
+      isFollowing: true,
       isVerified: false,
     }));
   } catch {

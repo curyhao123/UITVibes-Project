@@ -5,7 +5,7 @@ using PostService.ServiceLayer.Interface;
 namespace PostService.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/post/story")]
 public class StoryController : ControllerBase
 {
     private readonly IStoryService _storyService;
@@ -43,10 +43,52 @@ public class StoryController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy story groups của một user cụ thể (dùng cho profile page)
+    /// </summary>
+    [HttpGet("user/{userId}")]
+    public async Task<ActionResult<List<StoryFeedDto>>> GetUserStories(
+        Guid userId,
+        [FromQuery] int limit = 20)
+    {
+        var viewerIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        var viewerId = Guid.TryParse(viewerIdHeader, out var parsed) ? parsed : Guid.Empty;
+
+        try
+        {
+            var stories = await _storyService.GetUserStoriesAsync(userId, viewerId, limit);
+            return Ok(stories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching stories for user {TargetUserId} by viewer {ViewerId}", userId, viewerId);
+            return StatusCode(500, new { message = "An error occurred while fetching user stories" });
+        }
+    }
+
+    /// <summary>
+    /// Lấy tất cả items của một story group (dùng cho profile StoryGrid)
+    /// </summary>
+    [HttpGet("group/{storyGroupId}/items")]
+    public async Task<ActionResult<List<StoryItemDto>>> GetStoryGroupItems(Guid storyGroupId)
+    {
+        try
+        {
+            var items = await _storyService.GetStoryGroupItemsAsync(storyGroupId);
+            return Ok(items);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching items for story group {GroupId}", storyGroupId);
+            return StatusCode(500, new { message = "An error occurred while fetching story items" });
+        }
+    }
+
+    /// <summary>
     /// Tạo story mới
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<StoryDto>> CreateStory([FromBody] CreateStoryRequest request)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<StoryDto>> CreateStory([FromForm] CreateStoryWithMediaRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
 
@@ -55,20 +97,50 @@ public class StoryController : ControllerBase
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
 
-        if (request.Media == null || !request.Media.Any())
+        if (request.Files == null || !request.Files.Any())
         {
             return BadRequest(new { message = "At least one media item is required" });
         }
 
+        var allowedImageTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
+        var allowedVideoTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime" };
+        var allAllowed = allowedImageTypes.Concat(allowedVideoTypes).ToArray();
+        if (request.Files.Any(file => !allAllowed.Contains(file.ContentType.ToLower())))
+        {
+            return BadRequest(new { message = "Invalid file type. Only images and videos are allowed." });
+        }
+
         try
         {
-            var story = await _storyService.CreateStoryAsync(userId, request);
+            var story = await _storyService.CreateStoryWithMediaAsync(userId, request);
             return CreatedAtAction(nameof(GetActiveStories), story);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating story for user {UserId}", userId);
             return StatusCode(500, new { message = "An error occurred while creating story" });
+        }
+    }
+
+    /// <summary>
+    /// Lấy chi tiết một story group (dùng cho story viewer)
+    /// </summary>
+    [HttpGet("{storyGroupId}")]
+    public async Task<ActionResult<StoryDto>> GetStoryDetail(Guid storyGroupId)
+    {
+        try
+        {
+            var story = await _storyService.GetStoryByIdAsync(storyGroupId);
+            if (story == null)
+            {
+                return NotFound(new { message = "Story not found or has expired" });
+            }
+            return Ok(story);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching story detail {StoryGroupId}", storyGroupId);
+            return StatusCode(500, new { message = "An error occurred while fetching story detail" });
         }
     }
 
@@ -136,7 +208,7 @@ public class StoryController : ControllerBase
     [HttpPost("media")]
     [RequestSizeLimit(50 * 1024 * 1024)] // 50MB
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<StoryMediaUploadResponse>> UploadStoryMedia([FromForm] IFormFile File)
+    public async Task<ActionResult<StoryMediaUploadResponse>> UploadStoryMedia([FromForm] StoryMediaUploadRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
 
@@ -145,7 +217,7 @@ public class StoryController : ControllerBase
             return Unauthorized(new { message = "User ID not found in request headers" });
         }
 
-        if (File == null || File.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
             return BadRequest(new { message = "No file provided" });
         }
@@ -153,14 +225,14 @@ public class StoryController : ControllerBase
         var allowedImageTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
         var allowedVideoTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime" };
         var allAllowed = allowedImageTypes.Concat(allowedVideoTypes).ToArray();
-        if (!allAllowed.Contains(File.ContentType.ToLower()))
+        if (!allAllowed.Contains(request.File.ContentType.ToLower()))
         {
             return BadRequest(new { message = "Invalid file type. Only images and videos are allowed." });
         }
 
         try
         {
-            var result = await _storyService.UploadStoryMediaAsync(File);
+            var result = await _storyService.UploadStoryMediaAsync(request.File);
             return Ok(result);
         }
         catch (Exception ex)

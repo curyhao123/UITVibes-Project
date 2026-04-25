@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Http;
+
+using Microsoft.AspNetCore.Http;
+
 namespace PostService.DTOs;
 
 // ============ REQUEST ============
@@ -16,6 +20,28 @@ public class CreateStoryRequest
 
     /// Danh sách media đã upload (URL từ Cloudinary)
     public List<StoryMediaItem> Media { get; set; } = new();
+}
+
+/// <summary>
+/// Upload media và tạo story trong một request
+/// </summary>
+public class CreateStoryWithMediaRequest
+{
+    /// <summary>
+    /// IFormFileCollection binds reliably to multiple files with the same field name
+    /// in multipart/form-data (List&lt;IFormFile&gt; has known model-binding issues).
+    /// </summary>
+    public IFormFileCollection Files { get; set; } = null!;
+
+    public List<int>? DisplayOrders { get; set; }
+}
+
+/// <summary>
+/// Upload media request cho story
+/// </summary>
+public class StoryMediaUploadRequest
+{
+    public IFormFile File { get; set; } = null!;
 }
 
 /// <summary>
@@ -51,6 +77,8 @@ public class StoryDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<StoryItemDto> Items { get; set; } = new();

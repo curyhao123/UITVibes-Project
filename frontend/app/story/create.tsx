@@ -1,10 +1,10 @@
 /**
- * Màn hình tạo Story mới
+ * Story creation screen.
  *
  * Flow:
- * 1. Chọn ảnh/video từ thư viện
- * 2. Preview media đã chọn
- * 3. Nhấn Share → upload lên Cloudinary → tạo story trên backend
+ * 1. Pick image(s) or video(s) from library
+ * 2. Preview selected media
+ * 3. Share → POST /post/story (multipart) → BE uploads to Cloudinary
  */
 import React, { useState } from "react";
 import {
@@ -15,6 +15,7 @@ import {
   Alert,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -36,19 +37,18 @@ interface SelectedMedia {
 
 export default function CreateStoryScreen() {
   const router = useRouter();
-  const { currentUser } = useApp();
+  const { currentUser, refreshStories } = useApp();
   const [selectedMedias, setSelectedMedias] = useState<SelectedMedia[]>([]);
   const [isPosting, setIsPosting] = useState(false);
 
-  // Chọn ảnh từ thư viện
   const pickImage = async () => {
     if (Platform.OS !== "web") {
-      await Haptics.selectionAsync();
+      void Haptics.selectionAsync();
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [9, 16], // Vuống dọc như story
+      aspect: [9, 16],
       quality: 0.9,
     });
 
@@ -60,10 +60,9 @@ export default function CreateStoryScreen() {
     }
   };
 
-  // Chọn video từ thư viện
   const pickVideo = async () => {
     if (Platform.OS !== "web") {
-      await Haptics.selectionAsync();
+      void Haptics.selectionAsync();
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["videos"],
@@ -80,12 +79,10 @@ export default function CreateStoryScreen() {
     }
   };
 
-  // Xóa một media đã chọn
   const removeMedia = (index: number) => {
     setSelectedMedias((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Gửi story lên backend
   const handleShare = async () => {
     if (selectedMedias.length === 0) {
       Alert.alert("Select media", "Choose a photo or video for your story.");
@@ -94,22 +91,17 @@ export default function CreateStoryScreen() {
 
     setIsPosting(true);
     try {
-      const story = await createStory(
-        selectedMedias,
-        currentUser?.displayName || "User",
-        currentUser?.avatar || "",
-      );
+      const story = await createStory(selectedMedias);
 
       if (story) {
-        Alert.alert("Success", "Your story has been shared!", [
-          {
-            text: "OK",
-            onPress: () => {
-              setSelectedMedias([]);
-              router.back();
-            },
-          },
-        ]);
+        await refreshStories();
+
+        if (Platform.OS !== "web") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+
+        setSelectedMedias([]);
+        router.replace("/(tabs)/home" as any);
       } else {
         Alert.alert("Error", "Failed to share story. Please try again.");
       }
@@ -130,6 +122,7 @@ export default function CreateStoryScreen() {
           onPress={() => router.back()}
           style={styles.closeBtn}
           activeOpacity={0.7}
+          disabled={isPosting}
         >
           <Feather name="x" size={24} color={AppColors.text} strokeWidth={2} />
         </TouchableOpacity>
@@ -142,9 +135,13 @@ export default function CreateStoryScreen() {
           style={styles.shareBtn}
           activeOpacity={0.7}
         >
-          <Text style={[styles.shareLabel, !canShare && styles.shareLabelDisabled]}>
-            {isPosting ? "Sharing..." : "Share"}
-          </Text>
+          {isPosting ? (
+            <ActivityIndicator size="small" color={AppColors.primary} />
+          ) : (
+            <Text style={[styles.shareLabel, !canShare && styles.shareLabelDisabled]}>
+              Share
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -165,7 +162,7 @@ export default function CreateStoryScreen() {
           <Text style={styles.userName}>{currentUser?.displayName || "Your story"}</Text>
         </View>
 
-        {/* Preview media đã chọn */}
+        {/* Preview */}
         {selectedMedias.length > 0 ? (
           <Animated.View
             key="preview-grid"
@@ -213,12 +210,13 @@ export default function CreateStoryScreen() {
           </Animated.View>
         )}
 
-        {/* Nút chọn media */}
+        {/* Pick media buttons */}
         <View style={styles.actionsSection}>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={pickImage}
             activeOpacity={0.8}
+            disabled={isPosting}
           >
             <Feather name="image" size={20} color={AppColors.text} strokeWidth={2} />
             <Text style={styles.actionBtnText}>Photo</Text>
@@ -228,13 +226,13 @@ export default function CreateStoryScreen() {
             style={styles.actionBtn}
             onPress={pickVideo}
             activeOpacity={0.8}
+            disabled={isPosting}
           >
             <Feather name="video" size={20} color={AppColors.text} strokeWidth={2} />
             <Text style={styles.actionBtnText}>Video</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Hint */}
         {selectedMedias.length > 0 && (
           <Text style={styles.hint}>
             {selectedMedias.length} item(s) selected — tap to add more

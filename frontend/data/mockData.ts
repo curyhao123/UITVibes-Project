@@ -48,13 +48,6 @@ export interface Post {
   tags?: string[];
 }
 
-export interface Story {
-  id: string;
-  user: User;
-  isViewed: boolean;
-  images: string[];
-}
-
 export interface Conversation {
   id: string;
   type: 'private' | 'group';
@@ -649,68 +642,6 @@ export const mockActiveUserPosts: Post[] = [
     views: 2800,
     location: 'District 4, HCMC',
     tags: ['food', 'streetfood', 'vietnam'],
-  },
-];
-
-// ============================================================
-// STORIES (by other users — shown on the For You feed)
-// ============================================================
-
-export const mockStories: Story[] = [
-  {
-    id: 's1',
-    user: u1,
-    isViewed: false,
-    images: [
-      'https://picsum.photos/seed/story1a/400/700',
-      'https://picsum.photos/seed/story1b/400/700',
-    ],
-  },
-  {
-    id: 's2',
-    user: u2,
-    isViewed: true,
-    images: ['https://picsum.photos/seed/story2/400/700'],
-  },
-  {
-    id: 's3',
-    user: u3,
-    isViewed: false,
-    images: [
-      'https://picsum.photos/seed/story3a/400/700',
-      'https://picsum.photos/seed/story3b/400/700',
-      'https://picsum.photos/seed/story3c/400/700',
-    ],
-  },
-  {
-    id: 's4',
-    user: u4,
-    isViewed: true,
-    images: ['https://picsum.photos/seed/story4/400/700'],
-  },
-  {
-    id: 's5',
-    user: u5,
-    isViewed: false,
-    images: [
-      'https://picsum.photos/seed/story5a/400/700',
-      'https://picsum.photos/seed/story5b/400/700',
-    ],
-  },
-  {
-    id: 's6',
-    user: u6,
-    isViewed: true,
-    images: ['https://picsum.photos/seed/story6/400/700'],
-  },
-  {
-    id: 's7',
-    user: u7,
-    isViewed: false,
-    images: [
-      'https://picsum.photos/seed/story7a/400/700',
-      'https://picsum.photos/seed/story7b/400/700',
-    ],
   },
 ];
 

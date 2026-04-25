@@ -541,6 +541,52 @@
       ]
     },
     {
+      "name": "PostService - Stories",
+      "description": "Story feed, creation, and engagement",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/post/story/active",
+          "description": "Get active stories for feed",
+          "requiresAuth": false,
+          "queryParameters": {
+            "limit": 20
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/story",
+          "description": "Create a new story",
+          "requiresAuth": true,
+          "contentType": "multipart/form-data",
+          "requestBody": {
+            "ownerDisplayName": "John Doe",
+            "ownerAvatarUrl": "https://example.com/avatar.jpg",
+            "files": "[Binary file data - images/videos, max 50MB each]",
+            "displayOrders": [0, 1]
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/story/{storyGroupId}",
+          "description": "Delete a story group (owner only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "storyGroupId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/story/{storyItemId}/view",
+          "description": "Mark a story item as viewed",
+          "requiresAuth": true,
+          "pathParameters": {
+            "storyItemId": "guid"
+          }
+        }
+      ]
+    },
+    {
       "name": "MessageService - Conversations",
       "description": "Direct messaging and conversation management",
       "endpoints": [
