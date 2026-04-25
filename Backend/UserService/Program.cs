@@ -15,7 +15,9 @@ builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<UserDbContext>("userdb");
 
 // Add Redis
-builder.AddRedisClient("cache");
+builder.Services.AddStackExchangeRedisCache(options => {
+    options.Configuration = builder.Configuration["Redis:ConnectionString"];
+});
 
 // Add RabbitMQ
 builder.AddRabbitMQClient("messaging");

@@ -14,4 +14,7 @@ public interface IUserProfileService
     Task<UserProfileDto> DeleteCoverImageAsync(Guid userId);
     Task DeleteProfileAsync(Guid userId);
     Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string query);
+    Task SaveRecentSearchAsync(Guid currentUserId, SearchUserProfileDto searchedUser);
+    Task<List<SearchUserProfileDto>> GetRecentSearchesAsync(Guid currentUserId);
+    Task RemoveRecentSearchAsync(Guid currentUserId, Guid targetUserId);
 }

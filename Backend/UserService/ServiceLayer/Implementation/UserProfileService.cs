@@ -1,5 +1,7 @@
-using CloudinaryDotNet;
+﻿using CloudinaryDotNet;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 using UserService.DTOs;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
@@ -12,17 +14,24 @@ public class UserProfileService : IUserProfileService
     private readonly ILogger<UserProfileService> _logger;
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IBlockService _blockService;
+    private readonly IDistributedCache _cache;
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private const int MaxRecentSearches = 10;
+    private const int SearchCacheTtlMinutes = 5;
 
     public UserProfileService(
         UserDbContext context,
         ILogger<UserProfileService> logger,
         ICloudinaryService cloudinaryService,
-        IBlockService blockService)
+        IBlockService blockService,
+        IDistributedCache cache)
     {
         _context = context;
         _logger = logger;
         _cloudinaryService = cloudinaryService;
         _blockService = blockService;
+        _cache = cache;
     }
 
     public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId, Guid userId)
@@ -360,25 +369,103 @@ public class UserProfileService : IUserProfileService
     {
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var results = await _context.UserProfiles
-                 .Where(p =>
-                     EF.Functions.ILike(p.DisplayName!, $"%{search}%") ||
-                     (p.Bio != null && EF.Functions.ILike(p.Bio!, $"%{search}%")))
-                 .Select(p => new SearchUserProfileDto
-                 {
-                     UserId = p.UserId,
-                     DisplayName = p.DisplayName,
-                     Bio = p.Bio,
-                     AvatarUrl = p.AvatarUrl,
-                     AvatarPublicId = p.AvatarPublicId,
-                     FollowersCount = p.FollowersCount
-                 })
-                 .ToListAsync();
+            // Check cache first
+            var cacheKey = $"search:{search.ToLower().Trim()}";
+            var cached = await _cache.GetStringAsync(cacheKey);
+
+            List<SearchUserProfileDto> results;
+
+            if (cached != null)
+            {
+                // Cache hit → return immediately
+                results = JsonSerializer.Deserialize<List<SearchUserProfileDto>>(cached, _jsonOptions)!;
+            }
+            else
+            {
+                    results = await _context.UserProfiles
+                         .Where(p =>
+                             EF.Functions.ILike(p.DisplayName!, $"%{search}%") ||
+                             (p.Bio != null && EF.Functions.ILike(p.Bio!, $"%{search}%")))
+                         .Select(p => new SearchUserProfileDto
+                         {
+                             UserId = p.UserId,
+                             DisplayName = p.DisplayName,
+                             Bio = p.Bio,
+                             AvatarUrl = p.AvatarUrl,
+                             AvatarPublicId = p.AvatarPublicId,
+                             FollowersCount = p.FollowersCount
+                         })
+                         .ToListAsync();
+                    // Save to cache (5 min TTL)
+                    await _cache.SetStringAsync(cacheKey,
+                        JsonSerializer.Serialize(results),
+                        new DistributedCacheEntryOptions
+                        {
+                            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(SearchCacheTtlMinutes)
+                        });
+            }
             return results;
         }
         else
         {
             throw new ArgumentException("Search query cannot be empty");
         }
+    }
+
+    // 2️⃣ Save a user to current user's recent searches
+    public async Task SaveRecentSearchAsync(Guid currentUserId, SearchUserProfileDto searchedUser)
+    {
+        var key = $"recent_searches:{currentUserId}";
+        var cached = await _cache.GetStringAsync(key);
+
+        var recentList = cached != null
+            ? JsonSerializer.Deserialize<List<SearchUserProfileDto>>(cached, _jsonOptions)!
+            : new List<SearchUserProfileDto>();
+
+        // Remove duplicate if already exists
+        recentList.RemoveAll(u => u.UserId == searchedUser.UserId);
+
+        // Add to top
+        recentList.Insert(0, searchedUser);
+
+        // Keep only last N
+        if (recentList.Count > MaxRecentSearches)
+            recentList = recentList.Take(MaxRecentSearches).ToList();
+
+        // Save back (e.g. 7 days TTL)
+        await _cache.SetStringAsync(key,
+            JsonSerializer.Serialize(recentList),
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
+            });
+    }
+
+    // 3️⃣ Get recent searches for a user
+    public async Task<List<SearchUserProfileDto>> GetRecentSearchesAsync(Guid currentUserId)
+    {
+        var key = $"recent_searches:{currentUserId}";
+        var cached = await _cache.GetStringAsync(key);
+
+        return cached != null
+            ? JsonSerializer.Deserialize<List<SearchUserProfileDto>>(cached, _jsonOptions)!
+            : new List<SearchUserProfileDto>();
+    }
+
+    // 4️⃣ Remove one recent search
+    public async Task RemoveRecentSearchAsync(Guid currentUserId, Guid targetUserId)
+    {
+        var key = $"recent_searches:{currentUserId}";
+        var cached = await _cache.GetStringAsync(key);
+        if (cached == null) return;
+
+        var recentList = JsonSerializer.Deserialize<List<SearchUserProfileDto>>(cached, _jsonOptions)!;
+        recentList.RemoveAll(u => u.UserId == targetUserId);
+
+        await _cache.SetStringAsync(key, JsonSerializer.Serialize(recentList),
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
+            });
     }
 }
