@@ -326,4 +326,33 @@ public class UserProfileController : ControllerBase
         await _userProfileService.RemoveRecentSearchAsync(userId, targetUserId);
         return Ok();
     }
+
+    [HttpPut("me/displayname")]
+    public async Task<ActionResult<UserProfileDto>> UpdateDisplayName([FromBody] UpdateDisplayNameRequest req)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var updatedProfile = await _userProfileService.UpdateDisplayNameAsync(userId, req.DisplayName);
+            return Ok(updatedProfile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Profile not found" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating display name for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while updating display name" });
+        }
+    }
+
 }

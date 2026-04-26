@@ -94,6 +94,14 @@
         },
         {
           "method": "PUT",
+          "path": "/user/userprofile/me/displayname",
+          "description": "Update user display name",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": "John Doe"
+        },
+        {
+          "method": "PUT",
           "path": "/user/userprofile/me/bio",
           "description": "Update user bio only",
           "requiresAuth": true,
@@ -593,7 +601,7 @@
             "ownerDisplayName": "John Doe",
             "ownerAvatarUrl": "https://example.com/avatar.jpg",
             "files": "[Binary file data - images/videos, max 50MB each]",
-            "displayOrders": [0, 1]
+            "displayOrders": [ 0, 1 ]
           }
         },
         {

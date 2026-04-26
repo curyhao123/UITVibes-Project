@@ -468,4 +468,38 @@ public class UserProfileService : IUserProfileService
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
             });
     }
+    public async Task<SetDisplayNameDto> UpdateDisplayNameAsync(Guid currentUserId, string displayName)
+    {
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.UserId == currentUserId);
+
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("Profile not found");
+        }
+
+        var trimmedDisplayName = displayName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedDisplayName))
+        {
+            throw new ArgumentException("Display name cannot be empty");
+        }
+
+        if (trimmedDisplayName.Length > 100)
+        {
+            throw new ArgumentException("Display name cannot exceed 100 characters");
+        }
+
+        profile.DisplayName = trimmedDisplayName;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated display name for user {UserId}", currentUserId);
+
+        return new SetDisplayNameDto
+        {
+            DisplayName = profile.DisplayName!
+        };
+    }
 }
