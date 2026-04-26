@@ -14,30 +14,39 @@ import { Feather } from '@expo/vector-icons';
 import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { useApp } from '../../context/AppContext';
+import * as api from '../../services/api';
 import { AppColors, borderRadius } from '../../constants/theme';
 
 export default function OnboardingUsernameScreen() {
   const router = useRouter();
   const { completeOnboardingStep, saveOnboardingData } = useApp();
 
-  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
-  const isFormFilled = username.trim().length > 0;
+  const isFormFilled = displayName.trim().length > 0;
 
-  const validateUsername = (value: string) => {
+  const validateDisplayName = async (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setError('Username is required.');
+      setError('Display name is required.');
       return false;
     }
     if (trimmed.length < 3) {
-      setError('Username must be at least 3 characters.');
+      setError('Display name must be at least 3 characters.');
       return false;
     }
     if (!/^[a-zA-Z0-9._]+$/.test(trimmed)) {
       setError('Only letters, numbers, periods, and underscores allowed.');
+      return false;
+    }
+    setIsChecking(true);
+    const isAvailable = await api.checkDisplayNameAvailable(trimmed);
+    setIsChecking(false);
+    if (!isAvailable) {
+      setError('This display name is already taken. Try another one.');
       return false;
     }
     setError('');
@@ -45,14 +54,17 @@ export default function OnboardingUsernameScreen() {
   };
 
   const handleContinue = async () => {
-    if (!validateUsername(username)) return;
+    if (!validateDisplayName(displayName)) return;
     setIsLoading(true);
-    saveOnboardingData({ username: username.trim() });
+    saveOnboardingData({ displayName: displayName.trim() });
     await new Promise((r) => setTimeout(r, 300));
     completeOnboardingStep();
     setIsLoading(false);
     router.push('/auth/onboarding-avatar-bio');
   };
+
+  // Progress indicator (3 steps: displayName, avatar/bio, find friends)
+  const [step1Active, step2Active, step3Active] = [true, false, false];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,10 +79,9 @@ export default function OnboardingUsernameScreen() {
         >
           {/* Progress indicator */}
           <View style={styles.progressRow}>
-            <View style={styles.progressDot} />
-            <View style={[styles.progressDot, styles.progressDotActive]} />
-            <View style={styles.progressDot} />
-            <View style={styles.progressDot} />
+            <View style={[styles.progressDot, step1Active && styles.progressDotActive]} />
+            <View style={[styles.progressDot, step2Active && styles.progressDotActive]} />
+            <View style={[styles.progressDot, step3Active && styles.progressDotActive]} />
           </View>
 
           {/* Back */}
@@ -83,17 +94,17 @@ export default function OnboardingUsernameScreen() {
           </TouchableOpacity>
 
           {/* Heading */}
-          <Text style={styles.title}>Choose your username</Text>
+          <Text style={styles.title}>Choose your display name</Text>
           <Text style={styles.subtitle}>
-            Pick a unique handle for your profile. You can always change it later.
+            Pick a display name for your profile. This cannot be changed later.
           </Text>
 
-          {/* Username preview */}
-          {username.trim().length > 0 && (
+          {/* Display name preview */}
+          {displayName.trim().length > 0 && (
             <View style={styles.usernamePreview}>
               <Text style={styles.previewAt}>@</Text>
               <Text style={styles.previewHandle} numberOfLines={1}>
-                {username.replace(/\s+/g, '_').toLowerCase()}
+                {displayName.replace(/\s+/g, '_').toLowerCase()}
               </Text>
             </View>
           )}
@@ -101,14 +112,14 @@ export default function OnboardingUsernameScreen() {
           {/* Form */}
           <View style={styles.formSection}>
             <FormInput
-              placeholder="username"
-              value={username}
+              placeholder="display name"
+              value={displayName}
               onChangeText={(text) => {
-                setUsername(text);
-                if (error) validateUsername(text);
+                setDisplayName(text);
+                if (error) setError('');
               }}
-              onBlur={() => validateUsername(username)}
-              error={error}
+              onBlur={() => validateDisplayName(displayName)}
+              error={isChecking ? '' : error}
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="username"
@@ -119,8 +130,8 @@ export default function OnboardingUsernameScreen() {
           <Button
             title="Continue"
             onPress={handleContinue}
-            loading={isLoading}
-            disabled={!isFormFilled}
+            loading={isLoading || isChecking}
+            disabled={!isFormFilled || isChecking}
             size="lg"
           />
         </ScrollView>

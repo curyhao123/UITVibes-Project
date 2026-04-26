@@ -114,8 +114,13 @@ export async function getUserStories(userId: string): Promise<Story[]> {
       `/post/story/user/${userId}`,
       { params: { limit: 20 } },
     );
+    if (!data || !Array.isArray(data)) {
+      console.warn("[getUserStories] Expected array, got:", data);
+      return [];
+    }
     return data.map(transformFeedItem);
-  } catch {
+  } catch (err: any) {
+    console.error("[getUserStories] API error:", err?.response?.status, err?.response?.data, err?.message);
     await delay(200);
     return [];
   }

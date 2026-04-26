@@ -26,7 +26,6 @@ import * as api from '../../services/api';
 
 /** Snapshot khi mở Edit Profile — Cancel/đóng modal khôi phục về đây, chỉ Save mới gọi API */
 type EditFormSnapshot = {
-  displayName: string;
   bio: string;
   website: string;
   avatar: string;
@@ -38,7 +37,6 @@ export default function ProfileScreen() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);
-  const [editDisplayName, setEditDisplayName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -111,12 +109,10 @@ export default function ProfileScreen() {
   const openEditModal = () => {
     if (!currentUser) return;
     setEditSnapshot({
-      displayName: currentUser.displayName,
       bio: currentUser.bio,
       website: currentUser.website || '',
       avatar: currentUser.avatar || '',
     });
-    setEditDisplayName(currentUser.displayName);
     setEditBio(currentUser.bio);
     setEditWebsite(currentUser.website || '');
     setAvatarDraftUri(null);
@@ -133,10 +129,6 @@ export default function ProfileScreen() {
   };
 
   const handleSave = async () => {
-    if (!editDisplayName.trim()) {
-      Alert.alert('Error', 'Display name cannot be empty.');
-      return;
-    }
     if (!editSnapshot) return;
 
     setIsSaving(true);
@@ -150,7 +142,6 @@ export default function ProfileScreen() {
       }
 
       await updateProfile({
-        displayName: editDisplayName.trim(),
         bio: editBio.trim(),
         website: editWebsite.trim() || undefined,
       });
@@ -234,7 +225,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
-        title={currentUser.username}
+        title={currentUser.displayName}
         avatarUser={currentUser}
         rightAction={
           <TouchableOpacity
@@ -394,17 +385,12 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSave}
-                disabled={isSaving || !editDisplayName.trim()}
+                disabled={isSaving}
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color={AppColors.primary} />
                 ) : (
-                  <Text
-                    style={[
-                      styles.modalSave,
-                      (!editDisplayName.trim() || isSaving) && styles.modalSaveDisabled,
-                    ]}
-                  >
+                  <Text style={styles.modalSave}>
                     Save
                   </Text>
                 )}
@@ -458,19 +444,6 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Display Name</Text>
-              <TextInput
-                style={styles.formInput}
-                value={editDisplayName}
-                onChangeText={setEditDisplayName}
-                placeholder="Enter your display name"
-                placeholderTextColor={AppColors.textMuted}
-                maxLength={50}
-                editable={!isSaving}
-              />
             </View>
 
             <View style={styles.formGroup}>
@@ -777,9 +750,6 @@ const styles = StyleSheet.create({
     ...Typography.bodySemibold,
     fontSize: 16,
     color: AppColors.primary,
-  },
-  modalSaveDisabled: {
-    color: AppColors.iconMuted,
   },
   modalForm: {
     flex: 1,

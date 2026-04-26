@@ -37,12 +37,14 @@ export interface BE_UserProfile {
 
 /** BE có thể trả camelCase hoặc PascalCase tùy cấu hình JSON */
 export function normalizeAvatarUrlFromProfile(profile: BE_UserProfile): string {
+  if (!profile) return "";
   const raw = profile as unknown as Record<string, unknown>;
   const v = profile.avatarUrl ?? raw.avatarUrl ?? raw.AvatarUrl;
   return typeof v === "string" ? v.trim() : "";
 }
 
 export function normalizeCoverUrlFromProfile(profile: BE_UserProfile): string {
+  if (!profile) return "";
   const raw = profile as unknown as Record<string, unknown>;
   const v = profile.coverImageUrl ?? raw.coverImageUrl ?? raw.CoverImageUrl;
   return typeof v === "string" ? v.trim() : "";
@@ -59,9 +61,25 @@ export interface BE_UpdateProfileRequest {
   website?: string;
 }
 
+export interface BE_SearchUserProfileDto {
+  userId: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  avatarPublicId: string;
+  followersCount: number;
+}
+
 /** PUT /user/userprofile/me/bio */
 export interface BE_UpdateBioRequest {
   bio?: string | null;
+}
+
+export interface BE_FollowerListDto {
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  followedAt: string;
 }
 
 export interface BE_FollowStats {
