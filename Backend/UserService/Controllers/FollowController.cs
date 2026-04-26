@@ -83,28 +83,20 @@ public class FollowController : ControllerBase
     
     //[Authorize]
     [HttpGet("{userId}/is-following")]
-    public async Task<ActionResult<bool>> IsFollowing(Guid userId)
+    public async Task<ActionResult<bool>> IsFollowing(Guid userId, [FromQuery] Guid? currentUserId = null)
     {
-        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        if (!currentUserId.HasValue)
         {
-            return Unauthorized(new { message = "User ID not found in request headers" });
+            return Ok(new { isFollowing = false });
         }
-
-        var isFollowing = await _followService.IsFollowingAsync(currentUserId, userId);
+        var isFollowing = await _followService.IsFollowingAsync(currentUserId.Value, userId);
         return Ok(new { isFollowing });
     }
 
  
     [HttpGet("{userId}/stats")]
-    public async Task<ActionResult<UserFollowStatsDto>> GetFollowStats(Guid userId)
+    public async Task<ActionResult<UserFollowStatsDto>> GetFollowStats(Guid userId, [FromQuery] Guid? currentUserId = null)
     {
-        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
-        {
-            return Unauthorized(new { message = "User ID not found in request headers" });
-        }
-
         try
         {
             var stats = await _followService.GetFollowStatsAsync(userId, currentUserId);

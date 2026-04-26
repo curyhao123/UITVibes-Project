@@ -17,5 +17,6 @@ public interface IUserProfileService
     Task SaveRecentSearchAsync(Guid currentUserId, SearchUserProfileDto searchedUser);
     Task<List<SearchUserProfileDto>> GetRecentSearchesAsync(Guid currentUserId);
     Task RemoveRecentSearchAsync(Guid currentUserId, Guid targetUserId);
-    Task<SetDisplayNameDto> UpdateDisplayNameAsync(Guid currentUserId, string displayName);
+    Task<SetDisplayNameDto> UpdateDisplayNameAsync(Guid currentUserId,string displayName);
+    Task<bool> IsDisplayNameAvailableAsync(string displayName);
 }

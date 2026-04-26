@@ -7,6 +7,7 @@ public class UserFollowStatsDto
     public string? AvatarUrl { get; set; }
     public int FollowersCount { get; set; }
     public int FollowingCount { get; set; }
+    public int PostsCount { get; set; }
     public bool IsFollowing { get; set; } // Current user follows this user
     public bool IsFollowedBy { get; set; } // This user follows current user
 }

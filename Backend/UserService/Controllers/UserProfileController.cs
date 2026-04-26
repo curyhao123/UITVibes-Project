@@ -90,6 +90,46 @@ public class UserProfileController : ControllerBase
         }
     }
 
+    [HttpPut("me/displayname")]
+    public async Task<ActionResult<UserProfileDto>> UpdateDisplayName([FromBody] UpdateDisplayNameRequest req)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var updatedProfile = await _userProfileService.UpdateDisplayNameAsync(userId, req.DisplayName);
+            return Ok(updatedProfile);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Profile not found" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating display name for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while updating display name" });
+        }
+    }
+
+    [HttpGet("check-displayname")]
+    public async Task<ActionResult<object>> CheckDisplayNameAvailable([FromQuery] string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return BadRequest(new { message = "Display name is required" });
+        }
+
+        var isAvailable = await _userProfileService.IsDisplayNameAvailableAsync(displayName);
+        return Ok(new { available = isAvailable });
+    }
+
     [HttpPost("me/avatar")]
     [RequestSizeLimit(5 * 1024 * 1024)] // 5MB limit
     public async Task<ActionResult<UserProfileDto>> UploadAvatar([FromForm] UploadImageRequest request)
@@ -287,7 +327,6 @@ public class UserProfileController : ControllerBase
         var results = await _userProfileService.SearchUserProfileAsync(query);
         return Ok(results);
     }
-
     // Call this when user CLICKS on a search result
     [HttpPost("recent-searches")]
     public async Task<IActionResult> SaveRecent([FromBody] SearchUserProfileDto user)
@@ -327,32 +366,5 @@ public class UserProfileController : ControllerBase
         return Ok();
     }
 
-    [HttpPut("me/displayname")]
-    public async Task<ActionResult<UserProfileDto>> UpdateDisplayName([FromBody] UpdateDisplayNameRequest req)
-    {
-        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
-        {
-            return Unauthorized(new { message = "User ID not found in request headers" });
-        }
-        try
-        {
-            var updatedProfile = await _userProfileService.UpdateDisplayNameAsync(userId, req.DisplayName);
-            return Ok(updatedProfile);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { message = "Profile not found" });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating display name for user {UserId}", userId);
-            return StatusCode(500, new { message = "An error occurred while updating display name" });
-        }
-    }
-
+    
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ export default function SearchScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -34,20 +36,24 @@ export default function SearchScreen() {
   const loadInitialData = async () => {
     const allPosts = await getPosts();
     setPosts(allPosts);
-    const allUsers = await searchUsers('');
-    setUsers(allUsers);
   };
 
-  const handleSearch = async (query: string) => {
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    if (query.length > 0) {
-      const results = await searchUsers(query);
-      setUsers(results);
-    } else {
-      const allUsers = await searchUsers('');
-      setUsers(allUsers);
-    }
-  };
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const trimmed = query.trim();
+        const results = await searchUsers(trimmed);
+        setUsers(results);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+  }, []);
 
   const renderPostItem = ({ item }: { item: Post }) => (
     <TouchableOpacity
@@ -85,13 +91,10 @@ export default function SearchScreen() {
     >
       <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.avatar} />
       <View style={styles.userInfo}>
-        <View style={styles.nameRow}>
-          <Text style={styles.username}>{item.username}</Text>
-          {item.isVerified && (
-            <Feather name="check-circle" size={12} color={AppColors.primary} style={{ marginLeft: 4 }} />
-          )}
-        </View>
-        <Text style={styles.displayName}>{item.displayName}</Text>
+        <Text style={styles.displayNameHandle}>@{item.displayName}</Text>
+        {item.bio ? (
+          <Text style={styles.userBio} numberOfLines={1}>{item.bio}</Text>
+        ) : null}
       </View>
       <TouchableOpacity
         style={[styles.followButton, item.isFollowing && styles.followingButton]}
@@ -170,12 +173,33 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
         />
       ) : (
-        <FlatList
-          data={users}
-          renderItem={renderUserItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          {isSearching ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={AppColors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={users}
+              renderItem={renderUserItem}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Feather name="users" size={48} color={AppColors.border} strokeWidth={1.5} />
+                  <Text style={styles.emptyTitle}>
+                    {searchQuery.length > 0 ? `No users found for "@${searchQuery}"` : 'Search for people'}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {searchQuery.length > 0
+                      ? 'Try a different search term'
+                      : 'Find friends by their display name'}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -253,14 +277,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
   },
-  username: {
-    fontWeight: '600',
-    fontSize: 14,
+  displayNameHandle: {
+    fontWeight: '700',
+    fontSize: 15,
     color: AppColors.text,
+    letterSpacing: -0.2,
   },
-  displayName: {
+  userBio: {
     color: AppColors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
+    marginTop: 2,
   },
   nameRow: {
     flexDirection: 'row',
@@ -299,5 +325,38 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
     marginLeft: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    ...Typography.body,
+    fontWeight: '600',
+    color: AppColors.text,
+    textAlign: 'center',
+    marginTop: 16,
+    fontSize: 16,
+  },
+  emptySubtitle: {
+    ...Typography.body,
+    color: AppColors.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    fontSize: 14,
+  },
+  emptyText: {
+    ...Typography.body,
+    color: AppColors.textMuted,
+    textAlign: 'center',
   },
 });

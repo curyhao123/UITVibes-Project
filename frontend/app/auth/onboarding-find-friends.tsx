@@ -81,9 +81,7 @@ export default function OnboardingFindFriendsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [localSuggested, setLocalSuggested] = useState<User[]>([]);
 
-  const displayName = onboardingData.fullName
-    ? onboardingData.fullName.split(' ')[0]
-    : 'there';
+  const displayName = onboardingData.displayName || 'there';
 
   useEffect(() => {
     fetchSuggestedUsers();
@@ -147,7 +145,7 @@ export default function OnboardingFindFriendsScreen() {
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeEmoji}>👋</Text>
               <Text style={styles.welcomeTitle}>
-                Welcome{onboardingData.fullName ? `, ${displayName}` : ''}!
+                Welcome{onboardingData.displayName ? `, ${onboardingData.displayName}` : ''}!
               </Text>
               <Text style={styles.welcomeSubtitle}>
                 Find your friends and start vibing together.

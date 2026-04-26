@@ -148,6 +148,7 @@ public class FollowService : IFollowService
             AvatarUrl = profile.AvatarUrl,
             FollowersCount = profile.FollowersCount,
             FollowingCount = profile.FollowingCount,
+            PostsCount = 0,
             IsFollowing = false,
             IsFollowedBy = false
         };
