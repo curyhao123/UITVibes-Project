@@ -6,7 +6,7 @@ using UserService.Models;
 namespace UserService.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20260414000100")]
+    [Migration("20260414000100_AddUserProfileSearchIndexes")]
     public partial class AddUserProfileSearchIndexes : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

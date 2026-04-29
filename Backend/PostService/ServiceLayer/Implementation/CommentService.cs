@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -24,31 +24,40 @@ public class CommentService : ICommentService
         if (post == null)
             throw new KeyNotFoundException("Post not found");
 
-        // If replying to a comment, check parent exists
+        // If replying to a comment, flatten to root (flattened threading)
+        Guid? rootCommentId = null;
         if (request.ParentCommentId.HasValue)
         {
             var parentComment = await _context.Comments
                 .FirstOrDefaultAsync(c => c.Id == request.ParentCommentId.Value && !c.IsDeleted);
-            
+
             if (parentComment == null)
                 throw new KeyNotFoundException("Parent comment not found");
 
-            // ✅ RESTRICT: Only allow replying to top-level comments (depth = 1)
-            if (parentComment.ParentCommentId.HasValue)
-                throw new InvalidOperationException("Cannot reply to a reply. You can only reply to top-level comments.");
+            // Find root comment (could be parent itself if already top-level)
+            var rootComment = parentComment.ParentCommentId == null
+                ? parentComment
+                : await _context.Comments
+                    .FirstOrDefaultAsync(c => c.Id == parentComment.ParentCommentId && !c.IsDeleted);
 
-            // Increment parent's replies count
-            parentComment.RepliesCount++;
+            if (rootComment == null)
+                throw new KeyNotFoundException("Root comment not found");
+
+            // All replies point to root comment
+            rootCommentId = rootComment.Id;
+
+            // Increment root's replies count
+            rootComment.RepliesCount++;
         }
 
-        // Create comment
+        // Create comment — ParentCommentId always points to root
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
             PostId = postId,
             UserId = userId,
             Content = request.Content,
-            ParentCommentId = request.ParentCommentId,
+            ParentCommentId = rootCommentId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

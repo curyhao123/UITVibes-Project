@@ -14,6 +14,58 @@ const AVATAR_URL_PREFIX = "@uitvibes_avatar_url_";
 
 type LocalHandlePayload = { userId: string; username: string };
 
+const RECENT_SEARCHES_KEY = "@uitvibes_recent_searches";
+const MAX_RECENT_SEARCHES = 20;
+
+export type RecentSearch = {
+  userId: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  followersCount: number;
+  searchedAt: number;
+};
+
+export async function getLocalRecentSearches(): Promise<RecentSearch[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as RecentSearch[];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveLocalRecentSearch(item: RecentSearch): Promise<void> {
+  try {
+    const existing = await getLocalRecentSearches();
+    const filtered = existing.filter((s) => s.userId !== item.userId);
+    const updated = [item, ...filtered].slice(0, MAX_RECENT_SEARCHES);
+    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function removeLocalRecentSearch(userId: string): Promise<void> {
+  try {
+    const existing = await getLocalRecentSearches();
+    const updated = existing.filter((s) => s.userId !== userId);
+    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function clearLocalRecentSearches(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function persistUserAvatarUrl(
   userId: string,
   url: string,

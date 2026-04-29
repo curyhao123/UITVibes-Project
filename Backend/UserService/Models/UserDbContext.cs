@@ -31,6 +31,7 @@ public class UserDbContext : DbContext
             entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
             entity.Property(e => e.Location).HasMaxLength(100);
             entity.Property(e => e.Website).HasMaxLength(200);
+            entity.Property(e => e.FullName).HasMaxLength(200);
         });
 
         modelBuilder.Entity<SocialLink>(entity =>

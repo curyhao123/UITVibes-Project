@@ -61,6 +61,14 @@ export interface BE_UpdateProfileRequest {
   website?: string;
 }
 
+export interface BE_RecentSearchItem {
+  userId: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  followersCount: number;
+}
+
 export interface BE_SearchUserProfileDto {
   userId: string;
   displayName: string;
@@ -126,10 +134,12 @@ export interface BE_CommentResponse {
   userId: string;
   content: string;
   likesCount: number;
+  repliesCount?: number;
   isLikedByCurrentUser: boolean;
   createdAt: string;
+  updatedAt?: string;
   replies: BE_CommentResponse[];
-  parentId: string | null;
+  parentCommentId: string | null; // PascalCase from backend
 }
 
 export interface BE_ConversationResponse {
