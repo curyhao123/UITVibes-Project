@@ -76,6 +76,8 @@ interface AppContextType {
   toggleFollow: (userId: string) => Promise<void>;
   updateProfile: (updates: {
     displayName?: string;
+    fullName?: string;
+    gender?: string;
     bio?: string;
     website?: string;
   }) => Promise<void>;
@@ -501,6 +503,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const updateProfile = useCallback(
     async (updates: {
       displayName?: string;
+      fullName?: string;
+      gender?: string;
       bio?: string;
       website?: string;
     }) => {

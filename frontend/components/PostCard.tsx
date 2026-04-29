@@ -108,14 +108,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <View style={styles.overlayBottomLeft}>
               <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
                 <Avatar user={post.user} size="small" />
-                <View style={styles.overlayUserText}>
-                  <Text style={styles.overlayName} numberOfLines={1}>
-                    {post.user.displayName || post.user.username}
-                  </Text>
-                  <Text style={styles.overlayHandle} numberOfLines={1}>
-                    @{post.user.username}
-                  </Text>
-                </View>
+                <Text style={styles.overlayName} numberOfLines={1}>
+                  @{post.user.displayName || post.user.username}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -139,7 +134,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Feather name="message-circle" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.actionCount}>{post.comments.length}</Text>
+            <Text style={styles.actionCount}>{post.commentsCount ?? 0}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleShare} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
@@ -160,16 +155,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       </View>
 
       <View style={styles.captionContainer}>
-        <Text style={styles.caption}>
-          <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
-          {' '}
-          {post.caption}
-        </Text>
+          <Text style={styles.caption}>
+            <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
+            {' '}
+            {post.caption}
+          </Text>
       </View>
 
-      {post.comments.length > 0 && (
+      {(post.commentsCount ?? 0) > 0 && (
         <TouchableOpacity onPress={handleCommentPress}>
-          <Text style={styles.viewComments}>View all {post.comments.length} comments</Text>
+          <Text style={styles.viewComments}>View all {post.commentsCount} comments</Text>
         </TouchableOpacity>
       )}
 
@@ -223,22 +218,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  overlayUserText: {
-    flex: 1,
-  },
   overlayName: {
     ...Typography.captionSemibold,
     fontSize: 14,
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  overlayHandle: {
-    ...Typography.meta,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.92)',
-    marginTop: 1,
     textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,

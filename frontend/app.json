@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "UITVibes",
+    "slug": "UITVibes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "uitvibes",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

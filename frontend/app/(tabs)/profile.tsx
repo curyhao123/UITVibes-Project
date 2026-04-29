@@ -26,10 +26,21 @@ import * as api from '../../services/api';
 
 /** Snapshot khi mở Edit Profile — Cancel/đóng modal khôi phục về đây, chỉ Save mới gọi API */
 type EditFormSnapshot = {
+  fullName: string;
+  gender: string;
   bio: string;
   website: string;
   avatar: string;
 };
+
+/** Gender options for the picker */
+type GenderOption = { label: string; value: string };
+const GENDER_OPTIONS: GenderOption[] = [
+  { label: 'Not specified', value: '' },
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' },
+  { label: 'Other', value: 'other' },
+];
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -37,6 +48,8 @@ export default function ProfileScreen() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editGender, setEditGender] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -109,10 +122,14 @@ export default function ProfileScreen() {
   const openEditModal = () => {
     if (!currentUser) return;
     setEditSnapshot({
+      fullName: currentUser.fullName,
+      gender: currentUser.gender,
       bio: currentUser.bio,
       website: currentUser.website || '',
       avatar: currentUser.avatar || '',
     });
+    setEditFullName(currentUser.fullName);
+    setEditGender(currentUser.gender);
     setEditBio(currentUser.bio);
     setEditWebsite(currentUser.website || '');
     setAvatarDraftUri(null);
@@ -142,6 +159,8 @@ export default function ProfileScreen() {
       }
 
       await updateProfile({
+        fullName: editFullName.trim(),
+        gender: editGender.trim(),
         bio: editBio.trim(),
         website: editWebsite.trim() || undefined,
       });
@@ -443,6 +462,45 @@ export default function ProfileScreen() {
                     <Text style={styles.removePhotoText}>Remove</Text>
                   </TouchableOpacity>
                 )}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Full Name</Text>
+              <TextInput
+                style={styles.formInput}
+                value={editFullName}
+                onChangeText={setEditFullName}
+                placeholder="Your full name"
+                placeholderTextColor={AppColors.textMuted}
+                maxLength={100}
+                editable={!isSaving}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Gender</Text>
+              <View style={styles.genderPickerRow}>
+                {GENDER_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.genderOption,
+                      editGender === opt.value && styles.genderOptionSelected,
+                    ]}
+                    onPress={() => setEditGender(opt.value)}
+                    disabled={isSaving}
+                  >
+                    <Text
+                      style={[
+                        styles.genderOptionText,
+                        editGender === opt.value && styles.genderOptionTextSelected,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
@@ -826,6 +884,32 @@ const styles = StyleSheet.create({
   formInputMultiline: {
     height: 80,
     textAlignVertical: 'top',
+  },
+  genderPickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  genderOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  genderOptionSelected: {
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
+  },
+  genderOptionText: {
+    ...Typography.caption,
+    color: AppColors.text,
+  },
+  genderOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
   },
   removeConfirmBackdrop: {
     flex: 1,

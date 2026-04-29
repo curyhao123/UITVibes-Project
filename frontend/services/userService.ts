@@ -203,9 +203,11 @@ function transformBEUserProfile(
     id: profile?.userId ?? "",
     username: "",
     displayName: profile?.displayName ?? "",
+    fullName: profile?.fullName ?? profile?.displayName ?? "",
     avatar: normalizeAvatarUrlFromProfile(profile),
     coverImage: normalizeCoverUrlFromProfile(profile),
     bio: profile?.bio || "",
+    gender: profile?.gender || "",
     website: profile?.website || undefined,
     followers: stats?.followersCount ?? 0,
     following: stats?.followingCount ?? 0,
@@ -235,9 +237,11 @@ export async function fetchUserById(id: string): Promise<User> {
       id,
       username: "",
       displayName: "User",
+      fullName: "",
       avatar: "",
       coverImage: "",
       bio: "",
+      gender: "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -273,19 +277,21 @@ export async function getUserById(id: string): Promise<User | undefined> {
     if (id === "current") {
       const existing = getCurrentUser();
       if (existing) return existing;
-      return {
-        id: "current",
-        username: "anhvu",
-        displayName: "Anh Vu",
-        avatar: "https://i.pravatar.cc/150?img=33",
-        coverImage: "",
-        bio: "Software engineer \\ud83d\\udcbb",
-        followers: 1240,
-        following: 380,
-        posts: 45,
-        isVerified: false,
-      } as User;
     }
+    return {
+      id: "current",
+      username: "anhvu",
+      displayName: "Anh Vu",
+      fullName: "Vũ Anh",
+      avatar: "https://i.pravatar.cc/150?img=33",
+      coverImage: "",
+      bio: "Software engineer \\ud83d\\udcbb",
+      gender: "male",
+      followers: 1240,
+      following: 380,
+      posts: 45,
+      isVerified: false,
+    } as User;
     return mockUsers.find((user) => user.id === id);
   }
 }
@@ -346,9 +352,11 @@ export async function getCurrentUserProfile(): Promise<User> {
       id: "current",
       username: "anhvu",
       displayName: "Anh Vu",
+      fullName: "Vũ Anh",
       avatar: "https://i.pravatar.cc/150?img=33",
       coverImage: "",
       bio: "Software engineer \\ud83d\\udcbb",
+      gender: "male",
       followers: 1240,
       following: 380,
       posts: 45,
@@ -557,6 +565,8 @@ export async function updateMyBio(bio: string | null): Promise<User> {
 
 export async function updateProfile(updates: {
   displayName?: string;
+  fullName?: string;
+  gender?: string;
   bio?: string;
   website?: string;
 }): Promise<User> {
@@ -564,6 +574,8 @@ export async function updateProfile(updates: {
     const onlyBio =
       updates.bio !== undefined &&
       updates.displayName === undefined &&
+      updates.fullName === undefined &&
+      updates.gender === undefined &&
       updates.website === undefined;
     if (onlyBio) {
       return updateMyBio(updates.bio ?? null);
@@ -572,6 +584,10 @@ export async function updateProfile(updates: {
     const body: BE_UpdateProfileRequest = {};
     if (updates.displayName !== undefined)
       body.displayName = updates.displayName;
+    if (updates.fullName !== undefined)
+      body.fullName = updates.fullName;
+    if (updates.gender !== undefined)
+      body.gender = updates.gender;
     if (updates.bio !== undefined) body.bio = updates.bio;
     if (updates.website !== undefined) body.website = updates.website;
 
@@ -593,6 +609,10 @@ export async function updateProfile(updates: {
     if (existing) {
       if (updates.displayName !== undefined)
         existing.displayName = updates.displayName;
+      if (updates.fullName !== undefined)
+        existing.fullName = updates.fullName;
+      if (updates.gender !== undefined)
+        existing.gender = updates.gender;
       if (updates.bio !== undefined) existing.bio = updates.bio;
       if (updates.website !== undefined) existing.website = updates.website;
       setCurrentUser(existing);
