@@ -32,6 +32,8 @@ export interface BE_UserProfile {
   dateOfBirth: string | null;
   location: string;
   website: string;
+  fullName: string;
+  gender: string;
   socialLinks: Array<{ platform: string; url: string }>;
 }
 
@@ -59,6 +61,8 @@ export interface BE_UpdateProfileRequest {
   dateOfBirth?: string | null;
   location?: string;
   website?: string;
+  fullName?: string;
+  gender?: string;
 }
 
 export interface BE_RecentSearchItem {

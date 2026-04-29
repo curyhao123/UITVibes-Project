@@ -145,6 +145,12 @@ public class UserProfileService : IUserProfileService
         if (request.Website != null)
             profile.Website = request.Website;
 
+        if (request.FullName != null)
+            profile.FullName = request.FullName;
+
+        if (request.Gender != null)
+            profile.Gender = request.Gender;
+
         // Update social links if provided
         if (request.SocialLinks != null)
         {
@@ -199,6 +205,8 @@ public class UserProfileService : IUserProfileService
             DateOfBirth = profile.DateOfBirth == default ? null : profile.DateOfBirth,
             Location = profile.Location,
             Website = profile.Website,
+            FullName = profile.FullName,
+            Gender = profile.Gender,
             SocialLinks = profile.SocialLinks.Select(sl => new SocialLinkDto
             {
                 Id = sl.Id,

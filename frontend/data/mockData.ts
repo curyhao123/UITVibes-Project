@@ -6,9 +6,11 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  fullName: string;
   avatar: string;
   coverImage: string;
   bio: string;
+  gender: string;
   website?: string;
   followers: number;
   following: number;
@@ -46,6 +48,7 @@ export interface Post {
   views?: number;
   location?: string;
   tags?: string[];
+  commentsCount?: number;
 }
 
 export interface Conversation {
@@ -164,9 +167,11 @@ export const mockNewUser: User = {
   id: 'current',
   username: 'newbie',
   displayName: 'New User',
+  fullName: 'New User',
   avatar: 'https://i.pravatar.cc/150?img=47',
   coverImage: '',
   bio: '',
+  gender: '',
   followers: 0,
   following: 0,
   posts: 0,
@@ -181,9 +186,11 @@ export const mockUsers: User[] = [
     id: 'u1',
     username: 'linhphan',
     displayName: 'Linh Phan',
+    fullName: 'Phan Thị Linh',
     avatar: 'https://i.pravatar.cc/150?img=5',
     coverImage: 'https://picsum.photos/seed/cover-u1/800/200',
     bio: 'Travel lover ✈️ Chasing sunsets around Vietnam.',
+    gender: 'female',
     website: 'https://linhphan.travel',
     followers: 3400,
     following: 412,
@@ -196,9 +203,11 @@ export const mockUsers: User[] = [
     id: 'u2',
     username: 'minhduong',
     displayName: 'Minh Duong',
+    fullName: 'Đường Minh',
     avatar: 'https://i.pravatar.cc/150?img=3',
     coverImage: 'https://picsum.photos/seed/cover-u2/800/200',
     bio: 'Foodie 🍕 Street food hunter in Ho Chi Minh City.',
+    gender: 'male',
     followers: 890,
     following: 250,
     posts: 32,
@@ -210,9 +219,11 @@ export const mockUsers: User[] = [
     id: 'u3',
     username: 'thanhhuyen',
     displayName: 'Thanh Huyen',
+    fullName: 'Nguyễn Thanh Huyền',
     avatar: 'https://i.pravatar.cc/150?img=9',
     coverImage: 'https://picsum.photos/seed/cover-u3/800/200',
     bio: 'Fitness coach 💪 DM for training programs.',
+    gender: 'female',
     website: 'https://thanhhuyen.fit',
     followers: 5200,
     following: 180,
@@ -225,9 +236,11 @@ export const mockUsers: User[] = [
     id: 'u4',
     username: 'ductran',
     displayName: 'Duc Tran',
+    fullName: 'Trần Đức',
     avatar: 'https://i.pravatar.cc/150?img=11',
     coverImage: 'https://picsum.photos/seed/cover-u4/800/200',
     bio: 'Music producer 🎵 New EP dropping soon!',
+    gender: 'male',
     followers: 2100,
     following: 310,
     posts: 67,
@@ -239,9 +252,11 @@ export const mockUsers: User[] = [
     id: 'u5',
     username: 'huongle',
     displayName: 'Huong Le',
+    fullName: 'Lê Hương',
     avatar: 'https://i.pravatar.cc/150?img=16',
     coverImage: 'https://picsum.photos/seed/cover-u5/800/200',
     bio: 'Artist 🎨 Commission open! DM for inquiries.',
+    gender: 'female',
     website: 'https://huongle.art',
     followers: 7800,
     following: 450,
@@ -254,9 +269,11 @@ export const mockUsers: User[] = [
     id: 'u6',
     username: 'khoinguyen',
     displayName: 'Khoi Nguyen',
+    fullName: 'Nguyễn Khôi',
     avatar: 'https://i.pravatar.cc/150?img=12',
     coverImage: 'https://picsum.photos/seed/cover-u6/800/200',
     bio: 'Tech geek 💻 Building apps one commit at a time.',
+    gender: 'male',
     followers: 1560,
     following: 290,
     posts: 89,
@@ -268,9 +285,11 @@ export const mockUsers: User[] = [
     id: 'u7',
     username: 'tranhoa',
     displayName: 'Tran Hoa',
+    fullName: 'Trần Hoa',
     avatar: 'https://i.pravatar.cc/150?img=20',
     coverImage: 'https://picsum.photos/seed/cover-u7/800/200',
     bio: 'Fashion blogger 👗 Daily outfit inspo. Collabs → DM',
+    gender: 'female',
     website: 'https://tranhoa.fashion',
     followers: 9800,
     following: 520,
@@ -287,9 +306,11 @@ export const mockActiveUser: User = {
   id: 'current',
   username: 'anhvu',
   displayName: 'Anh Vu',
+  fullName: 'Vũ Anh',
   avatar: 'https://i.pravatar.cc/150?img=33',
   coverImage: 'https://picsum.photos/seed/cover1/800/200',
   bio: 'Software engineer 💻 Coffee addict ☕ Photography 📸',
+  gender: 'male',
   website: 'https://anhvu.dev',
   followers: 1240,
   following: 380,

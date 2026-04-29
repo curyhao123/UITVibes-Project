@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -97,6 +98,15 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Logo / Brand */}
+          <View style={styles.logoSection}>
+            <Image
+              source={require("../../assets/images/UITVibesLogo.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Header */}
           <View style={styles.headerSection}>
             <Text style={styles.title}>Create account</Text>
@@ -221,6 +231,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 24,
     paddingBottom: 16,
+  },
+  logoSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   headerSection: {
     marginBottom: 28,

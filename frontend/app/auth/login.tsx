@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -76,15 +77,11 @@ export default function LoginScreen() {
         >
           {/* Logo / Brand */}
           <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
-              <Feather
-                name="music"
-                size={36}
-                color={AppColors.primary}
-                strokeWidth={1.8}
-              />
-            </View>
-            <Text style={styles.brandName}>UITVibes</Text>
+            <Image
+              source={require("../../assets/images/UITVibesLogo.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Heading */}
@@ -215,20 +212,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
   },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: "#FDF0EC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  brandName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: AppColors.text,
-    letterSpacing: -0.5,
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   headingSection: {
     marginBottom: 28,

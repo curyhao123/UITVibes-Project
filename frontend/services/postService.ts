@@ -9,28 +9,54 @@ import {
 import { fetchUserById } from "./userService";
 
 // ─── Comment transformer ─────────────────────────────────────────────────────
-function transformComment(be: BE_CommentResponse, user?: User): CommentType {
+async function fetchRepliesForComment(commentId: string): Promise<CommentType[]> {
+  try {
+    const { data } = await apiClient.get<BE_CommentResponse[]>(
+      `/post/comment/${commentId}/replies`,
+    );
+    if (!data || !Array.isArray(data)) return [];
+    return Promise.all(
+      data.map(async (r) => {
+        const replyUser = await fetchUserById(r.userId);
+        const reply = await transformComment(r, replyUser);
+        if (r.repliesCount && r.repliesCount > 0) {
+          reply.replies = await fetchRepliesForComment(r.id);
+        }
+        return reply;
+      }),
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function transformComment(be: BE_CommentResponse, user?: User): Promise<CommentType> {
+  const resolvedUser = user || (await fetchUserById(be.userId)) || {
+    id: be.userId,
+    username: "",
+    displayName: "",
+    avatar: "",
+    bio: "",
+    followers: 0,
+    following: 0,
+    posts: 0,
+    isVerified: false,
+  };
+
+  // Recursively transform nested replies with their own users
+  const replies: CommentType[] = be.replies?.length
+    ? await Promise.all(be.replies.map((r) => transformComment(r, undefined)))
+    : [];
+
   return {
     id: be.id,
     userId: be.userId,
-    user: user || {
-      id: be.userId,
-      username: "",
-      displayName: "",
-      avatar: "",
-      bio: "",
-      followers: 0,
-      following: 0,
-      posts: 0,
-      isVerified: false,
-    },
+    user: resolvedUser,
     text: be.content,
     createdAt: be.createdAt,
     likes: be.likesCount,
     isLiked: be.isLikedByCurrentUser,
-    replies: be.replies?.length
-      ? be.replies.map((r) => transformComment(r, user))
-      : [],
+    replies,
     parentId: be.parentCommentId ?? undefined,
   };
 }
@@ -112,6 +138,7 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     views: post.viewsCount || 0,
     location: post.location || undefined,
     tags: post.hashtags || [],
+    commentsCount: post.commentsCount ?? 0,
   };
 }
 
@@ -147,29 +174,14 @@ export async function getPostComments(postId: string): Promise<CommentType[]> {
     );
     if (!data || !Array.isArray(data)) return [];
 
-    // Fetch top-level comments and their replies in parallel
+    // Fetch top-level comments and their full reply trees in parallel
     const comments = await Promise.all(
       data.map(async (c) => {
         const user = await fetchUserById(c.userId);
-        const comment = transformComment(c, user);
+        const comment = await transformComment(c, user);
 
-        // Fetch replies if this comment has replies
         if (c.repliesCount && c.repliesCount > 0) {
-          try {
-            const { data: repliesData } = await apiClient.get<BE_CommentResponse[]>(
-              `/post/comment/${c.id}/replies`,
-            );
-            if (repliesData && Array.isArray(repliesData)) {
-              comment.replies = await Promise.all(
-                repliesData.map(async (r) => {
-                  const replyUser = await fetchUserById(r.userId);
-                  return transformComment(r, replyUser);
-                }),
-              );
-            }
-          } catch {
-            // Replies are non-critical — leave empty on failure
-          }
+          comment.replies = await fetchRepliesForComment(c.id);
         }
 
         return comment;
@@ -303,6 +315,8 @@ export async function createPost(
       id: getCurrentUserId(),
       username: "",
       displayName: "You",
+      fullName: "",
+      gender: "",
       avatar: "",
       bio: "",
       followers: 0,
@@ -354,7 +368,7 @@ export async function addComment(
     body,
   );
   const currentUser = await fetchUserById(data.userId);
-  const comment = transformComment(data, currentUser || undefined);
+  const comment = await transformComment(data, currentUser || undefined);
   return { success: true, comment };
 }
 

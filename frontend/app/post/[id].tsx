@@ -163,6 +163,20 @@ export default function PostDetailScreen() {
     }
   };
 
+  // Recursively finds the comment with matching parentId at any nesting level
+  // and inserts the new reply into its replies array.
+  const insertReply = (comments: Comment[], parentId: string, newReply: Comment): Comment[] => {
+    return comments.map((c) => {
+      if (c.id === parentId) {
+        return { ...c, replies: [newReply, ...(c.replies || [])] };
+      }
+      if (c.replies && c.replies.length > 0) {
+        return { ...c, replies: insertReply(c.replies, parentId, newReply) };
+      }
+      return c;
+    });
+  };
+
   const handleSendComment = async () => {
     if (!post || !commentText.trim() || isSubmitting) return;
 
@@ -177,19 +191,11 @@ export default function PostDetailScreen() {
         setPost((prev) => {
           if (!prev) return prev;
 
-          // Add reply under its parent comment
+          // Add reply at any nesting level via recursive insert
           if (replyTo) {
             return {
               ...prev,
-              comments: prev.comments.map((c) => {
-                if (c.id === replyTo.id) {
-                  return {
-                    ...c,
-                    replies: [newComment, ...(c.replies || [])],
-                  };
-                }
-                return c;
-              }),
+              comments: insertReply(prev.comments, replyTo.id, newComment),
             };
           }
 
@@ -236,7 +242,7 @@ export default function PostDetailScreen() {
       </View>
       <View style={styles.postHeader}>
         <Avatar user={post.user} size="small" showBorder />
-        <Text style={styles.username}>@{post.user.displayName || post.user.username}</Text>
+        <Text style={styles.username}>{post.user.fullName || post.user.displayName}</Text>
       </View>
       <Image source={{ uri: post.image }} style={styles.postImage} />
       <View style={styles.actions}>
@@ -256,8 +262,8 @@ export default function PostDetailScreen() {
         <Text style={styles.likes}>{formatLikes(post.likes)} likes</Text>
       </View>
       <View style={styles.captionContainer}>
-        <Text style={styles.caption}>
-          <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
+          <Text style={styles.caption}>
+          <Text style={styles.captionUsername}>{post.user.fullName || post.user.displayName}</Text>
           {' '}{post.caption}
         </Text>
       </View>
@@ -292,7 +298,7 @@ export default function PostDetailScreen() {
             <View style={styles.replyBanner}>
               <Feather name="corner-down-left" size={12} color={AppColors.textMuted} />
               <Text style={styles.replyBannerText}>
-                Replying to <Text style={styles.replyBannerUsername}>@{replyTo.user.username}</Text>
+                Replying to <Text style={styles.replyBannerUsername}>{replyTo.user.fullName || replyTo.user.displayName}</Text>
               </Text>
               <TouchableOpacity onPress={handleCancelReply} style={styles.cancelReply}>
                 <Feather name="x" size={14} color={AppColors.textMuted} />
@@ -303,31 +309,36 @@ export default function PostDetailScreen() {
             <CurrentUserAvatar />
             <TextInput
               style={styles.input}
-              placeholder={replyTo ? `Reply to @${replyTo.user.username}...` : 'Add a comment...'}
+              placeholder={replyTo ? `Reply to ${replyTo.user.fullName || replyTo.user.displayName}...` : 'Add a comment...'}
               placeholderTextColor={AppColors.iconMuted}
               value={commentText}
               onChangeText={setCommentText}
+              onSubmitEditing={handleSendComment}
+              blurOnSubmit={false}
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <TouchableOpacity
-              onPress={handleSendComment}
-              disabled={!commentText.trim() || isSubmitting}
-              style={styles.sendButtonWrap}
-            >
-              {isSubmitting ? (
+            {isSubmitting ? (
+              <View style={styles.sendIconWrap}>
                 <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <Text
-                  style={[
-                    styles.sendButton,
-                    (!commentText.trim() || isSubmitting) && styles.sendButtonDisabled,
-                  ]}
-                >
-                  Post
-                </Text>
-              )}
-            </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleSendComment}
+                disabled={!commentText.trim() || isSubmitting}
+                style={styles.sendIconWrap}
+              >
+                <Feather
+                  name="send"
+                  size={20}
+                  color={
+                    commentText.trim()
+                      ? AppColors.primary
+                      : AppColors.iconMuted
+                  }
+                />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -452,17 +463,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppColors.text,
   },
-  sendButtonWrap: {
-    marginLeft: 8,
-    paddingVertical: 4,
-  },
-  sendButton: {
-    color: AppColors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  sendButtonDisabled: {
-    color: AppColors.iconMuted,
+  sendIconWrap: {
+    padding: 6,
+    marginLeft: 4,
   },
 });
 
