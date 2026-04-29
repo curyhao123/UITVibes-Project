@@ -2,9 +2,10 @@
  * PostDetailScreen — full post with comments, enhanced with:
  * 1. Spring like animation on the heart button
  * 2. Smooth skeleton loader on initial load
- * 3. Animated comment input focus
+ * 3. Real-time comment submission with reply support
+ * 4. Hierarchical comment display with nested replies
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +16,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
@@ -25,14 +27,26 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { getPostById } from '../../services/api';
-import { Post } from '../../data/mockData';
+import { Post, Comment } from '../../data/mockData';
 import { Avatar, CommentItem } from '../../components';
 import { useApp } from '../../context/AppContext';
 import { AppColors } from '../../constants/theme';
 import { SPRING_BOUNCE, SPRING_GENTLE } from '../../animations/spring';
 import { SkeletonShimmer } from '../../components/SkeletonLoader';
 
-const AnimatedFeather = Animated.createAnimatedComponent(Feather);
+// ─── Animated avatar component for current user in comment input ────────────
+const CurrentUserAvatar = () => {
+  const { currentUser } = useApp();
+  return (
+    <View style={styles.inputAvatarWrap}>
+      {currentUser ? (
+        <Avatar user={currentUser} size="tiny" />
+      ) : (
+        <View style={styles.inputAvatarFallback} />
+      )}
+    </View>
+  );
+};
 
 // ─── Animated like button with spring bounce ──────────────────────────────────
 const LikeButton = ({
@@ -51,7 +65,6 @@ const LikeButton = ({
     scale.value = withSpring(1.0, SPRING_GENTLE);
   };
   const handlePress = () => {
-    // Extra bounce on tap
     scale.value = withSpring(1.3, SPRING_BOUNCE, () => {
       scale.value = withSpring(1.0, SPRING_BOUNCE);
     });
@@ -119,6 +132,8 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<Post | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const { toggleLike, addComment } = useApp();
   const router = useRouter();
 
@@ -149,11 +164,57 @@ export default function PostDetailScreen() {
   };
 
   const handleSendComment = async () => {
-    if (post && commentText.trim()) {
-      await addComment(post.id, commentText.trim());
-      setCommentText('');
-      await loadPost();
+    if (!post || !commentText.trim() || isSubmitting) return;
+
+    const text = commentText.trim();
+    setIsSubmitting(true);
+
+    setCommentText('');
+
+    try {
+      const newComment = await addComment(post.id, text, replyTo?.id);
+      if (newComment) {
+        setPost((prev) => {
+          if (!prev) return prev;
+
+          // Add reply under its parent comment
+          if (replyTo) {
+            return {
+              ...prev,
+              comments: prev.comments.map((c) => {
+                if (c.id === replyTo.id) {
+                  return {
+                    ...c,
+                    replies: [newComment, ...(c.replies || [])],
+                  };
+                }
+                return c;
+              }),
+            };
+          }
+
+          // Add top-level comment
+          return {
+            ...prev,
+            comments: [newComment, ...prev.comments],
+          };
+        });
+        setReplyTo(null);
+      }
+    } catch (error) {
+      setCommentText(text);
+      console.error('[PostDetail] Failed to submit comment:', error);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleReply = (comment: Comment) => {
+    setReplyTo(comment);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTo(null);
   };
 
   const formatLikes = (count: number): string => {
@@ -175,7 +236,7 @@ export default function PostDetailScreen() {
       </View>
       <View style={styles.postHeader}>
         <Avatar user={post.user} size="small" showBorder />
-        <Text style={styles.username}>{post.user.username}</Text>
+        <Text style={styles.username}>@{post.user.displayName || post.user.username}</Text>
       </View>
       <Image source={{ uri: post.image }} style={styles.postImage} />
       <View style={styles.actions}>
@@ -187,7 +248,7 @@ export default function PostDetailScreen() {
         <TouchableOpacity style={styles.actionButton}>
           <Feather name="send" size={24} color={AppColors.text} />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
           <Feather name="bookmark" size={24} color={AppColors.text} />
         </TouchableOpacity>
       </View>
@@ -196,7 +257,7 @@ export default function PostDetailScreen() {
       </View>
       <View style={styles.captionContainer}>
         <Text style={styles.caption}>
-          <Text style={styles.captionUsername}>{post.user.username}</Text>
+          <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
           {' '}{post.caption}
         </Text>
       </View>
@@ -219,29 +280,55 @@ export default function PostDetailScreen() {
           data={post.comments}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderHeader}
-          renderItem={({ item }) => <CommentItem comment={item} />}
+          renderItem={({ item }) => (
+            <CommentItem
+              comment={item}
+              onReply={handleReply}
+            />
+          )}
         />
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Add a comment..."
-            placeholderTextColor={AppColors.textMuted}
-            value={commentText}
-            onChangeText={setCommentText}
-          />
-          <TouchableOpacity
-            onPress={handleSendComment}
-            disabled={!commentText.trim()}
-          >
-            <Text
-              style={[
-                styles.sendButton,
-                !commentText.trim() && styles.sendButtonDisabled,
-              ]}
+          {replyTo && (
+            <View style={styles.replyBanner}>
+              <Feather name="corner-down-left" size={12} color={AppColors.textMuted} />
+              <Text style={styles.replyBannerText}>
+                Replying to <Text style={styles.replyBannerUsername}>@{replyTo.user.username}</Text>
+              </Text>
+              <TouchableOpacity onPress={handleCancelReply} style={styles.cancelReply}>
+                <Feather name="x" size={14} color={AppColors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={styles.inputRow}>
+            <CurrentUserAvatar />
+            <TextInput
+              style={styles.input}
+              placeholder={replyTo ? `Reply to @${replyTo.user.username}...` : 'Add a comment...'}
+              placeholderTextColor={AppColors.iconMuted}
+              value={commentText}
+              onChangeText={setCommentText}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              onPress={handleSendComment}
+              disabled={!commentText.trim() || isSubmitting}
+              style={styles.sendButtonWrap}
             >
-              Post
-            </Text>
-          </TouchableOpacity>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              ) : (
+                <Text
+                  style={[
+                    styles.sendButton,
+                    (!commentText.trim() || isSubmitting) && styles.sendButtonDisabled,
+                  ]}
+                >
+                  Post
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </>
@@ -256,10 +343,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: AppColors.surface,
   },
   backButton: {
     padding: 4,
@@ -267,7 +355,8 @@ const styles = StyleSheet.create({
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   username: {
     marginLeft: 10,
@@ -281,14 +370,17 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    padding: 12,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 16,
   },
   actionButton: {
-    marginRight: 16,
+    padding: 4,
   },
   likesContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
   },
   likes: {
     fontWeight: '600',
@@ -296,7 +388,7 @@ const styles = StyleSheet.create({
     color: AppColors.text,
   },
   captionContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   caption: {
@@ -309,32 +401,68 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   commentsHeader: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingBottom: 12,
     color: AppColors.textSecondary,
     fontSize: 14,
   },
   inputContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.borderLight,
+    backgroundColor: AppColors.surface,
+  },
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+  },
+  replyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    marginBottom: 8,
+    gap: 5,
+  },
+  replyBannerText: {
+    flex: 1,
+    fontSize: 12,
+    color: AppColors.textMuted,
+  },
+  replyBannerUsername: {
+    fontWeight: '600',
+    color: AppColors.text,
+  },
+  cancelReply: {
+    padding: 2,
+  },
+  inputAvatarWrap: {
+    marginRight: 10,
+  },
+  inputAvatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: AppColors.borderLight,
   },
   input: {
     flex: 1,
+    height: 36,
+    paddingVertical: 8,
     fontSize: 14,
     color: AppColors.text,
+  },
+  sendButtonWrap: {
+    marginLeft: 8,
+    paddingVertical: 4,
   },
   sendButton: {
     color: AppColors.primary,
     fontWeight: '600',
     fontSize: 14,
-    marginLeft: 12,
   },
   sendButtonDisabled: {
-    color: AppColors.textMuted,
+    color: AppColors.iconMuted,
   },
 });
 

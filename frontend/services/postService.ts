@@ -1,6 +1,5 @@
 import type { Comment as CommentType, Post, User } from "../data/mockData";
 import apiClient from "./httpClient";
-import { getCurrentUser, getCurrentUserId } from "./session";
 import {
   BE_PostResponse,
   BE_CommentResponse,
@@ -8,6 +7,33 @@ import {
   CreatePostBody,
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
+
+// ─── Comment transformer ─────────────────────────────────────────────────────
+function transformComment(be: BE_CommentResponse, user?: User): CommentType {
+  return {
+    id: be.id,
+    userId: be.userId,
+    user: user || {
+      id: be.userId,
+      username: "",
+      displayName: "",
+      avatar: "",
+      bio: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isVerified: false,
+    },
+    text: be.content,
+    createdAt: be.createdAt,
+    likes: be.likesCount,
+    isLiked: be.isLikedByCurrentUser,
+    replies: be.replies?.length
+      ? be.replies.map((r) => transformComment(r, user))
+      : [],
+    parentId: be.parentCommentId ?? undefined,
+  };
+}
 
 export async function uploadMedia(
   uri: string,
@@ -105,7 +131,55 @@ export async function getPosts(): Promise<Post[]> {
 export async function getPostById(id: string): Promise<Post | undefined> {
   const { data } = await apiClient.get<BE_PostResponse>(`/post/${id}`);
   const author = await fetchUserById(data.userId);
-  return transformBEPost(data, author);
+
+  // Fetch comments separately
+  const comments = await getPostComments(id);
+
+  const post = transformBEPost(data, author);
+  post.comments = comments;
+  return post;
+}
+
+export async function getPostComments(postId: string): Promise<CommentType[]> {
+  try {
+    const { data } = await apiClient.get<BE_CommentResponse[]>(
+      `/post/${postId}/comments`,
+    );
+    if (!data || !Array.isArray(data)) return [];
+
+    // Fetch top-level comments and their replies in parallel
+    const comments = await Promise.all(
+      data.map(async (c) => {
+        const user = await fetchUserById(c.userId);
+        const comment = transformComment(c, user);
+
+        // Fetch replies if this comment has replies
+        if (c.repliesCount && c.repliesCount > 0) {
+          try {
+            const { data: repliesData } = await apiClient.get<BE_CommentResponse[]>(
+              `/post/comment/${c.id}/replies`,
+            );
+            if (repliesData && Array.isArray(repliesData)) {
+              comment.replies = await Promise.all(
+                repliesData.map(async (r) => {
+                  const replyUser = await fetchUserById(r.userId);
+                  return transformComment(r, replyUser);
+                }),
+              );
+            }
+          } catch {
+            // Replies are non-critical — leave empty on failure
+          }
+        }
+
+        return comment;
+      }),
+    );
+    return comments;
+  } catch (err) {
+    console.error("[getPostComments] API error:", err);
+    return [];
+  }
 }
 
 export async function getMyPosts(): Promise<Post[]> {
@@ -269,20 +343,18 @@ export async function toggleBookmark(postId: string): Promise<boolean> {
 export async function addComment(
   postId: string,
   text: string,
+  parentCommentId?: string,
 ): Promise<{ success: boolean; comment?: CommentType }> {
+  const body: { content: string; parentCommentId?: string } = { content: text };
+  if (parentCommentId) {
+    body.parentCommentId = parentCommentId;
+  }
   const { data } = await apiClient.post<BE_CommentResponse>(
     `/post/${postId}/comment`,
-    { content: text },
+    body,
   );
-  const comment: CommentType = {
-    id: data.id,
-    userId: data.userId,
-    user: getCurrentUser() || ({ id: getCurrentUserId() } as User),
-    text: data.content,
-    createdAt: data.createdAt,
-    likes: data.likesCount,
-    isLiked: data.isLikedByCurrentUser,
-  };
+  const currentUser = await fetchUserById(data.userId);
+  const comment = transformComment(data, currentUser || undefined);
   return { success: true, comment };
 }
 

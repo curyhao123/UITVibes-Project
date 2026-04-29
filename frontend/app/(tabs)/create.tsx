@@ -156,6 +156,13 @@ export default function CreateScreen() {
       return;
     }
 
+    if (!caption.trim()) {
+      setToastType('error');
+      setToastMessage('Caption is required.');
+      setToastVisible(true);
+      return;
+    }
+
     setIsPosting(true);
     try {
       await createPost(selectedMedia, caption);
@@ -191,7 +198,7 @@ export default function CreateScreen() {
   };
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
-  const shareReady = !!selectedMedia && !isPosting;
+  const shareReady = !!selectedMedia && !!caption.trim() && !isPosting;
   const optionsDisabled = !selectedMedia;
 
   const mockOption = (title: string) => () =>

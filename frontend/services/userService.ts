@@ -15,6 +15,11 @@ import {
   getCurrentUserId,
   mergePersistedAvatarIfMissing,
   setCurrentUser,
+  RecentSearch,
+  getLocalRecentSearches,
+  saveLocalRecentSearch,
+  removeLocalRecentSearch,
+  clearLocalRecentSearches,
 } from "./session";
 import {
   BE_UserProfile,
@@ -722,5 +727,77 @@ export async function updateCover(coverUri: string): Promise<User> {
 
   throw new Error(
     "Ảnh bìa phải upload file hoặc URL https công khai (không dùng blob tạm).",
+  );
+}
+
+// ============ RECENT SEARCHES ============
+
+/**
+ * Get recent searches from local storage.
+ */
+export async function getRecentSearches(): Promise<RecentSearch[]> {
+  return await getLocalRecentSearches();
+}
+
+/**
+ * Save a user to recent searches (or move to top if already exists).
+ * Also syncs to backend via POST /user/userprofile/recent-searches.
+ */
+export async function saveRecentSearch(profile: {
+  userId: string;
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  followersCount?: number;
+}): Promise<void> {
+  const item: RecentSearch = {
+    userId: profile.userId,
+    displayName: profile.displayName,
+    bio: profile.bio || "",
+    avatarUrl: profile.avatarUrl || "",
+    followersCount: profile.followersCount ?? 0,
+    searchedAt: Date.now(),
+  };
+
+  // Always save locally first
+  await saveLocalRecentSearch(item);
+
+  // Also try to sync to backend (fire-and-forget)
+  try {
+    await apiClient.post("/user/userprofile/recent-searches", {
+      userId: profile.userId,
+      displayName: profile.displayName,
+      bio: profile.bio || "",
+      avatarUrl: profile.avatarUrl || "",
+      followersCount: profile.followersCount ?? 0,
+    } satisfies BE_SearchUserProfileDto);
+  } catch {
+    // ignore backend errors — local is source of truth for UI
+  }
+}
+
+/**
+ * Remove a single item from recent searches (local + backend).
+ */
+export async function removeRecentSearch(userId: string): Promise<void> {
+  await removeLocalRecentSearch(userId);
+  try {
+    await apiClient.delete(`/user/userprofile/recent-searches/${userId}`);
+  } catch {
+    // ignore backend errors
+  }
+}
+
+/**
+ * Clear all recent searches (local + backend).
+ */
+export async function clearAllRecentSearches(): Promise<void> {
+  await clearLocalRecentSearches();
+  const searches = await getLocalRecentSearches(); // get current before clearing
+  // Backend doesn't have a bulk delete, so delete each
+  await Promise.allSettled(
+    searches.map((s) =>
+      apiClient.delete(`/user/userprofile/recent-searches/${s.userId}`).catch(() => {}),
+    ),
   );
 }

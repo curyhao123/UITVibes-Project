@@ -14,8 +14,17 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components';
 import { useApp } from '../../context/AppContext';
-import { searchUsers, getPosts, toggleFollow as apiToggleFollow } from '../../services/api';
+import {
+  searchUsers,
+  getPosts,
+  toggleFollow as apiToggleFollow,
+  getRecentSearches,
+  saveRecentSearch,
+  removeRecentSearch,
+  clearAllRecentSearches,
+} from '../../services/api';
 import { User, Post } from '../../data/mockData';
+import { RecentSearch } from '../../services/session';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import defaultAvatar from '../../assets/images/default-avatar.png';
@@ -26,8 +35,10 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'users'>('users');
   const [isSearching, setIsSearching] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -36,6 +47,17 @@ export default function SearchScreen() {
   const loadInitialData = async () => {
     const allPosts = await getPosts();
     setPosts(allPosts);
+    await loadRecentSearches();
+  };
+
+  const loadRecentSearches = async () => {
+    setIsLoadingRecent(true);
+    try {
+      const searches = await getRecentSearches();
+      setRecentSearches(searches);
+    } finally {
+      setIsLoadingRecent(false);
+    }
   };
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,26 +69,46 @@ export default function SearchScreen() {
       setIsSearching(true);
       try {
         const trimmed = query.trim();
-        const results = await searchUsers(trimmed);
-        setUsers(results);
+        if (trimmed) {
+          const results = await searchUsers(trimmed);
+          setUsers(results);
+        } else {
+          setUsers([]);
+          await loadRecentSearches();
+        }
       } finally {
         setIsSearching(false);
       }
     }, 350);
   }, []);
 
-  const renderPostItem = ({ item }: { item: Post }) => (
-    <TouchableOpacity
-      style={styles.postItem}
-      onPress={() => router.push(`/post/${item.id}` as any)}
-    >
-      <Image source={{ uri: item.image }} style={styles.postImage} />
-      <View style={styles.postOverlay}>
-        <Feather name="heart" size={14} color="white" />
-        <Text style={styles.postOverlayText}>{item.likes}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const handleUserClick = async (user: User) => {
+    await saveRecentSearch({
+      userId: user.id,
+      displayName: user.displayName,
+      bio: user.bio || "",
+      avatarUrl: user.avatar || "",
+      followersCount: user.followers,
+    });
+    router.push(`/profile/${user.id}` as any);
+  };
+
+  const handleRecentClick = async (item: RecentSearch) => {
+    await removeRecentSearch(item.userId);
+    await saveRecentSearch(item);
+    router.push(`/profile/${item.userId}` as any);
+  };
+
+  const handleRemoveRecent = async (userId: string, e: any) => {
+    e.stopPropagation();
+    await removeRecentSearch(userId);
+    setRecentSearches((prev) => prev.filter((s) => s.userId !== userId));
+  };
+
+  const handleClearAll = async () => {
+    await clearAllRecentSearches();
+    setRecentSearches([]);
+  };
 
   const handleFollowToggle = async (userId: string) => {
     await toggleFollow(userId);
@@ -84,10 +126,39 @@ export default function SearchScreen() {
     );
   };
 
+  const renderRecentItem = ({ item }: { item: RecentSearch }) => (
+    <TouchableOpacity
+      style={styles.recentItem}
+      onPress={() => handleRecentClick(item)}
+    >
+      <Image
+        source={item.avatarUrl ? { uri: item.avatarUrl } : defaultAvatar}
+        style={styles.recentAvatar}
+      />
+      <View style={styles.recentInfo}>
+        <Text style={styles.recentDisplayName} numberOfLines={1}>
+          {item.displayName}
+        </Text>
+        {item.bio ? (
+          <Text style={styles.recentBio} numberOfLines={1}>
+            {item.bio}
+          </Text>
+        ) : null}
+      </View>
+      <TouchableOpacity
+        style={styles.recentRemoveBtn}
+        onPress={(e) => handleRemoveRecent(item.userId, e)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Feather name="x" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
   const renderUserItem = ({ item }: { item: User }) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => router.push(`/profile/${item.id}` as any)}
+      onPress={() => handleUserClick(item)}
     >
       <Image source={item.avatar ? { uri: item.avatar } : defaultAvatar} style={styles.avatar} />
       <View style={styles.userInfo}>
@@ -106,6 +177,66 @@ export default function SearchScreen() {
       </TouchableOpacity>
     </TouchableOpacity>
   );
+
+  const renderPostItem = ({ item }: { item: Post }) => (
+    <TouchableOpacity
+      style={styles.postItem}
+      onPress={() => router.push(`/post/${item.id}` as any)}
+    >
+      <Image source={{ uri: item.image }} style={styles.postImage} />
+      <View style={styles.postOverlay}>
+        <Feather name="heart" size={14} color="white" />
+        <Text style={styles.postOverlayText}>{item.likes}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const showRecentSearches =
+    activeTab === 'users' && !searchQuery.trim() && !isSearching;
+
+  const renderRecentHeader = () => (
+    <View style={styles.recentHeader}>
+      <Text style={styles.recentTitle}>Recent</Text>
+      {recentSearches.length > 0 && (
+        <TouchableOpacity onPress={handleClearAll}>
+          <Text style={styles.clearAllText}>Clear All</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  const renderRecentList = () => {
+    if (isLoadingRecent) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={AppColors.primary} />
+        </View>
+      );
+    }
+
+    if (recentSearches.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Feather name="search" size={48} color={AppColors.border} strokeWidth={1.5} />
+          <Text style={styles.emptyTitle}>No recent searches</Text>
+          <Text style={styles.emptySubtitle}>
+            Search for people you want to find
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={recentSearches}
+        renderItem={renderRecentItem}
+        keyExtractor={(item) => item.userId}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={renderRecentHeader}
+        contentContainerStyle={styles.recentListContent}
+      />
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -128,6 +259,8 @@ export default function SearchScreen() {
                   placeholderTextColor={AppColors.iconMuted}
                   value={searchQuery}
                   onChangeText={handleSearch}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => handleSearch('')}>
@@ -165,15 +298,19 @@ export default function SearchScreen() {
       />
 
       {activeTab === 'posts' ? (
-        <FlatList
-          data={posts}
-          renderItem={renderPostItem}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          showsVerticalScrollIndicator={false}
-        />
+        <View key="posts-tab">
+          <FlatList
+            data={posts}
+            renderItem={renderPostItem}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      ) : showRecentSearches ? (
+        renderRecentList()
       ) : (
-        <>
+        <View key="users-tab">
           {isSearching ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={AppColors.primary} />
@@ -199,7 +336,7 @@ export default function SearchScreen() {
               }
             />
           )}
-        </>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -358,5 +495,55 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: AppColors.textMuted,
     textAlign: 'center',
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layoutPadding,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  recentTitle: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  clearAllText: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: AppColors.primary,
+  },
+  recentListContent: {
+    paddingBottom: 20,
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 10,
+  },
+  recentAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  recentInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  recentDisplayName: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: AppColors.text,
+  },
+  recentBio: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    marginTop: 2,
+  },
+  recentRemoveBtn: {
+    padding: 4,
+    marginLeft: 8,
   },
 });

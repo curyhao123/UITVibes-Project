@@ -30,22 +30,22 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const likeIconScale = useSharedValue(1);
   const [localLiked, setLocalLiked] = React.useState(post.isLiked);
 
-  // ── Double-tap gesture — runs entirely on the UI thread ─────────────────
+  // ── Double-tap gesture on image — runs entirely on the UI thread ─────────────────
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
       await toggleLike(post.id);
     }
     playHeart();
-  }, [localLiked, post.id]);
+  }, [localLiked, post.id, playHeart, toggleLike]);
 
-  const handleSingleTap = useCallback(() => {
+  const handleImageSingleTap = useCallback(() => {
     router.push(`/post/${post.id}` as any);
   }, [post.id, router]);
 
   const { tapGesture } = useDoubleTap({
     onDoubleTap: handleDoubleTap,
-    onSingleTap: handleSingleTap,
+    onSingleTap: handleImageSingleTap,
     delay: 260,
   });
 
@@ -92,73 +92,76 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   return (
     <View style={styles.container}>
-      {/* GestureDetector wraps the image — detects double vs single tap */}
-      <GestureDetector gesture={tapGesture}>
-        <View style={styles.imageWrap}>
-          <Image
-            source={{ uri: post.image }}
-            style={styles.postImage}
-            contentFit="cover"
-          />
-          {/* Large bouncing heart overlay — centered on image */}
-          <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
+      {/* Image + Actions wrapper — enables absolute positioning */}
+      <View style={styles.imageContainer}>
+        {/* Image Area — single tap opens post, double tap likes */}
+        <GestureDetector gesture={tapGesture}>
+          <View style={styles.imageWrap}>
+            <Image
+              source={{ uri: post.image }}
+              style={styles.postImage}
+              contentFit="cover"
+            />
+            {/* Large bouncing heart overlay — centered on image */}
+            <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
 
-          <View style={styles.overlayBottomLeft}>
-            <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
-              <Avatar user={post.user} size="small" />
-              <View style={styles.overlayUserText}>
-                <Text style={styles.overlayName} numberOfLines={1}>
-                  {post.user.displayName || post.user.username}
-                </Text>
-                <Text style={styles.overlayHandle} numberOfLines={1}>
-                  @{post.user.username}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.overlayBottomLeft}>
+              <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
+                <Avatar user={post.user} size="small" />
+                <View style={styles.overlayUserText}>
+                  <Text style={styles.overlayName} numberOfLines={1}>
+                    {post.user.displayName || post.user.username}
+                  </Text>
+                  <Text style={styles.overlayHandle} numberOfLines={1}>
+                    @{post.user.username}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
+        </GestureDetector>
 
-          {/* Action buttons (right column) */}
-          <View style={styles.actionsRight}>
-            {/* Heart — uses AnimatedHeartIcon for micro-bounce on tap */}
-            <TouchableOpacity
-              onPress={handleLike}
-              style={styles.actionVertical}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
-              <Text style={styles.actionCount}>{formatCount(post.likes)}</Text>
-            </TouchableOpacity>
+        {/* Action buttons — positioned on the right side of image */}
+        <View style={styles.actionsRight}>
+          {/* Heart — uses AnimatedHeartIcon for micro-bounce on tap */}
+          <TouchableOpacity
+            onPress={handleLike}
+            style={styles.actionVertical}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
+            <Text style={styles.actionCount}>{formatCount(post.likes)}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleCommentPress}
-              style={styles.actionVertical}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Feather name="message-circle" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.actionCount}>{post.comments.length}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleCommentPress}
+            style={styles.actionVertical}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Feather name="message-circle" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
+            <Text style={styles.actionCount}>{post.comments.length}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleShare} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-              <Feather name="send" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.actionCount}>{post.shareCount ?? 0}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Feather name="send" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
+            <Text style={styles.actionCount}>{post.shareCount ?? 0}</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleBookmark} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-              <Feather
-                name="bookmark"
-                size={ACTION_ICON}
-                color={post.isBookmarked ? AppColors.primary : '#FFFFFF'}
-                fill={post.isBookmarked ? AppColors.primary : 'transparent'}
-                strokeWidth={2}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={handleBookmark} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Feather
+              name="bookmark"
+              size={ACTION_ICON}
+              color={post.isBookmarked ? AppColors.primary : '#FFFFFF'}
+              fill={post.isBookmarked ? AppColors.primary : 'transparent'}
+              strokeWidth={2}
+            />
+          </TouchableOpacity>
         </View>
-      </GestureDetector>
+      </View>
 
       <View style={styles.captionContainer}>
         <Text style={styles.caption}>
-          <Text style={styles.captionUsername}>{post.user.username}</Text>
+          <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
           {' '}
           {post.caption}
         </Text>
@@ -194,6 +197,10 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
   },
   imageWrap: {
     position: 'relative',

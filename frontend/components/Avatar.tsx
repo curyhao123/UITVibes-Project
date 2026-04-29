@@ -7,7 +7,7 @@ import defaultAvatar from '../assets/images/default-avatar.png';
 
 interface AvatarProps {
   user: User;
-  size?: 'small' | 'medium' | 'large' | 'story';
+  size?: 'tiny' | 'small' | 'medium' | 'large' | 'story';
   showBorder?: boolean;
   isViewed?: boolean;
 }
@@ -25,6 +25,8 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const getSize = (): number => {
     switch (size) {
+      case 'tiny':
+        return 28;
       case 'small':
         return 32;
       case 'story':
@@ -44,6 +46,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   const getBorderWidth = (): number => {
     if (!showBorder) return 0;
     switch (size) {
+      case 'tiny':
       case 'small':
         return 2;
       case 'story':

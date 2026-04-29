@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Avatar } from './Avatar';
 import { Comment } from '../data/mockData';
@@ -7,40 +7,102 @@ import { AppColors } from '../constants/theme';
 
 interface CommentItemProps {
   comment: Comment;
+  isReply?: boolean;
+  onReply?: (comment: Comment) => void;
+  onLike?: (commentId: string) => void;
 }
 
-export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
+export const CommentItem: React.FC<CommentItemProps> = ({
+  comment,
+  isReply = false,
+  onReply,
+  onLike,
+}) => {
+  const [isLiked, setIsLiked] = useState(comment.isLiked ?? false);
+  const [likeCount, setLikeCount] = useState(comment.likes);
+
   const formatTimeAgo = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) return 'just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    
-    return date.toLocaleDateString('en-US');
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 864800)}d`;
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const handleLike = () => {
+    setIsLiked((prev) => !prev);
+    setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
+    onLike?.(comment.id);
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isReply && styles.replyContainer]}>
+      {/* Left accent bar for replies */}
+      {isReply && <View style={styles.replyBar} />}
+
       <Avatar user={comment.user} size="small" />
-      <View style={styles.content}>
-        <Text style={styles.commentText}>
-          <Text style={styles.username}>{comment.user.username}</Text>
-          {' '}{comment.text}
+
+      <View style={styles.body}>
+        {/* @displayName */}
+        <Text style={styles.name} numberOfLines={1}>
+          @{(comment.user.displayName || comment.user.username)}
         </Text>
+
+        {/* Comment text */}
+        <Text style={styles.text} numberOfLines={undefined}>
+          {comment.text}
+        </Text>
+
+        {/* Meta row: time · likes · reply */}
         <View style={styles.meta}>
           <Text style={styles.time}>{formatTimeAgo(comment.createdAt)}</Text>
-          <Text style={styles.likes}>{comment.likes} likes</Text>
-          <TouchableOpacity>
-            <Text style={styles.reply}>Reply</Text>
-          </TouchableOpacity>
+
+          {likeCount > 0 && (
+            <>
+              <Text style={styles.dot}>·</Text>
+              <Text style={styles.metaText}>{likeCount} likes</Text>
+            </>
+          )}
+
+          {onReply && (
+            <>
+              <Text style={styles.dot}>·</Text>
+              <TouchableOpacity onPress={() => onReply(comment)}>
+                <Text style={styles.reply}>Reply</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
+
+        {/* Nested replies */}
+        {comment.replies && comment.replies.length > 0 && (
+          <View style={styles.replies}>
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                isReply
+                onReply={onReply}
+                onLike={onLike}
+              />
+            ))}
+          </View>
+        )}
       </View>
-      <TouchableOpacity style={styles.likeButton}>
-        <Feather name="heart" size={14} color={AppColors.textMuted} />
+
+      {/* Like button */}
+      <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
+        <Feather
+          name="heart"
+          size={14}
+          color={isLiked ? AppColors.primary : AppColors.textMuted}
+          fill={isLiked ? AppColors.primary : 'transparent'}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -49,41 +111,66 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
-  content: {
+  replyContainer: {
+    paddingLeft: 8,
+  },
+  replyBar: {
+    width: 2,
+    backgroundColor: AppColors.border,
+    marginRight: 10,
+    borderRadius: 1,
+    alignSelf: 'stretch',
+  },
+  body: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
-  commentText: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  username: {
+  name: {
     fontWeight: '600',
+    fontSize: 13,
+    color: AppColors.text,
+    marginBottom: 2,
+    flexShrink: 1,
+  },
+  text: {
+    fontSize: 14,
+    lineHeight: 19,
+    color: AppColors.text,
+    marginBottom: 4,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
   time: {
     fontSize: 12,
     color: AppColors.textMuted,
-    marginRight: 12,
   },
-  likes: {
+  dot: {
     fontSize: 12,
     color: AppColors.textMuted,
-    marginRight: 12,
+    marginHorizontal: 5,
+  },
+  metaText: {
+    fontSize: 12,
+    color: AppColors.textMuted,
   },
   reply: {
     fontSize: 12,
-    color: AppColors.textMuted,
     fontWeight: '600',
+    color: AppColors.textMuted,
+    textTransform: 'lowercase',
+  },
+  replies: {
+    marginTop: 4,
   },
   likeButton: {
-    padding: 4,
+    padding: 6,
+    marginLeft: 4,
+    alignSelf: 'flex-start',
   },
 });

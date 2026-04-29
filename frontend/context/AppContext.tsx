@@ -61,7 +61,7 @@ interface AppContextType {
   // Post interactions
   toggleLike: (postId: string) => Promise<void>;
   toggleBookmark: (postId: string) => Promise<void>;
-  addComment: (postId: string, text: string) => Promise<void>;
+  addComment: (postId: string, text: string, parentCommentId?: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
     image: string,
@@ -378,17 +378,41 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 
   const addComment = useCallback(
-    async (postId: string, text: string) => {
+    async (postId: string, text: string, parentCommentId?: string) => {
       try {
-        const result = await api.addComment(postId, text);
-        if (result.success) {
-          await refreshPosts();
+        const result = await api.addComment(postId, text, parentCommentId);
+        if (result.success && result.comment) {
+          // Update local posts/myPosts so the feed and profile grid show the new comment
+          setPosts((prev) =>
+            prev.map((post) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  comments: [result.comment!, ...post.comments],
+                };
+              }
+              return post;
+            }),
+          );
+          setMyPosts((prev) =>
+            prev.map((post) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  comments: [result.comment!, ...post.comments],
+                };
+              }
+              return post;
+            }),
+          );
         }
+        return result.comment;
       } catch (error) {
         console.error("Failed to add comment:", error);
+        throw error;
       }
     },
-    [refreshPosts],
+    [],
   );
 
   const deleteComment = useCallback(
