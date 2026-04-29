@@ -147,6 +147,13 @@ namespace UserService.Migrations
                     b.Property<int>("FollowingCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("FullName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Gender")
+                        .HasColumnType("text");
+
                     b.Property<string>("Location")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -162,6 +169,9 @@ namespace UserService.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DisplayName")
+                        .IsUnique();
 
                     b.HasIndex("UserId")
                         .IsUnique();

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace UserService.Models;
 
@@ -22,6 +22,7 @@ public class UserDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.DisplayName).IsUnique();
             entity.Property(e => e.DisplayName).HasMaxLength(100);
             entity.Property(e => e.Bio).HasMaxLength(500);
             entity.Property(e => e.AvatarUrl).HasMaxLength(500);
@@ -30,6 +31,7 @@ public class UserDbContext : DbContext
             entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
             entity.Property(e => e.Location).HasMaxLength(100);
             entity.Property(e => e.Website).HasMaxLength(200);
+            entity.Property(e => e.FullName).HasMaxLength(200);
         });
 
         modelBuilder.Entity<SocialLink>(entity =>
