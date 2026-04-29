@@ -32,6 +32,7 @@ interface AppContextType {
   onboardingData: {
     fullName: string;
     username: string;
+    displayName: string;
     bio: string;
     avatar: string;
   };
@@ -131,6 +132,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [onboardingData, setOnboardingData] = useState({
     fullName: "",
     username: "",
+    displayName: "",
     bio: "",
     avatar: "",
   });
@@ -250,6 +252,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setCurrentUser((prev) => (prev ? { ...prev, username: handle } : prev));
         api.patchCurrentUserLocal({ username: handle });
       }
+      if (typeof data.displayName === "string" && data.displayName.trim()) {
+        const name = data.displayName.trim();
+        setCurrentUser((prev) =>
+          prev ? { ...prev, displayName: name } : prev,
+        );
+        api.patchCurrentUserLocal({ displayName: name });
+        // Persist displayName to UserDB via UserService API
+        api.updateProfile({ displayName: name }).catch((err) => {
+          console.error("[AppContext] Failed to persist displayName:", err);
+        });
+      }
       if (typeof data.fullName === "string" && data.fullName.trim()) {
         const name = data.fullName.trim();
         setCurrentUser((prev) =>
@@ -268,7 +281,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
-    setOnboardingData({ fullName: "", username: "", bio: "", avatar: "" });
+    setOnboardingData({ fullName: "", username: "", displayName: "", bio: "", avatar: "" });
   }, []);
 
   // ─── Feed ────────────────────────────────────────────────

@@ -47,6 +47,9 @@ export default function OnboardingAvatarBioScreen() {
     router.replace('/auth/onboarding-find-friends');
   };
 
+  // Progress indicator (3 steps: username, avatar/bio, find friends)
+  const [step1Active, step2Active, step3Active] = [false, true, false];
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -60,10 +63,9 @@ export default function OnboardingAvatarBioScreen() {
         >
           {/* Progress indicator */}
           <View style={styles.progressRow}>
-            <View style={[styles.progressDot, styles.progressDotActive]} />
-            <View style={[styles.progressDot, styles.progressDotActive]} />
-            <View style={[styles.progressDot, styles.progressDotActive]} />
-            <View style={styles.progressDot} />
+            <View style={[styles.progressDot, step1Active && styles.progressDotActive]} />
+            <View style={[styles.progressDot, step2Active && styles.progressDotActive]} />
+            <View style={[styles.progressDot, step3Active && styles.progressDotActive]} />
           </View>
 
           {/* Heading */}

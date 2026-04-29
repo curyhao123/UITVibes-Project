@@ -94,6 +94,14 @@
         },
         {
           "method": "PUT",
+          "path": "/user/userprofile/me/displayname",
+          "description": "Update user display name",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": "John Doe"
+        },
+        {
+          "method": "PUT",
           "path": "/user/userprofile/me/bio",
           "description": "Update user bio only",
           "requiresAuth": true,
@@ -129,6 +137,36 @@
           "requiresAuth": false,
           "queryParameters": {
             "q": "search query"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/user/userprofile/recent-searches",
+          "description": "Save a user to current user's recent searches",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "userId": "guid",
+            "displayName": "Jane Doe",
+            "bio": "Short bio",
+            "avatarUrl": "https://res.cloudinary.com/.../image.jpg",
+            "avatarPublicId": "uitvibes/avatars/abc123",
+            "followersCount": 0
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/userprofile/recent-searches",
+          "description": "Get recent searches for current user",
+          "requiresAuth": true
+        },
+        {
+          "method": "DELETE",
+          "path": "/user/userprofile/recent-searches/{targetUserId}",
+          "description": "Remove a user from recent searches",
+          "requiresAuth": true,
+          "pathParameters": {
+            "targetUserId": "guid"
           }
         }
       ]
@@ -563,7 +601,7 @@
             "ownerDisplayName": "John Doe",
             "ownerAvatarUrl": "https://example.com/avatar.jpg",
             "files": "[Binary file data - images/videos, max 50MB each]",
-            "displayOrders": [0, 1]
+            "displayOrders": [ 0, 1 ]
           }
         },
         {

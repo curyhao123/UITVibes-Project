@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { getUserById, getUserPosts, getUserStories, toggleFollow, type Story } from '../../services/api';
+import { getCurrentUserId } from '../../services/session';
 import { User, Post } from '../../data/mockData';
 import { Avatar, PostGrid, StoryGrid } from '../../components';
 import { AppColors, layoutPadding } from '../../constants/theme';
@@ -25,15 +26,27 @@ export default function UserProfileScreen() {
 
   const loadUserData = async () => {
     setIsLoading(true);
-    const [userData, userPosts, userStories] = await Promise.all([
-      getUserById(id as string),
-      getUserPosts(id as string),
-      getUserStories(id as string),
-    ]);
-    setUser(userData || null);
-    setPosts(userPosts);
-    setStories(userStories);
-    setIsLoading(false);
+    try {
+      const [userData, userPosts, userStories] = await Promise.all([
+        getUserById(id as string),
+        getUserPosts(id as string),
+        getUserStories(id as string),
+      ]);
+      setUser(userData || null);
+      setPosts(userPosts);
+      setStories(userStories);
+    } catch (err) {
+      console.error("[loadUserData] error:", err);
+      // Try to at least load the user even if posts/stories fail
+      try {
+        const userData = await getUserById(id as string);
+        setUser(userData || null);
+      } catch {
+        setUser(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFollowToggle = async () => {
@@ -56,10 +69,11 @@ export default function UserProfileScreen() {
     router.push('/(tabs)/message' as any);
   };
 
-  const formatCount = (count: number): string => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
+  const formatCount = (count: number | undefined | null): string => {
+    const n = Number(count) || 0;
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
   };
 
   if (isLoading) {
@@ -126,17 +140,21 @@ export default function UserProfileScreen() {
           </View>
 
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.followButton, user.isFollowing && styles.followingButton]}
-              onPress={handleFollowToggle}
-            >
-              <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
-                {user.isFollowing ? 'Following' : 'Follow'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <Text style={styles.messageButtonText}>Message</Text>
-            </TouchableOpacity>
+            {user.id !== getCurrentUserId() && (
+              <>
+                <TouchableOpacity
+                  style={[styles.followButton, user.isFollowing && styles.followingButton]}
+                  onPress={handleFollowToggle}
+                >
+                  <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
+                    {user.isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
+                  <Text style={styles.messageButtonText}>Message</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           <View style={styles.storyStripScroll}>

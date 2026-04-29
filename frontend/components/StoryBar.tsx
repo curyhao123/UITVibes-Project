@@ -27,8 +27,8 @@ import { Typography } from '../constants/typography';
 import { SPRING_PRESS, SPRING_SOFT } from '../animations/spring';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-const STORY_ITEM_WIDTH = 68; // avatar (64) + text area (remaining)
-const STORY_ITEM_CENTER = STORY_ITEM_WIDTH / 2;
+const STORY_ITEM_WIDTH = 68;
+const STORY_ITEM_SPACING = 74; // itemWidth(68) + marginRight(6)
 
 interface StoryBarProps {
   stories: Story[];
@@ -41,8 +41,6 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0);
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-  const displayedStories = stories;
 
   // ── Scroll handler — tracks position on UI thread ─────────────────────────
   const scrollHandler = useAnimatedScrollHandler({
@@ -89,9 +87,8 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
   const StoryItem = ({ story, index }: { story: Story; index: number }) => {
     const pressScale = useSharedValue(1);
 
-    // Compute item's center X relative to the ScrollView content
-    // (first item is the Add Story button at index 0, then stories start at index 1)
-    const itemCenterX = (index + 1) * (STORY_ITEM_WIDTH) - STORY_ITEM_WIDTH / 2;
+    // First story item center = 82 (AddStory width 68 + spacing 14) + itemWidth/2
+    const itemCenterX = 82 + STORY_ITEM_WIDTH / 2 + index * STORY_ITEM_SPACING;
 
     const startPress = () => {
       pressScale.value = withSpring(0.88, SPRING_PRESS);
@@ -101,12 +98,10 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
     };
 
     const animatedStyle = useAnimatedStyle(() => {
-      // Distance of this item's center from viewport center
       const viewportCenter = SCREEN_WIDTH / 2;
       const distanceFromCenter = Math.abs(itemCenterX - scrollX.value - viewportCenter);
       const maxDistance = SCREEN_WIDTH * 0.5;
 
-      // Scale: 1.0 at center → 0.92 at edges
       const scale = interpolate(
         distanceFromCenter,
         [0, maxDistance],
@@ -114,7 +109,6 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
         Extrapolation.CLAMP,
       );
 
-      // Opacity: 1.0 at center → 0.6 at edges
       const opacity = interpolate(
         distanceFromCenter,
         [0, maxDistance],
@@ -130,7 +124,6 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       };
     });
 
-    // Map flat story fields to User shape for Avatar component
     const storyUser = {
       id: story.userId,
       username: story.username,
@@ -152,7 +145,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
         activeOpacity={1}
         style={styles.storyItem}
       >
-        <Animated.View style={animatedStyle}>
+        <Animated.View style={[styles.storyItemInner, animatedStyle]}>
           <Avatar
             user={storyUser}
             size="story"
@@ -180,7 +173,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       >
         <AddStoryCircle />
 
-        {displayedStories.map((story, index) => (
+        {stories.map((story, index) => (
           <StoryItem key={story.id} story={story} index={index} />
         ))}
       </AnimatedScrollView>
@@ -202,7 +195,7 @@ const styles = StyleSheet.create({
   addStoryItem: {
     alignItems: 'center',
     marginRight: 14,
-    width: 68,
+    width: STORY_ITEM_WIDTH,
   },
   addStoryCircle: {
     width: 64,
@@ -221,12 +214,17 @@ const styles = StyleSheet.create({
   },
   storyItem: {
     alignItems: 'center',
-    marginRight: 6, // tighter spacing so carousel feels denser
-    width: 68,
+    marginRight: 6,
+    width: STORY_ITEM_WIDTH,
+  },
+  storyItemInner: {
+    alignItems: 'center',
   },
   storyUsername: {
     ...Typography.meta,
     marginTop: 3,
     color: AppColors.text,
+    textAlign: 'center',
+    width: STORY_ITEM_WIDTH,
   },
 });

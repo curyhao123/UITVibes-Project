@@ -141,16 +141,29 @@ export async function getMyPosts(): Promise<Post[]> {
 }
 
 export async function getUserPosts(userId: string): Promise<Post[]> {
-  const { data } = await apiClient.get<BE_PostResponse[]>(`/post/user/${userId}`, {
-    params: { skip: 0, take: 50 },
-  });
-  const posts = await Promise.all(
-    data.map(async (post) => {
-      const author = await fetchUserById(post.userId);
-      return transformBEPost(post, author);
-    }),
-  );
-  return posts;
+  try {
+    const { data } = await apiClient.get<BE_PostResponse[]>(`/post/user/${userId}`, {
+      params: { skip: 0, take: 50 },
+    });
+    if (!data || !Array.isArray(data)) {
+      console.warn("[getUserPosts] Expected array, got:", data);
+      return [];
+    }
+    const posts = await Promise.all(
+      data.map(async (post) => {
+        try {
+          const author = await fetchUserById(post.userId);
+          return transformBEPost(post, author);
+        } catch {
+          return transformBEPost(post, undefined);
+        }
+      }),
+    );
+    return posts;
+  } catch (err: any) {
+    console.error("[getUserPosts] API error:", err?.response?.status, err?.response?.data);
+    return [];
+  }
 }
 
 export async function getBookmarkedPosts(): Promise<Post[]> {

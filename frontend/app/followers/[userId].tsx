@@ -12,12 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { User } from "../../data/mockData";
+import { User, activeUserFollowingIds } from "../../data/mockData";
 import {
   getFollowers,
   getFollowing,
   toggleFollow,
   unfollowUser,
+  getUserById,
 } from "../../services/api";
 import { AppColors } from "../../constants/theme";
 import defaultAvatar from "../../assets/images/default-avatar.png";
@@ -31,6 +32,7 @@ export default function FollowersScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"followers" | "following">("followers");
+  const [profileDisplayName, setProfileDisplayName] = useState("");
 
   useEffect(() => {
     if (tab === "following") {
@@ -44,6 +46,25 @@ export default function FollowersScreen() {
     loadData();
   }, [userId, filter]);
 
+  useEffect(() => {
+    const loadProfileInfo = async () => {
+      const targetId = userId || "current";
+      if (targetId === "current") {
+        setProfileDisplayName("myusername");
+        return;
+      }
+      try {
+        const profile = await getUserById(targetId);
+        if (profile) {
+          setProfileDisplayName(profile.displayName || targetId);
+        }
+      } catch {
+        setProfileDisplayName(targetId);
+      }
+    };
+    void loadProfileInfo();
+  }, [userId]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -52,12 +73,13 @@ export default function FollowersScreen() {
         filter === "followers"
           ? await getFollowers(id)
           : await getFollowing(id);
-      setUsers(
-        data.map((u) => ({
-          ...u,
-          isFollowing: filter === "following" ? true : !!u.isFollowing,
-        })),
-      );
+
+      // Enrich each user with isFollowing from activeUserFollowingIds
+      const enriched = data.map((u) => ({
+        ...u,
+        isFollowing: filter === "following" ? true : activeUserFollowingIds.has(u.id),
+      }));
+      setUsers(enriched);
     } catch (error) {
       console.error("Failed to load users:", error);
     } finally {
@@ -169,8 +191,6 @@ export default function FollowersScreen() {
     </TouchableOpacity>
   );
 
-  const displayUserId = userId || "current";
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -178,7 +198,7 @@ export default function FollowersScreen() {
           <Feather name="arrow-left" size={24} color={AppColors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          @{displayUserId !== "current" ? displayUserId : "myusername"}
+          {profileDisplayName || "Followers"}
         </Text>
       </View>
 
