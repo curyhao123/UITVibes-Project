@@ -6,11 +6,12 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
- 
+
 var authDb = postgres.AddDatabase("authdb");
 var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");
 var messageDb = postgres.AddDatabase("messagedb");
+var notificationDb = postgres.AddDatabase("notificationdb");
 
 // Add RabbitMQ for inter-service messaging
 var messaging = builder.AddRabbitMQ("messaging");
@@ -73,6 +74,20 @@ var messageService = builder.AddProject<Projects.MessageService>("messageservice
     .WaitFor(messaging)
     .WithHttpHealthCheck("/health");
 
+
+
+
+var notificationService = builder.AddProject<Projects.NotificationService>("notificationservice")
+    .WithExternalHttpEndpoints()
+    .WithReference(notificationDb)
+    .WaitFor(notificationDb)
+    .WithReference(cache)
+    .WaitFor(cache)
+    .WithReference(messaging)
+    .WaitFor(messaging)
+    .WithHttpHealthCheck("/health");
+
+
 // ===== API GATEWAY WITH JWT =====
 var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>("apiservice")
     .WithExternalHttpEndpoints()
@@ -88,6 +103,9 @@ var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>(
     .WithReference(messageService)
     .WaitFor(messageService)
     .WithEnvironment("Jwt__Key", jwtKey);
+
+
+
 
 
 
