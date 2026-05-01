@@ -83,7 +83,7 @@ export default function RegisterScreen() {
     const success = await register(email, password, email.split("@")[0]);
     setIsLoading(false);
     if (success) {
-      router.replace("/auth/onboarding-username");
+      router.replace("/auth/onboarding-fullname");
     }
   };
 

@@ -98,20 +98,25 @@ export default function FollowersScreen() {
           text: "Unfollow",
           style: "destructive",
           onPress: async () => {
+            // Optimistic update: immediately show unfollowed state
+            setUsers((prev) =>
+              prev.map((u) =>
+                u.id === targetUserId
+                  ? { ...u, isFollowing: false, followers: Math.max(0, u.followers - 1) }
+                  : u,
+              ),
+            );
             try {
               await unfollowUser(targetUserId);
+            } catch (error) {
+              // Revert on failure
               setUsers((prev) =>
                 prev.map((u) =>
                   u.id === targetUserId
-                    ? {
-                        ...u,
-                        isFollowing: false,
-                        followers: Math.max(0, u.followers - 1),
-                      }
+                    ? { ...u, isFollowing: true, followers: u.followers + 1 }
                     : u,
                 ),
               );
-            } catch (error) {
               console.error("Failed to unfollow user:", error);
             }
           },
@@ -120,23 +125,32 @@ export default function FollowersScreen() {
       return;
     }
 
+    // Optimistic update: immediately show followed state
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === targetUserId
+          ? { ...u, isFollowing: true, followers: u.followers + 1 }
+          : u,
+      ),
+    );
     try {
       const nextIsFollowing = await toggleFollow(targetUserId);
+      // Sync with server truth: only correct isFollowing (followers count already correct from optimistic)
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === targetUserId
-            ? {
-                ...u,
-                isFollowing: nextIsFollowing,
-                followers: nextIsFollowing
-                  ? u.followers + 1
-                  : Math.max(0, u.followers - 1),
-              }
-            : u,
+          u.id === targetUserId ? { ...u, isFollowing: nextIsFollowing } : u,
         ),
       );
     } catch (error) {
-      console.error("Failed to toggle follow:", error);
+      // Revert both fields on failure
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetUserId
+            ? { ...u, isFollowing: false, followers: Math.max(0, u.followers - 1) }
+            : u,
+        ),
+      );
+      console.error("Failed to follow user:", error);
     }
   };
 

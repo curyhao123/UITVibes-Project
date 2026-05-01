@@ -33,6 +33,7 @@ interface AppContextType {
     fullName: string;
     username: string;
     displayName: string;
+    gender: string;
     bio: string;
     avatar: string;
   };
@@ -135,6 +136,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     fullName: "",
     username: "",
     displayName: "",
+    gender: "",
     bio: "",
     avatar: "",
   });
@@ -268,9 +270,34 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (typeof data.fullName === "string" && data.fullName.trim()) {
         const name = data.fullName.trim();
         setCurrentUser((prev) =>
-          prev ? { ...prev, displayName: name } : prev,
+          prev ? { ...prev, fullName: name } : prev,
         );
-        api.patchCurrentUserLocal({ displayName: name });
+        api.patchCurrentUserLocal({ fullName: name });
+        // Persist fullName to UserDB via UserService API
+        api.updateProfile({ fullName: name }).catch((err) => {
+          console.error("[AppContext] Failed to persist fullName:", err);
+        });
+      }
+      if (typeof data.gender === "string") {
+        const gender = data.gender;
+        setCurrentUser((prev) =>
+          prev ? { ...prev, gender } : prev,
+        );
+        api.patchCurrentUserLocal({ gender });
+        // Persist gender to UserDB via UserService API
+        api.updateProfile({ gender }).catch((err) => {
+          console.error("[AppContext] Failed to persist gender:", err);
+        });
+      }
+      if (typeof data.bio === "string") {
+        const bio = data.bio;
+        setCurrentUser((prev) =>
+          prev ? { ...prev, bio } : prev,
+        );
+        // Persist bio to UserDB via UserService API
+        api.updateProfile({ bio }).catch((err) => {
+          console.error("[AppContext] Failed to persist bio:", err);
+        });
       }
     },
     [],
@@ -283,7 +310,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
-    setOnboardingData({ fullName: "", username: "", displayName: "", bio: "", avatar: "" });
+    setOnboardingData({ fullName: "", username: "", displayName: "", gender: "", bio: "", avatar: "" });
   }, []);
 
   // ─── Feed ────────────────────────────────────────────────

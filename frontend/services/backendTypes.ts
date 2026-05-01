@@ -144,6 +144,16 @@ export interface BE_CommentResponse {
   updatedAt?: string;
   replies: BE_CommentResponse[];
   parentCommentId: string | null; // PascalCase from backend
+  postId?: string;
+  isDeleted?: boolean;
+}
+
+export interface BE_CommentLikeResponse {
+  likeId: string;
+  commentId: string;
+  userId: string;
+  totalLikes: number;
+  createdAt: string;
 }
 
 export interface BE_ConversationResponse {

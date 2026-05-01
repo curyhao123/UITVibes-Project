@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppColors } from '../constants/theme';
 import { useApp } from '../context/AppContext';
+import { EditProfileModal } from '../components';
 
 interface SettingsItemProps {
   icon: string;
@@ -81,6 +82,7 @@ export default function SettingsScreen() {
   const [deletePassword, setDeletePassword] = React.useState('');
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [logoutBusy, setLogoutBusy] = React.useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleLogout = () => {
     setLogoutConfirmVisible(true);
@@ -143,7 +145,7 @@ export default function SettingsScreen() {
         {/* Account Section */}
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.section}>
-          <SettingsItem icon="user" label="Edit Profile" onPress={() => {}} showArrow />
+          <SettingsItem icon="user" label="Edit Profile" onPress={() => setShowEditModal(true)} showArrow />
           <SettingsItem icon="lock" label="Change Password" onPress={() => {}} showArrow />
           <SettingsItem icon="shield" label="Privacy & Security" onPress={() => {}} showArrow />
           <SettingsItem
@@ -211,6 +213,11 @@ export default function SettingsScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <EditProfileModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+      />
 
       {/* Log out confirmation — Modal works reliably on Web */}
       <Modal

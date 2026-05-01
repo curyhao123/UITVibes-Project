@@ -3,6 +3,7 @@ import apiClient from "./httpClient";
 import {
   BE_PostResponse,
   BE_CommentResponse,
+  BE_CommentLikeResponse,
   BE_LikeResponse,
   CreatePostBody,
 } from "./backendTypes";
@@ -52,7 +53,7 @@ async function transformComment(be: BE_CommentResponse, user?: User): Promise<Co
     id: be.id,
     userId: be.userId,
     user: resolvedUser,
-    text: be.content,
+    text: be.isDeleted ? "" : be.content,
     createdAt: be.createdAt,
     likes: be.likesCount,
     isLiked: be.isLikedByCurrentUser,
@@ -381,9 +382,20 @@ export async function deleteComment(
 }
 
 export async function toggleCommentLike(
-  postId: string,
   commentId: string,
 ): Promise<boolean> {
-  await apiClient.post(`/post/${postId}/comment/${commentId}/like`);
-  return true;
+  try {
+    await apiClient.post<BE_CommentLikeResponse>(`/post/comment/${commentId}/like`);
+    return true;
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || "";
+    if (
+      msg === "Comment already liked" ||
+      msg.toLowerCase().includes("already liked")
+    ) {
+      await apiClient.delete(`/post/comment/${commentId}/like`);
+      return false;
+    }
+    throw err;
+  }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -10,15 +10,18 @@ public class PostService : IPostService
 {
     private readonly PostDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IUserFollowRpcClient _userFollowRpcClient;
     private readonly ILogger<PostService> _logger;
 
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
+        IUserFollowRpcClient userFollowRpcClient,
         ILogger<PostService> logger)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
+        _userFollowRpcClient = userFollowRpcClient;
         _logger = logger;
     }
 
@@ -115,10 +118,14 @@ public class PostService : IPostService
 
     public async Task<List<PostDto>> GetFeedAsync(Guid userId, int skip = 0, int take = 20)
     {
-        // Simplified feed: posts from user + public posts
-        // In production: fetch following list from UserService and filter
+        // Get IDs of users the current user follows
+        var followingIds = await _userFollowRpcClient.GetFollowingIdsAsync(userId);
+
+        // Always include own posts + posts from followed users
+        followingIds.Add(userId);
+
         var posts = await _context.Posts
-            .Where(p => !p.IsDeleted && (p.UserId == userId || p.Visibility == PostVisibility.Public))
+            .Where(p => !p.IsDeleted && followingIds.Contains(p.UserId))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)

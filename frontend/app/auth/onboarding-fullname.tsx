@@ -14,39 +14,30 @@ import { Feather } from '@expo/vector-icons';
 import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { useApp } from '../../context/AppContext';
-import * as api from '../../services/api';
 import { AppColors, borderRadius } from '../../constants/theme';
 
-export default function OnboardingUsernameScreen() {
+export default function OnboardingFullNameScreen() {
   const router = useRouter();
-  const { completeOnboardingStep, saveOnboardingData } = useApp();
+  const { saveOnboardingData } = useApp();
 
-  const [displayName, setDisplayName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
 
-  const isFormFilled = displayName.trim().length > 0;
+  const isFormFilled = fullName.trim().length > 0;
 
-  const validateDisplayName = async (value: string) => {
+  const validateFullName = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setError('Display name is required.');
+      setError('Full name is required.');
       return false;
     }
-    if (trimmed.length < 3) {
-      setError('Display name must be at least 3 characters.');
+    if (trimmed.length < 2) {
+      setError('Full name must be at least 2 characters.');
       return false;
     }
-    if (!/^[a-zA-Z0-9._]+$/.test(trimmed)) {
-      setError('Only letters, numbers, periods, and underscores allowed.');
-      return false;
-    }
-    setIsChecking(true);
-    const isAvailable = await api.checkDisplayNameAvailable(trimmed);
-    setIsChecking(false);
-    if (!isAvailable) {
-      setError('This display name is already taken. Try another one.');
+    if (trimmed.length > 100) {
+      setError('Full name must be less than 100 characters.');
       return false;
     }
     setError('');
@@ -54,17 +45,17 @@ export default function OnboardingUsernameScreen() {
   };
 
   const handleContinue = async () => {
-    if (!validateDisplayName(displayName)) return;
+    if (!validateFullName(fullName)) return;
+
     setIsLoading(true);
-    saveOnboardingData({ displayName: displayName.trim() });
+    saveOnboardingData({ fullName: fullName.trim() });
     await new Promise((r) => setTimeout(r, 300));
-    completeOnboardingStep();
     setIsLoading(false);
-    router.push('/auth/onboarding-avatar-bio');
+    router.push('/auth/onboarding-username');
   };
 
   // Progress indicator (4 steps: fullName, displayName, avatar/bio, find friends)
-  const [step1Active, step2Active, step3Active, step4Active] = [false, true, false, false];
+  const [step1Active, step2Active, step3Active, step4Active] = [true, false, false, false];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,17 +86,17 @@ export default function OnboardingUsernameScreen() {
           </TouchableOpacity>
 
           {/* Heading */}
-          <Text style={styles.title}>Choose your display name</Text>
+          <Text style={styles.title}>What should we call you?</Text>
           <Text style={styles.subtitle}>
-            Pick a display name for your profile. This cannot be changed later.
+            Enter your full name so friends can recognize you. This can be updated later in your profile settings.
           </Text>
 
-          {/* Display name preview */}
-          {displayName.trim().length > 0 && (
-            <View style={styles.usernamePreview}>
-              <Text style={styles.previewAt}>@</Text>
-              <Text style={styles.previewHandle} numberOfLines={1}>
-                {displayName.replace(/\s+/g, '_').toLowerCase()}
+          {/* Full name preview */}
+          {fullName.trim().length > 0 && (
+            <View style={styles.namePreview}>
+              <Feather name="user" size={18} color={AppColors.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.previewName} numberOfLines={1}>
+                {fullName.trim()}
               </Text>
             </View>
           )}
@@ -113,17 +104,17 @@ export default function OnboardingUsernameScreen() {
           {/* Form */}
           <View style={styles.formSection}>
             <FormInput
-              placeholder="display name"
-              value={displayName}
+              placeholder="Your full name"
+              value={fullName}
               onChangeText={(text) => {
-                setDisplayName(text);
+                setFullName(text);
                 if (error) setError('');
               }}
-              onBlur={() => validateDisplayName(displayName)}
-              error={isChecking ? '' : error}
-              autoCapitalize="none"
+              onBlur={() => validateFullName(fullName)}
+              error={error}
+              autoCapitalize="words"
               autoCorrect={false}
-              autoComplete="username"
+              autoComplete="name"
               autoFocus
             />
           </View>
@@ -131,8 +122,8 @@ export default function OnboardingUsernameScreen() {
           <Button
             title="Continue"
             onPress={handleContinue}
-            loading={isLoading || isChecking}
-            disabled={!isFormFilled || isChecking}
+            loading={isLoading}
+            disabled={!isFormFilled}
             size="lg"
           />
         </ScrollView>
@@ -190,7 +181,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  usernamePreview: {
+  namePreview: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppColors.surface,
@@ -202,12 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     overflow: 'hidden',
   },
-  previewAt: {
-    fontSize: 16,
-    color: AppColors.textMuted,
-    marginRight: 2,
-  },
-  previewHandle: {
+  previewName: {
     fontSize: 16,
     fontWeight: '600',
     color: AppColors.text,

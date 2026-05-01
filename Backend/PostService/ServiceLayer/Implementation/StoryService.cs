@@ -10,6 +10,7 @@ public class StoryService : IStoryService
     private readonly PostDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
+    private readonly IUserFollowRpcClient _userFollowRpcClient;
     private readonly ILogger<StoryService> _logger;
 
     /// Thời gian story tồn tại trước khi hết hạn (24 giờ)
@@ -19,11 +20,13 @@ public class StoryService : IStoryService
         PostDbContext context,
         ICloudinaryService cloudinaryService,
         IUserProfileRpcClient userProfileRpcClient,
+        IUserFollowRpcClient userFollowRpcClient,
         ILogger<StoryService> logger)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
         _userProfileRpcClient = userProfileRpcClient;
+        _userFollowRpcClient = userFollowRpcClient;
         _logger = logger;
     }
 
@@ -153,10 +156,15 @@ public class StoryService : IStoryService
     {
         var now = DateTime.UtcNow;
 
-        // Lấy tất cả story groups đang hoạt động
+        // Get IDs of users the current user follows
+        var followingIds = await _userFollowRpcClient.GetFollowingIdsAsync(currentUserId);
+        // Always include own stories
+        followingIds.Add(currentUserId);
+
+        // Only return active stories from followed users + self
         var groups = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .Where(g => g.ExpiresAt > now)
+            .Where(g => g.ExpiresAt > now && followingIds.Contains(g.UserId))
             .OrderByDescending(g => g.CreatedAt)
             .Take(limit)
             .ToListAsync();

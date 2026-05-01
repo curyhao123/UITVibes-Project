@@ -4,6 +4,12 @@ import { Avatar } from './Avatar';
 import { Comment } from '../data/mockData';
 import { Feather } from '@expo/vector-icons';
 import { AppColors } from '../constants/theme';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { SPRING_BOUNCE, SPRING_GENTLE } from '../animations/spring';
 
 interface CommentItemProps {
   comment: Comment;
@@ -29,16 +35,31 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     if (diffInSeconds < 60) return 'just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 864800)}d`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
 
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const handleLike = () => {
+  const scale = useSharedValue(1);
+
+  const handleLikePressIn = () => {
+    scale.value = withSpring(0.8, SPRING_GENTLE);
+  };
+  const handleLikePressOut = () => {
+    scale.value = withSpring(1.0, SPRING_GENTLE);
+  };
+  const handleLikePress = () => {
+    scale.value = withSpring(1.3, SPRING_BOUNCE, () => {
+      scale.value = withSpring(1.0, SPRING_BOUNCE);
+    });
     setIsLiked((prev) => !prev);
     setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
     onLike?.(comment.id);
   };
+
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
     <View style={[styles.container, isReply && styles.replyContainer]}>
@@ -96,13 +117,21 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       </View>
 
       {/* Like button */}
-      <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-        <Feather
-          name="heart"
-          size={14}
-          color={isLiked ? AppColors.primary : AppColors.textMuted}
-          fill={isLiked ? AppColors.primary : 'transparent'}
-        />
+      <TouchableOpacity
+        style={styles.likeButton}
+        onPress={handleLikePress}
+        onPressIn={handleLikePressIn}
+        onPressOut={handleLikePressOut}
+        activeOpacity={1}
+      >
+        <Animated.View style={heartAnimatedStyle}>
+          <Feather
+            name="heart"
+            size={14}
+            color={isLiked ? AppColors.primary : AppColors.textMuted}
+            fill={isLiked ? AppColors.primary : 'transparent'}
+          />
+        </Animated.View>
       </TouchableOpacity>
     </View>
   );

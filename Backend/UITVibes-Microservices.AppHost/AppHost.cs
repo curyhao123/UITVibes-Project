@@ -6,7 +6,7 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
-
+ 
 var authDb = postgres.AddDatabase("authdb");
 var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");

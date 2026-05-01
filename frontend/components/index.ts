@@ -7,6 +7,7 @@ export { PostGrid, UserListItem, StoryGrid } from './Lists';
 export { Header } from './Header';
 export { EmptyPostsState } from './EmptyPostsState';
 export { Toast } from './Toast';
+export { default as EditProfileModal } from './EditProfileModal';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {

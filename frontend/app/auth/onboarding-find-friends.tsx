@@ -81,7 +81,8 @@ export default function OnboardingFindFriendsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [localSuggested, setLocalSuggested] = useState<User[]>([]);
 
-  const displayName = onboardingData.displayName || 'there';
+  // Progress indicator (4 steps: fullName, displayName, avatar/bio, find friends)
+  const [step1Active, step2Active, step3Active, step4Active] = [false, false, false, true];
 
   useEffect(() => {
     fetchSuggestedUsers();
@@ -134,6 +135,14 @@ export default function OnboardingFindFriendsScreen() {
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Progress indicator */}
+      <View style={styles.progressRow}>
+        <View style={[styles.progressDot, step1Active && styles.progressDotActive]} />
+        <View style={[styles.progressDot, step2Active && styles.progressDotActive]} />
+        <View style={[styles.progressDot, step3Active && styles.progressDotActive]} />
+        <View style={[styles.progressDot, step4Active && styles.progressDotActive]} />
       </View>
 
       <FlatList
@@ -271,6 +280,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: AppColors.textSecondary,
     letterSpacing: -0.1,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingBottom: 16,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: AppColors.border,
+  },
+  progressDotActive: {
+    backgroundColor: AppColors.primary,
+    width: 24,
   },
   listContent: {
     paddingBottom: 32,

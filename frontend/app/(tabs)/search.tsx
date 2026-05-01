@@ -111,10 +111,12 @@ export default function SearchScreen() {
   };
 
   const handleFollowToggle = async (userId: string) => {
-    await toggleFollow(userId);
+    // Capture original state before optimistic update so revert can use it
+    let originalState: { isFollowing: boolean; followers: number } | null = null;
     setUsers((prev) =>
       prev.map((u) => {
-        if (u.id === userId) {
+        if (u.id === userId && originalState === null) {
+          originalState = { isFollowing: u.isFollowing, followers: u.followers };
           return {
             ...u,
             isFollowing: !u.isFollowing,
@@ -122,8 +124,30 @@ export default function SearchScreen() {
           };
         }
         return u;
-      })
+      }),
     );
+
+    try {
+      const nextIsFollowing = await toggleFollow(userId);
+      // Sync with server truth: only correct isFollowing (followers already correct from optimistic)
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, isFollowing: nextIsFollowing } : u,
+        ),
+      );
+    } catch (error) {
+      // Revert to original state on failure
+      if (originalState) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, isFollowing: originalState!.isFollowing, followers: originalState!.followers }
+              : u,
+          ),
+        );
+      }
+      console.error("Failed to toggle follow:", error);
+    }
   };
 
   const renderRecentItem = ({ item }: { item: RecentSearch }) => (
