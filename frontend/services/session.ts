@@ -7,6 +7,7 @@ let currentAccount: AccountType = "activeUser";
 let currentUserId: string = "current";
 let currentUser: User | null = null;
 const userCache: Map<string, User> = new Map();
+const followedUserIds: Set<string> = new Set();
 
 const LOCAL_HANDLE_KEY = "@uitvibes_local_username_handle";
 /** URL avatar đã xác nhận từ BE — dùng khi login/refresh tạm thời không trả avatarUrl */
@@ -14,7 +15,7 @@ const AVATAR_URL_PREFIX = "@uitvibes_avatar_url_";
 
 type LocalHandlePayload = { userId: string; username: string };
 
-const RECENT_SEARCHES_KEY = "@uitvibes_recent_searches";
+const RECENT_SEARCHES_KEY_PREFIX = "@uitvibes_recent_searches_";
 const MAX_RECENT_SEARCHES = 20;
 
 export type RecentSearch = {
@@ -27,8 +28,9 @@ export type RecentSearch = {
 };
 
 export async function getLocalRecentSearches(): Promise<RecentSearch[]> {
+  const key = `${RECENT_SEARCHES_KEY_PREFIX}${currentUserId}`;
   try {
-    const raw = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return [];
     const arr = JSON.parse(raw) as RecentSearch[];
     return Array.isArray(arr) ? arr : [];
@@ -38,29 +40,32 @@ export async function getLocalRecentSearches(): Promise<RecentSearch[]> {
 }
 
 export async function saveLocalRecentSearch(item: RecentSearch): Promise<void> {
+  const key = `${RECENT_SEARCHES_KEY_PREFIX}${currentUserId}`;
   try {
     const existing = await getLocalRecentSearches();
     const filtered = existing.filter((s) => s.userId !== item.userId);
     const updated = [item, ...filtered].slice(0, MAX_RECENT_SEARCHES);
-    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
   } catch {
     /* ignore */
   }
 }
 
 export async function removeLocalRecentSearch(userId: string): Promise<void> {
+  const key = `${RECENT_SEARCHES_KEY_PREFIX}${currentUserId}`;
   try {
     const existing = await getLocalRecentSearches();
     const updated = existing.filter((s) => s.userId !== userId);
-    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(key, JSON.stringify(updated));
   } catch {
     /* ignore */
   }
 }
 
 export async function clearLocalRecentSearches(): Promise<void> {
+  const key = `${RECENT_SEARCHES_KEY_PREFIX}${currentUserId}`;
   try {
-    await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+    await AsyncStorage.removeItem(key);
   } catch {
     /* ignore */
   }
@@ -143,6 +148,23 @@ export function cacheUser(user: User): void {
 
 export function clearUserCache(): void {
   userCache.clear();
+}
+
+export function isUserFollowed(userId: string): boolean {
+  return followedUserIds.has(userId);
+}
+
+export function markUserFollowed(userId: string): void {
+  followedUserIds.add(userId);
+}
+
+export function markUserUnfollowed(userId: string): void {
+  followedUserIds.delete(userId);
+}
+
+export function syncFollowedUserIds(ids: string[]): void {
+  followedUserIds.clear();
+  ids.forEach((id) => followedUserIds.add(id));
 }
 
 async function readLocalHandle(userId: string): Promise<string | null> {

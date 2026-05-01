@@ -2,19 +2,23 @@ import {
   User,
   Post,
   mockUsers,
-  activeUserFollowingIds,
 } from "../data/mockData";
 import apiClient, { delay } from "./httpClient";
 import {
   applyLocalUsernameToUser,
   cacheUser,
   clearPersistedAvatarUrl,
+  clearUserCache,
   getCachedUser,
   getCurrentAccount,
   getCurrentUser,
   getCurrentUserId,
+  isUserFollowed,
+  markUserFollowed,
+  markUserUnfollowed,
   mergePersistedAvatarIfMissing,
   setCurrentUser,
+  syncFollowedUserIds,
   RecentSearch,
   getLocalRecentSearches,
   saveLocalRecentSearch,
@@ -127,8 +131,7 @@ export async function getSuggestedUsers(): Promise<User[]> {
     }));
   } catch {
     await delay(400);
-    const followedIds = activeUserFollowingIds;
-    return mockUsers.filter((user) => !followedIds.has(user.id)).slice(0, 6);
+    return []; // no follow data available offline
   }
 }
 
@@ -181,7 +184,7 @@ export async function searchUsers(query: string): Promise<User[]> {
       following: 0,
       posts: 0,
       isVerified: false,
-      isFollowing: isFollowingResults[i] ?? activeUserFollowingIds.has(p.userId),
+      isFollowing: isFollowingResults[i] ?? false,
     }));
     return results;
   } catch (err) {
@@ -230,6 +233,12 @@ export async function fetchUserById(id: string): Promise<User> {
     );
     const user = transformBEUserProfile(data, statsRes.data);
     user.isFollowing = statsRes.data.isFollowing ?? false;
+    // Keep the follow-state Set in sync
+    if (user.isFollowing) {
+      markUserFollowed(data.userId);
+    } else {
+      markUserUnfollowed(data.userId);
+    }
     cacheUser(user);
     return user;
   } catch {
@@ -271,6 +280,12 @@ export async function getUserById(id: string): Promise<User | undefined> {
     );
     const user = transformBEUserProfile(userProfile, statsRes.data);
     user.isFollowing = statsRes.data.isFollowing ?? false;
+    // Keep the follow-state Set in sync
+    if (user.isFollowing) {
+      markUserFollowed(userProfile.userId);
+    } else {
+      markUserUnfollowed(userProfile.userId);
+    }
     return user;
   } catch {
     await delay(200);
@@ -340,6 +355,16 @@ export async function getCurrentUserProfile(): Promise<User> {
     user = await applyLocalUsernameToUser(user);
     user = await mergePersistedAvatarIfMissing(user);
     setCurrentUser(user);
+    // Seed followed-user IDs from the following list on app load
+    try {
+      const following = await apiClient.get<BE_FollowerListDto[]>(
+        `/user/follow/${data.userId}/following`,
+        { params: { skip: 0, take: 200 } },
+      );
+      syncFollowedUserIds(following.data.map((p) => p.userId));
+    } catch {
+      /* ignore — the Set is empty on failure, next checkIsFollowing call will sync */
+    }
     return user;
   } catch {
     const existing = getCurrentUser();
@@ -368,102 +393,54 @@ export async function getCurrentUserProfile(): Promise<User> {
 export async function followUser(userId: string): Promise<boolean> {
   try {
     await apiClient.post(`/user/follow/${userId}`);
-    activeUserFollowingIds.add(userId);
-    const user = mockUsers.find((u) => u.id === userId);
-    if (user) {
-      user.isFollowing = true;
-      user.followers += 1;
-    }
+    markUserFollowed(userId);
     clearUserCache();
     return true;
   } catch {
     await delay(300);
-    const user = mockUsers.find((u) => u.id === userId);
-    if (user) {
-      if (!activeUserFollowingIds.has(userId)) {
-        activeUserFollowingIds.add(userId);
-        user.isFollowing = true;
-        user.followers += 1;
-      }
-      clearUserCache();
-      return true;
-    }
-    return false;
+    clearUserCache();
+    return true; // fallback mirrors legacy behavior
   }
 }
 
 export async function unfollowUser(userId: string): Promise<boolean> {
   try {
     await apiClient.delete(`/user/follow/${userId}`);
-    activeUserFollowingIds.delete(userId);
-    const user = mockUsers.find((u) => u.id === userId);
-    if (user) {
-      user.isFollowing = false;
-      user.followers = Math.max(0, user.followers - 1);
-    }
+    markUserUnfollowed(userId);
     clearUserCache();
     return true;
   } catch {
     await delay(300);
-    const user = mockUsers.find((u) => u.id === userId);
-    if (user) {
-      if (activeUserFollowingIds.has(userId)) {
-        activeUserFollowingIds.delete(userId);
-        user.isFollowing = false;
-        user.followers = Math.max(0, user.followers - 1);
-      }
-      clearUserCache();
-      return true;
-    }
-    return false;
+    markUserUnfollowed(userId);
+    clearUserCache();
+    return true;
   }
 }
 
 export async function toggleFollow(userId: string): Promise<boolean> {
+  // Use the persisted follow-state Set, not the broken isFollowing() function
+  const isCurrentlyFollowing = isUserFollowed(userId);
+  const willFollow = !isCurrentlyFollowing;
+
   try {
-    const isCurrentlyFollowing = activeUserFollowingIds.has(userId);
-    if (isCurrentlyFollowing) {
-      await apiClient.delete(`/user/follow/${userId}`);
-      activeUserFollowingIds.delete(userId);
-      const user = mockUsers.find((u) => u.id === userId);
-      if (user) {
-        user.isFollowing = false;
-        user.followers = Math.max(0, user.followers - 1);
-      }
-    } else {
+    if (willFollow) {
       await apiClient.post(`/user/follow/${userId}`);
-      activeUserFollowingIds.add(userId);
-      const user = mockUsers.find((u) => u.id === userId);
-      if (user) {
-        user.isFollowing = true;
-        user.followers += 1;
-      }
+      markUserFollowed(userId);
+    } else {
+      await apiClient.delete(`/user/follow/${userId}`);
+      markUserUnfollowed(userId);
     }
     clearUserCache();
-    return !isCurrentlyFollowing;
+    return willFollow;
   } catch {
     await delay(200);
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) return false;
-
-    if (activeUserFollowingIds.has(userId)) {
-      activeUserFollowingIds.delete(userId);
-      user.isFollowing = false;
-      user.followers = Math.max(0, user.followers - 1);
-      clearUserCache();
-      return false;
-    } else {
-      activeUserFollowingIds.add(userId);
-      user.isFollowing = true;
-      user.followers += 1;
-      clearUserCache();
-      return true;
-    }
+    clearUserCache();
+    return isCurrentlyFollowing; // return original state on error
   }
 }
 
 export function isFollowing(userId: string): boolean {
-  return activeUserFollowingIds.has(userId);
+  return isUserFollowed(userId);
 }
 
 /**
@@ -478,6 +455,11 @@ export async function checkIsFollowing(userId: string): Promise<boolean | null> 
       `/user/follow/${userId}/is-following`,
       { params: { currentUserId: currentUid } },
     );
+    if (data.isFollowing) {
+      markUserFollowed(userId);
+    } else {
+      markUserUnfollowed(userId);
+    }
     return data.isFollowing;
   } catch {
     return null;
@@ -531,7 +513,7 @@ export async function getFollowing(userId: string): Promise<User[]> {
     }));
   } catch {
     await delay(300);
-    return mockUsers.filter((u) => activeUserFollowingIds.has(u.id));
+    return []; // no follow data available offline
   }
 }
 

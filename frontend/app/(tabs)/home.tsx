@@ -7,7 +7,6 @@ import { PostCard, StoryBar, Avatar, Header } from '../../components';
 import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import { activeUserFollowingIds } from '../../data/mockData';
 import { FeedSkeleton } from '../../components/SkeletonLoader';
 
 export default function HomeScreen() {
@@ -38,14 +37,9 @@ export default function HomeScreen() {
     router.push('/story/create' as any);
   };
 
-  const displayedPosts = useMemo(() => {
-    if (feedTab === 'following') {
-      return posts.filter(
-        (post) => post.userId === 'current' || activeUserFollowingIds.has(post.userId)
-      );
-    }
-    return posts;
-  }, [posts, feedTab]);
+  // Backend already returns only own posts + followed users' posts.
+  // Both tabs use the same data until "For You" gains a separate recommendation engine.
+  const displayedPosts = posts;
 
   if (isLoading) {
     return (

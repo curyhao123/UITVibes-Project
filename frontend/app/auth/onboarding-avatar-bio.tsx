@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,11 +16,20 @@ import { FormInput } from '../../components/FormInput';
 import { useApp } from '../../context/AppContext';
 import { AppColors, borderRadius } from '../../constants/theme';
 
+type GenderOption = { label: string; value: string };
+const GENDER_OPTIONS: GenderOption[] = [
+  { label: 'Not specified', value: '' },
+  { label: 'Male', value: 'male' },
+  { label: 'Female', value: 'female' },
+  { label: 'Other', value: 'other' },
+];
+
 export default function OnboardingAvatarBioScreen() {
   const router = useRouter();
   const { completeOnboardingStep, saveOnboardingData } = useApp();
 
   const [bio, setBio] = useState('');
+  const [gender, setGender] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const bioLength = bio.length;
@@ -30,7 +38,7 @@ export default function OnboardingAvatarBioScreen() {
 
   const handleSkip = async () => {
     setIsLoading(true);
-    saveOnboardingData({ bio });
+    saveOnboardingData({ gender, bio });
     await new Promise((r) => setTimeout(r, 300));
     completeOnboardingStep();
     setIsLoading(false);
@@ -40,15 +48,15 @@ export default function OnboardingAvatarBioScreen() {
   const handleContinue = async () => {
     if (isOverLimit) return;
     setIsLoading(true);
-    saveOnboardingData({ bio });
+    saveOnboardingData({ gender, bio });
     await new Promise((r) => setTimeout(r, 300));
     completeOnboardingStep();
     setIsLoading(false);
     router.replace('/auth/onboarding-find-friends');
   };
 
-  // Progress indicator (3 steps: username, avatar/bio, find friends)
-  const [step1Active, step2Active, step3Active] = [false, true, false];
+  // Progress indicator (4 steps: fullName, displayName, avatar/bio, find friends)
+  const [step1Active, step2Active, step3Active, step4Active] = [false, false, true, false];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,6 +74,7 @@ export default function OnboardingAvatarBioScreen() {
             <View style={[styles.progressDot, step1Active && styles.progressDotActive]} />
             <View style={[styles.progressDot, step2Active && styles.progressDotActive]} />
             <View style={[styles.progressDot, step3Active && styles.progressDotActive]} />
+            <View style={[styles.progressDot, step4Active && styles.progressDotActive]} />
           </View>
 
           {/* Heading */}
@@ -87,6 +96,33 @@ export default function OnboardingAvatarBioScreen() {
             <TouchableOpacity activeOpacity={0.7}>
               <Text style={styles.uploadText}>Add photo</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Gender picker */}
+          <View style={styles.genderSection}>
+            <Text style={styles.sectionLabel}>Gender</Text>
+            <View style={styles.genderPickerRow}>
+              {GENDER_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.genderOption,
+                    gender === opt.value && styles.genderOptionSelected,
+                  ]}
+                  onPress={() => setGender(opt.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.genderOptionText,
+                      gender === opt.value && styles.genderOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Bio */}
@@ -227,7 +263,42 @@ const styles = StyleSheet.create({
     color: AppColors.primary,
     letterSpacing: -0.1,
   },
-  formSection: { marginBottom: 32 },
+  genderSection: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: AppColors.text,
+    letterSpacing: -0.1,
+    marginBottom: 10,
+  },
+  genderPickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  genderOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.surface,
+  },
+  genderOptionSelected: {
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
+  },
+  genderOptionText: {
+    fontSize: 13,
+    color: AppColors.text,
+  },
+  genderOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  formSection: { marginBottom: 24 },
   bioLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

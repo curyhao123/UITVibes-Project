@@ -26,7 +26,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { getPostById } from '../../services/api';
+import { getPostById, toggleCommentLike } from '../../services/postService';
 import { Post, Comment } from '../../data/mockData';
 import { Avatar, CommentItem } from '../../components';
 import { useApp } from '../../context/AppContext';
@@ -223,6 +223,14 @@ export default function PostDetailScreen() {
     setReplyTo(null);
   };
 
+  const handleCommentLike = async (commentId: string) => {
+    try {
+      await toggleCommentLike(commentId);
+    } catch (err) {
+      console.error('[PostDetail] Failed to toggle comment like:', err);
+    }
+  };
+
   const formatLikes = (count: number): string => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -290,6 +298,7 @@ export default function PostDetailScreen() {
             <CommentItem
               comment={item}
               onReply={handleReply}
+              onLike={handleCommentLike}
             />
           )}
         />
