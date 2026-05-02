@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using MessageService.DTOs;
 using MessageService.ServiceLayer.Interface;
 
@@ -25,12 +25,15 @@ public class ChatHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var userId = GetUserId();
+        var userId = ParseUserId(); // đọc từ HttpContext lúc connect
         if (userId == Guid.Empty)
         {
             Context.Abort();
             return;
         }
+
+        // Lưu vào Context.Items — tồn tại suốt vòng đời connection
+        Context.Items["UserId"] = userId;
 
         // Track user online status
         await _onlineTrackingService.SetUserOnlineAsync(userId, Context.ConnectionId);
@@ -52,6 +55,7 @@ public class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        // Lấy từ Context.Items — luôn có, kể cả khi HttpContext đã null
         var userId = GetUserId();
         if (userId != Guid.Empty)
         {
@@ -203,16 +207,55 @@ public class ChatHub : Hub
         await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
     }
 
+    /// <summary>
+    /// Dùng trong mọi method — đọc từ Context.Items (luôn available)
+    /// </summary>
     private Guid GetUserId()
     {
-        var userIdHeader = Context.GetHttpContext()?.Request.Headers["X-User-Id"].FirstOrDefault()
-            ?? Context.GetHttpContext()?.Request.Query["userId"].FirstOrDefault();
+        if (Context.Items.TryGetValue("UserId", out var value) && value is Guid userId)
+            return userId;
 
-        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        _logger.LogWarning("UserId not found in Context.Items — ConnectionId: {ConnectionId}",
+            Context.ConnectionId);
+        return Guid.Empty;
+    }
+
+    /// <summary>
+    /// Chỉ gọi 1 lần trong OnConnectedAsync — đọc từ HttpContext
+    /// </summary>
+    private Guid ParseUserId()
+    {
+        var httpContext = Context.GetHttpContext();
+
+        // Đọc từ header X-User-Id (khi qua Gateway)
+        var fromHeader = httpContext?.Request.Headers["X-User-Id"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(fromHeader) && Guid.TryParse(fromHeader, out var headerUserId))
+            return headerUserId;
+
+        // Fallback — đọc từ query string (khi test trực tiếp)
+        var fromQuery = httpContext?.Request.Query["userId"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(fromQuery) && Guid.TryParse(fromQuery, out var queryUserId))
+            return queryUserId;
+
+        // ✅ Thêm — decode access_token từ query string (khi Gateway forward token)
+        var accessToken = httpContext?.Request.Query["access_token"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(accessToken))
         {
-            return Guid.Empty;
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            if (handler.CanReadToken(accessToken))
+            {
+                var jwt = handler.ReadJwtToken(accessToken);
+                var userId = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == "sub" ||
+                    c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var tokenUserId))
+                    return tokenUserId;
+            }
         }
 
-        return userId;
+        return Guid.Empty;
+
+
     }
 }

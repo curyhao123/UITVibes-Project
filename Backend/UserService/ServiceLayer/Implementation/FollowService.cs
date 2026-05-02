@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UserService.DTOs;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
@@ -207,5 +207,36 @@ public class FollowService : IFollowService
             .ToListAsync();
 
         return following;
+    }
+
+    public async Task<List<FriendListOnlineDto>> GetFriendListsAsync(Guid userId, int skip = 0, int take = 20)
+    {
+        // Lấy những người userId đang follow
+        var following = _context.Follows
+            .Where(f => f.FollowerId == userId)
+            .Select(f => f.FollowingId);
+
+        // Lấy những người đang follow userId
+        var followers = _context.Follows
+            .Where(f => f.FollowingId == userId)
+            .Select(f => f.FollowerId);
+
+        // Bạn bè = giao nhau (follow lẫn nhau)
+        var friendIds = following.Intersect(followers);
+
+        var friends = await _context.UserProfiles
+        .Where(p => friendIds.Contains(p.UserId))
+        .OrderBy(p => p.DisplayName)
+        .Skip(skip)
+        .Take(take)
+        .Select(p => new FriendListOnlineDto
+        {
+            UserId = p.UserId,
+            DisplayName = p.DisplayName,
+            AvatarUrl = p.AvatarUrl
+        })
+        .ToListAsync();
+
+        return friends;
     }
 }

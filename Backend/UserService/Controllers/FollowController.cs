@@ -164,4 +164,16 @@ public class FollowController : ControllerBase
         var following = await _followService.GetFollowingAsync(currentUserId, skip, take);
         return Ok(following);
     }
+
+    [HttpGet("{userId}/friends")]
+    public async Task<ActionResult<List<FriendListOnlineDto>>> GetFriends(
+        Guid userId,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        if (take > 20) take = 20; // Limit max results
+        
+        var friends = await _followService.GetFriendListsAsync(userId, skip, take);
+        return Ok(friends);
+    }
 }

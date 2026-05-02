@@ -765,6 +765,32 @@
           }
         }
       ]
+    },
+    {
+      "name": "MessageService - Online Tracking",
+      "description": "User online presence and status tracking",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/message/onlinetracking/online-users",
+          "description": "Check online status for a specific list of user IDs",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "userIds": ["guid1", "guid2"]
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/message/onlinetracking/online-friends",
+          "description": "Get current user's friend list with online presence flag",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 50
+          }
+        }
+      ]
     }
   ]
 }

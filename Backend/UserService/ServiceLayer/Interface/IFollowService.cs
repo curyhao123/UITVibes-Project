@@ -10,4 +10,5 @@ public interface IFollowService
     Task<UserFollowStatsDto> GetFollowStatsAsync(Guid userId, Guid? currentUserId = null);
     Task<List<FollowerListDto>> GetFollowersAsync(Guid userId, int skip = 0, int take = 50);
     Task<List<FollowerListDto>> GetFollowingAsync(Guid userId, int skip = 0, int take = 50);
+    Task<List<FriendListOnlineDto>> GetFriendListsAsync(Guid userId, int skip = 0, int take = 20);
 }

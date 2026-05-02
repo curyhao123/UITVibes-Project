@@ -1,6 +1,9 @@
 ﻿using MessageService.DTOs;
 using MessageService.Models;
+using MessageService.DTOs;
+using MessageService.Hubs;
 using MessageService.ServiceLayer.Interface;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MessageService.ServiceLayer.Implementation
@@ -8,10 +11,13 @@ namespace MessageService.ServiceLayer.Implementation
     public class ChatMessageService: IMessageService
     {
         private readonly MessageDbContext _context;
+        private readonly IHubContext<ChatHub> _hubContext;
         private readonly ILogger<ChatMessageService> _logger;
-        public ChatMessageService(MessageDbContext context, ILogger<ChatMessageService> logger)
+
+        public ChatMessageService(MessageDbContext context, IHubContext<ChatHub> hubContext, ILogger<ChatMessageService> logger)
         {
             _context = context;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -32,6 +38,14 @@ namespace MessageService.ServiceLayer.Implementation
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Message {MessageId} deleted by {UserId}", messageId, userId);
+
+            await _hubContext.Clients.Group(message.ConversationId.ToString()).SendAsync("MessageDeleted", new
+            {
+                conversationId = message.ConversationId,
+                messageId = messageId,
+                deletedBy = userId,
+                deletedAt = DateTime.UtcNow
+            });
         }
 
         public async Task<MessageDto> EditMessageAsync(Guid messageId, Guid userId, EditMessageRequest request)
@@ -55,7 +69,10 @@ namespace MessageService.ServiceLayer.Implementation
 
             _logger.LogInformation("Message {MessageId} edited by {UserId}", messageId, userId);
 
-            return MapToDto(message);
+            var messageDto = MapToDto(message);
+            await _hubContext.Clients.Group(message.ConversationId.ToString()).SendAsync("MessageEdited", messageDto);
+
+            return messageDto;
         }
 
         public async Task<List<MessageDto>> GetMessagesAsync(Guid conversationId, Guid userId, int skip = 0, int take = 50)
@@ -114,6 +131,14 @@ namespace MessageService.ServiceLayer.Implementation
             }
 
             await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(conversationId.ToString()).SendAsync("MessagesRead", new
+            {
+                conversationId,
+                userId,
+                messageId,
+                readAt = DateTime.UtcNow
+            });
         }
 
         public async Task<MessageDto> SendMessageAsync(Guid conversationId, Guid senderId, SendMessageRequest request)
@@ -169,7 +194,10 @@ namespace MessageService.ServiceLayer.Implementation
             _logger.LogInformation("Message {MessageId} sent to conversation {ConversationId} by {SenderId}",
                 message.Id, conversationId, senderId);
 
-            return MapToDto(message);
+            var messageDto = MapToDto(message);
+            await _hubContext.Clients.Group(conversationId.ToString()).SendAsync("ReceiveMessage", messageDto);
+
+            return messageDto;
         }
 
         private MessageDto MapToDto(Message message)

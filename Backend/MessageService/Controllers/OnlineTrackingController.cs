@@ -19,6 +19,28 @@ public class OnlineTrackingController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("online-friends")]
+    public async Task<ActionResult<List<OnlineFriendDto>>> GetOnlineFriends(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50)
+    {
+        var userId = GetUserId();
+        if (userId == Guid.Empty) return Unauthorized(new { message = "User ID not found" });
+
+        if (take > 100) take = 100;
+
+        try
+        {
+            var friends = await _onlineTrackingService.GetOnlineFriendsAsync(userId, skip, take, HttpContext.RequestAborted);
+            return Ok(friends);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting online friends");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
+
     [HttpPost("online-users")]
     public async Task<ActionResult<List<Guid>>> GetOnlineUsers([FromBody] GetOnlineUsersRequest request)
     {

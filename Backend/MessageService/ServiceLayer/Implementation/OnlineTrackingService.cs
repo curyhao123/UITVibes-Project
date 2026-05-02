@@ -1,4 +1,5 @@
-﻿using MessageService.ServiceLayer.Interface;
+﻿using MessageService.DTOs;
+using MessageService.ServiceLayer.Interface;
 using StackExchange.Redis;
 
 namespace MessageService.ServiceLayer.Implementation;
@@ -6,13 +7,18 @@ namespace MessageService.ServiceLayer.Implementation;
 public class OnlineTrackingService : IOnlineTrackingService
 {
     private readonly IConnectionMultiplexer _redis;
+    private readonly IFriendListRpcClient _friendListRpcClient;
     private readonly ILogger<OnlineTrackingService> _logger;
     private const string OnlineUsersKey = "online_users";
     private const string UserConnectionsPrefix = "user_connections:";
 
-    public OnlineTrackingService(IConnectionMultiplexer redis, ILogger<OnlineTrackingService> logger)
+    public OnlineTrackingService(
+        IConnectionMultiplexer redis,
+        IFriendListRpcClient friendListRpcClient,
+        ILogger<OnlineTrackingService> logger)
     {
         _redis = redis;
+        _friendListRpcClient = friendListRpcClient;
         _logger = logger;
     }
 
@@ -88,5 +94,26 @@ public class OnlineTrackingService : IOnlineTrackingService
         var userKey = $"{UserConnectionsPrefix}{userId}";
         var connections = await db.SetMembersAsync(userKey);
         return connections.Select(c => c.ToString()).ToList();
+    }
+
+    public async Task<List<OnlineFriendDto>> GetOnlineFriendsAsync(
+        Guid userId,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var friends = await _friendListRpcClient.GetFriendListAsync(userId, skip, take, cancellationToken);
+        if (friends.Count == 0) return new List<OnlineFriendDto>();
+
+        var onlineIds = await GetOnlineUsersAsync(friends.Select(f => f.UserId));
+        var onlineSet = onlineIds.ToHashSet();
+
+        return friends.Select(friend => new OnlineFriendDto
+        {
+            UserId = friend.UserId,
+            DisplayName = friend.DisplayName,
+            AvatarUrl = friend.AvatarUrl,
+            IsOnline = onlineSet.Contains(friend.UserId)
+        }).ToList();
     }
 }
