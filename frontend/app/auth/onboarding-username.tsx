@@ -54,8 +54,12 @@ export default function OnboardingUsernameScreen() {
   };
 
   const handleContinue = async () => {
-    if (!validateDisplayName(displayName)) return;
     setIsLoading(true);
+    const isValid = await validateDisplayName(displayName);
+    if (!isValid) {
+      setIsLoading(false);
+      return;
+    }
     saveOnboardingData({ displayName: displayName.trim() });
     await new Promise((r) => setTimeout(r, 300));
     completeOnboardingStep();

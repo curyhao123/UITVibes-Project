@@ -1,4 +1,4 @@
-﻿using MessageService.DTOs;
+using MessageService.DTOs;
 using MessageService.Models;
 using MessageService.ServiceLayer.Interface;
 using Microsoft.EntityFrameworkCore;

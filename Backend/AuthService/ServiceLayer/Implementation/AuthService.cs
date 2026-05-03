@@ -3,7 +3,6 @@ using AuthService.Messaging;
 using AuthService.Models;
 using AuthService.ServiceLayer.Interface;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
 
 namespace AuthService.ServiceLayer.Implementation
 {
@@ -20,13 +19,13 @@ namespace AuthService.ServiceLayer.Implementation
             ITokenService tokenService,
             IConfiguration configuration,
             IMessagePublisher messagePublisher,
-            IEmailService emailService)  // 👈 Add this
+            IEmailService emailService)
         {
             _context = context;
             _tokenService = tokenService;
             _configuration = configuration;
-            _messagePublisher = messagePublisher;  // 👈 Add this
-            _emailService = emailService; 
+            _messagePublisher = messagePublisher;
+            _emailService = emailService;
         }
 
 
@@ -106,7 +105,17 @@ namespace AuthService.ServiceLayer.Implementation
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (user == null)
+            {
+                throw new Exception("Invalid email or password");
+            }
+
+            if (!user.IsVerified)
+            {
+                throw new CustomAuthException("NOT_VERIFIED", "Account not verified. Please verify your email first.", user.Email);
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 throw new Exception("Invalid email or password");
             }
@@ -142,8 +151,7 @@ namespace AuthService.ServiceLayer.Implementation
                 {
                     Id = user.Id,
                     Email = user.Email,
-                    Username = user.Username,
-                    IsVerified = user.IsVerified ? "True" : "False"
+                    Username = user.Username
                 }
             };
         }
@@ -238,84 +246,133 @@ namespace AuthService.ServiceLayer.Implementation
             await _context.SaveChangesAsync();
         }
 
+        // ─── Email Verification ─────────────────────────────────────────────────
 
-
-        private static string GenerateOtpCode()
-        {
-            return RandomNumberGenerator.GetInt32(100000, 1000000).ToString("D6");
-        }
-
-
-        // Hàm private dùng chung — chỉ lo việc tạo và lưu OTP
-        private async Task<User> GenerateAndSaveOtpAsync(string email)
+        public async Task SendVerificationEmailAsync(string email)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user == null) throw new Exception("User not found");
+            if (user == null)
+                throw new Exception("Email not found");
 
+            // Rate-limit: minimum 60s between sends
             if (user.LastOtpSentAt.HasValue &&
-                DateTime.UtcNow - user.LastOtpSentAt.Value < TimeSpan.FromMinutes(1))
+                DateTime.UtcNow - user.LastOtpSentAt.Value < TimeSpan.FromSeconds(60))
             {
-                throw new Exception("Vui lòng chờ 1 phút trước khi gửi lại OTP");
+                var remaining = 60 - (int)(DateTime.UtcNow - user.LastOtpSentAt.Value).TotalSeconds;
+                throw new Exception($"Please wait {remaining} seconds before requesting a new code.");
             }
 
-            var otp = GenerateOtpCode();
-            user.OtpCode = BCrypt.Net.BCrypt.HashPassword(otp);
+            var otp = new Random().Next(100000, 999999).ToString();
+            user.OtpCode = otp; // store as plain text so Verify() can compare directly
             user.OtpExpiry = DateTime.UtcNow.AddMinutes(5);
             user.LastOtpSentAt = DateTime.UtcNow;
+            user.OtpResendCount += 1;
 
             await _context.SaveChangesAsync();
-            await _emailService.SendEmailAsync(email, "Verify OTP", $"Your OTP code is {otp}");
 
-            return user;
+            var subject = "Your UITVibes verification code";
+            var body = $@"<!DOCTYPE html>
+<html>
+<body style='font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;'>
+  <div style='text-align: center;'>
+    <h1 style='color: #D97757; font-size: 28px; margin-bottom: 8px;'>UITVibes</h1>
+    <p style='color: #4A5568; font-size: 15px;'>Your verification code:</p>
+    <div style='background: #F9F8F6; border: 2px dashed #D97757; border-radius: 12px;
+                padding: 24px; margin: 24px 0; display: inline-block;'>
+      <span style='font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #2D3748;'>
+        {otp}
+      </span>
+    </div>
+    <p style='color: #718096; font-size: 13px;'>
+      This code expires in <strong>5 minutes</strong>.<br/>
+      If you did not request this, please ignore this email.
+    </p>
+  </div>
+</body>
+</html>";
+
+            await _emailService.SendEmailAsync(email, subject, body);
         }
 
-        // Hàm private dùng chung — chỉ lo việc check OTP có hợp lệ không
-        private async Task<User> ValidateOtpAsync(string email, string inputOtp)
+        public async Task VerifyEmailAsync(string email, string otp)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user == null) throw new Exception("User not found");
+            if (user == null)
+                throw new Exception("Email not found");
 
-            if (user.OtpCode == null || user.OtpExpiry == null)
-                throw new Exception("Bạn chưa yêu cầu gửi OTP");
+            if (string.IsNullOrWhiteSpace(user.OtpCode))
+                throw new Exception("No verification code has been sent. Please request a new one.");
 
-            if (DateTime.UtcNow > user.OtpExpiry)
-                throw new Exception("Mã OTP đã hết hạn");
+            if (user.OtpExpiry < DateTime.UtcNow)
+                throw new Exception("Verification code has expired. Please request a new one.");
 
-            if (!BCrypt.Net.BCrypt.Verify(inputOtp, user.OtpCode))
-                throw new Exception("Mã OTP không đúng");
+            if (!string.Equals(otp.Trim(), user.OtpCode.Trim(), StringComparison.Ordinal))
+                throw new Exception("Invalid verification code. Please try again.");
 
-            // Xóa OTP sau khi validate xong
+            user.IsVerified = true;
             user.OtpCode = null;
             user.OtpExpiry = null;
-            user.LastOtpSentAt = null;
 
-            return user;
-        }
-
-        // Xác thực tài khoản — require JWT
-        public async Task SendOtpAsync(string email)
-        {
-            await GenerateAndSaveOtpAsync(email);
-        }
-
-        public async Task VerifyOtpAsync(string email, string inputOtp)
-        {
-            var user = await ValidateOtpAsync(email, inputOtp);
-            user.IsVerified = true;         // 👈 logic riêng
             await _context.SaveChangesAsync();
         }
 
-        // Forgot password — không cần JWT
-        public async Task SendForgotPasswordOtpAsync(string email)
+        public async Task ResendOtpAsync(string email)
         {
-            await GenerateAndSaveOtpAsync(email);  // tái sử dụng
+            await SendVerificationEmailAsync(email);
         }
 
-        public async Task VerifyForgotPasswordOtpAsync(string email, string inputOtp, string newPassword)
+        /// <summary>
+        /// Verifies OTP then immediately generates and returns auth tokens.
+        /// Used by the Login → Verify flow so the frontend gets tokens without a second login call.
+        /// </summary>
+        public async Task<AuthResponse> VerifyEmailAndLoginAsync(string email, string otp)
         {
-            var user = await ValidateOtpAsync(email, inputOtp);  // tái sử dụng
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);  // 👈 logic riêng
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                throw new Exception("Email not found");
+
+            if (string.IsNullOrWhiteSpace(user.OtpCode))
+                throw new Exception("No verification code has been sent. Please request a new one.");
+
+            if (user.OtpExpiry < DateTime.UtcNow)
+                throw new Exception("Verification code has expired. Please request a new one.");
+
+            if (!string.Equals(otp.Trim(), user.OtpCode.Trim(), StringComparison.Ordinal))
+                throw new Exception("Invalid verification code. Please try again.");
+
+            user.IsVerified = true;
+            user.OtpCode = null;
+            user.OtpExpiry = null;
+
+            // Generate tokens for the now-verified user
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                Token = refreshToken,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:RefreshTokenExpiresInDays"])),
+                IsRevoked = false
+            };
+
+            _context.RefreshTokens.Add(refreshTokenEntity);
             await _context.SaveChangesAsync();
+
+            return new AuthResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiresInMinutes"])),
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Username = user.Username
+                }
+            };
         }
 
     }

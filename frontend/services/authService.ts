@@ -109,6 +109,13 @@ export async function login(email: string, password: string): Promise<User> {
   } catch (error: any) {
     // Surface backend error message to callers while logging full error
     console.error("[Auth] Login failed", error?.response?.data ?? error);
+    const errorCode = error?.response?.data?.errorCode;
+    if (errorCode === "NOT_VERIFIED") {
+      const err = new Error(error?.response?.data?.message ?? "Account not verified.") as Error & { errorCode: string; email: string };
+      err.errorCode = errorCode;
+      err.email = error?.response?.data?.email ?? email;
+      throw err;
+    }
     const message =
       (error?.response?.data &&
         (error.response.data.message || error.response.data.error)) ||
@@ -256,4 +263,38 @@ export async function refreshSession(): Promise<User | null> {
     console.warn("[Auth] refreshSession failed", e);
     return null;
   }
+}
+
+// ─── Email Verification ────────────────────────────────────────────────────────
+
+export async function sendVerificationEmail(
+  email: string,
+): Promise<void> {
+  await apiClient.post("/auth/send-verification", { email });
+}
+
+export async function verifyEmail(
+  email: string,
+  otp: string,
+): Promise<void> {
+  await apiClient.post("/auth/verify-email", { email, otp });
+}
+
+/**
+ * Verifies OTP and returns auth tokens in one step.
+ * Use this for the Login → Verify flow so tokens are available immediately after verification.
+ */
+export async function verifyEmailAndLogin(
+  email: string,
+  otp: string,
+): Promise<BE_AuthResponse> {
+  const { data } = await apiClient.post<BE_AuthResponse>(
+    "/auth/verify-email-and-login",
+    { email, otp },
+  );
+  return data;
+}
+
+export async function resendOtp(email: string): Promise<void> {
+  await apiClient.post("/auth/resend-otp", { email });
 }

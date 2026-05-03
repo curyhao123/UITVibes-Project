@@ -63,21 +63,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            // Thêm handler này — đọc token từ query string cho SignalR
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/chat"))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
-            },
-
-
             OnAuthenticationFailed = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -109,93 +94,42 @@ builder.Services.AddReverseProxy()
     {
         builderContext.AddRequestTransform(async transformContext =>
         {
-            var httpContext = transformContext.HttpContext;
-
-            // Forward Authorization header
-            var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+            var authHeader = transformContext.HttpContext.Request.Headers["Authorization"].FirstOrDefault();
             if (!string.IsNullOrEmpty(authHeader))
-                transformContext.ProxyRequest.Headers
-                    .TryAddWithoutValidation("Authorization", authHeader);
-
-            // Case 1 — HTTP thường, user đã authenticated qua JWT header
-            if (httpContext.User.Identity?.IsAuthenticated == true)
             {
-                var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var email = httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("Authorization", authHeader);
+            }
+
+            if (transformContext.HttpContext.User.Identity?.IsAuthenticated == true)
+            {
+                var userId = transformContext.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var email = transformContext.HttpContext.User.FindFirst(ClaimTypes.Email)?.Value;
 
                 if (userId != null)
-                    transformContext.ProxyRequest.Headers
-                        .TryAddWithoutValidation("X-User-Id", userId);
+                    transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-User-Id", userId);
                 if (email != null)
-                    transformContext.ProxyRequest.Headers
-                        .TryAddWithoutValidation("X-User-Email", email);
-            }
-            // Case 2 — WebSocket/SignalR, token nằm trong query string
-            // vì lúc này User chưa được set do OnMessageReceived chạy sau transform
-            else if (httpContext.Request.Path.StartsWithSegments("/hubs"))
-            {
-                var accessToken = httpContext.Request.Query["access_token"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(accessToken))
-                {
-                    var handler = new System.IdentityModel.Tokens.Jwt
-                        .JwtSecurityTokenHandler();
-
-                    if (handler.CanReadToken(accessToken))
-                    {
-                        var jwt = handler.ReadJwtToken(accessToken);
-
-                        // Lấy userId — thử cả "sub" và NameIdentifier
-                        var userId = jwt.Claims.FirstOrDefault(c =>
-                            c.Type == "sub" ||
-                            c.Type == ClaimTypes.NameIdentifier)?.Value;
-
-                        // Lấy email — thử cả "email" và EmailAddress
-                        var email = jwt.Claims.FirstOrDefault(c =>
-                            c.Type == "email" ||
-                            c.Type == ClaimTypes.Email)?.Value;
-
-                        // Log để debug
-                        var logger = httpContext.RequestServices
-                            .GetRequiredService<ILogger<Program>>();
-                        logger.LogInformation("WebSocket transform — userId: {UserId}", userId);
-
-                        if (userId != null)
-                            transformContext.ProxyRequest.Headers
-                                .TryAddWithoutValidation("X-User-Id", userId);
-                        if (email != null)
-                            transformContext.ProxyRequest.Headers
-                                .TryAddWithoutValidation("X-User-Email", email);
-                    }
-                }
+                    transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-User-Email", email);
             }
 
             var correlationId = Guid.NewGuid().ToString();
-            transformContext.ProxyRequest.Headers
-                .TryAddWithoutValidation("X-Correlation-ID", correlationId);
-            transformContext.ProxyRequest.Headers
-                .TryAddWithoutValidation("X-Gateway", "UITVibes-API-Gateway");
+            transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-Correlation-ID", correlationId);
+            transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-Gateway", "UITVibes-API-Gateway");
 
             await Task.CompletedTask;
         });
     });
+
 // ===== CORS =====
-// ✅ Fix cho development
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",  // React Native metro
-                "http://localhost:8081",  // Expo
-                "http://localhost:19006",  // Expo web
-                "http://localhost:5500", //test
-                "http://127.0.0.1:5500" //test
-              )
+        policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // ← bắt buộc cho SignalR
+              .AllowAnyHeader();
     });
 });
+
 // ===== RATE LIMITING =====
 builder.Services.AddRateLimiter(options =>
 {
@@ -288,7 +222,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseRateLimiter();
-app.UseWebSockets();
+
 // ===== PUBLIC ENDPOINTS =====
 
 app.MapGet("/", (IServiceDiscovery discovery) => Results.Ok(new
@@ -487,7 +421,7 @@ app.MapGet("/gateway/export/postman", (IPostmanRouteExportService exporter) =>
 .AllowAnonymous(); // nếu muốn public
 
 app.MapDefaultEndpoints();
-
+app.UseWebSockets();
 
 // ===== MAP REVERSE PROXY WITH AUTH MIDDLEWARE =====
 app.MapReverseProxy(proxyPipeline =>
@@ -517,10 +451,8 @@ app.MapReverseProxy(proxyPipeline =>
             (path.Contains("/post/user/") && !path.Contains("/post/user/me")) ||
             (path == "/post/story/active" || path.StartsWith("/post/story/active")) ||
             (path == "/story/active" || path.StartsWith("/story/active"));
-
-        var isSignalRHub = path.StartsWith("/hubs/");
         // Require authentication for non-public paths
-        if (!isPublicPath && !isPublicGetRequest && !isSignalRHub)
+        if (!isPublicPath && !isPublicGetRequest)
         {
             if (context.User.Identity?.IsAuthenticated != true)
             {

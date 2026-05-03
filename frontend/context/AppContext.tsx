@@ -91,10 +91,16 @@ interface AppContextType {
   conversations: Conversation[];
   activeConversation: Conversation | null;
   messages: Message[];
+  conversationMembers: Conversation["members"];
+  isLoadingConversations: boolean;
+  isLoadingMessages: boolean;
+  conversationError: string | null;
+  messageError: string | null;
   refreshConversations: () => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   setActiveConversation: (conv: Conversation | null) => void;
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   markMessagesRead: (conversationId: string) => Promise<void>;
   startConversation: (userId: string) => Promise<Conversation | null>;
 
@@ -180,6 +186,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return true;
       } catch (error) {
         console.error("Login failed:", error);
+        const errorCode = (error as any)?.errorCode;
+        if (errorCode) {
+          setIsLoading(false);
+          const errWithCode = error as Error & { errorCode: string; email: string };
+          throw errWithCode;
+        }
         const message =
           error instanceof Error && error.message
             ? error.message
@@ -262,10 +274,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           prev ? { ...prev, displayName: name } : prev,
         );
         api.patchCurrentUserLocal({ displayName: name });
-        // Persist displayName to UserDB via UserService API
-        api.updateProfile({ displayName: name }).catch((err) => {
-          console.error("[AppContext] Failed to persist displayName:", err);
-        });
       }
       if (typeof data.fullName === "string" && data.fullName.trim()) {
         const name = data.fullName.trim();
@@ -273,10 +281,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           prev ? { ...prev, fullName: name } : prev,
         );
         api.patchCurrentUserLocal({ fullName: name });
-        // Persist fullName to UserDB via UserService API
-        api.updateProfile({ fullName: name }).catch((err) => {
-          console.error("[AppContext] Failed to persist fullName:", err);
-        });
       }
       if (typeof data.gender === "string") {
         const gender = data.gender;
@@ -284,20 +288,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           prev ? { ...prev, gender } : prev,
         );
         api.patchCurrentUserLocal({ gender });
-        // Persist gender to UserDB via UserService API
-        api.updateProfile({ gender }).catch((err) => {
-          console.error("[AppContext] Failed to persist gender:", err);
-        });
       }
       if (typeof data.bio === "string") {
         const bio = data.bio;
         setCurrentUser((prev) =>
           prev ? { ...prev, bio } : prev,
         );
-        // Persist bio to UserDB via UserService API
-        api.updateProfile({ bio }).catch((err) => {
-          console.error("[AppContext] Failed to persist bio:", err);
-        });
+        api.patchCurrentUserLocal({ bio });
       }
     },
     [],
@@ -319,11 +316,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
   const [myPosts, setMyPosts] = useState<Post[]>([]); // Posts của user hiện tại cho profile
 
-  // ─── Messages ────────────────────────────────────────────
+  // ─── Messages ─────────────────────────────────────────────
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationMembers, setConversationMembers] = useState<Conversation["members"]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [conversationError, setConversationError] = useState<string | null>(null);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   // ─── Notifications ───────────────────────────────────────
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -600,58 +602,94 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // ─── Messages ─────────────────────────────────────────────
   const refreshConversations = useCallback(async () => {
+    console.log("[AppContext] refreshConversations: fetching...");
+    setIsLoadingConversations(true);
+    setConversationError(null);
     try {
       const data = await api.getConversations();
+      console.log("[AppContext] refreshConversations: received", data.length, "conversations");
+      if (data.length > 0) {
+        console.log("[AppContext] refreshConversations: first conv id:", data[0].id, "members:", data[0].members.length);
+      }
       setConversations(data);
-    } catch (error) {
-      console.error("Failed to fetch conversations:", error);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message ?? "Failed to load conversations.";
+      console.error("[AppContext] refreshConversations: FAILED —", msg, error);
+      setConversationError(msg);
+    } finally {
+      setIsLoadingConversations(false);
     }
   }, []);
 
   const loadMessages = useCallback(async (conversationId: string) => {
+    setIsLoadingMessages(true);
+    setMessageError(null);
+    setMessages([]);
     try {
-      const data = await api.getMessages(conversationId);
-      setMessages(data);
-    } catch (error) {
-      console.error("Failed to load messages:", error);
+      const { messages: msgs, members } = await api.getMessages(conversationId);
+      setMessages(msgs);
+      setConversationMembers(members);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message ?? "Failed to load messages.";
+      setMessageError(msg);
+      console.error("[AppContext] loadMessages:", msg, error);
+    } finally {
+      setIsLoadingMessages(false);
     }
   }, []);
 
-  const sendMessage = useCallback(
+  const sendMessageFn = useCallback(
     async (conversationId: string, text: string) => {
       try {
         const newMsg = await api.sendMessage(conversationId, text);
+        // Attach sender info from cached members
+        const sender = conversationMembers.find((m) => m.id === newMsg.senderId);
+        if (sender) {
+          newMsg.sender = sender;
+        }
         setMessages((prev) => [...prev, newMsg]);
         await refreshConversations();
-      } catch (error) {
-        console.error("Failed to send message:", error);
+      } catch (error: any) {
+        const msg = error?.response?.data?.message ?? "Failed to send message.";
+        console.error("[AppContext] sendMessage:", msg, error);
+        throw new Error(msg);
       }
     },
-    [refreshConversations],
+    [refreshConversations, conversationMembers],
   );
 
   const markMessagesRead = useCallback(
     async (conversationId: string) => {
       try {
-        await api.markMessagesRead(conversationId);
+        // Find last message id to pass as lastMessageId
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg) {
+          await api.markMessagesRead(conversationId, lastMsg.id);
+        }
         await refreshConversations();
       } catch (error) {
-        console.error("Failed to mark messages read:", error);
+        console.error("[AppContext] markMessagesRead:", error);
       }
     },
-    [refreshConversations],
+    [refreshConversations, messages],
   );
 
   const startConversation = useCallback(
     async (userId: string) => {
+      console.log("[AppContext] startConversation: calling API with userId:", userId);
+      let conv;
       try {
-        const conv = await api.createConversation(userId);
-        await refreshConversations();
-        return conv;
-      } catch (error) {
-        console.error("Failed to start conversation:", error);
-        return null;
+        conv = await api.createPrivateConversation(userId);
+        console.log("[AppContext] startConversation: API returned conv.id:", conv?.id);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message ?? err?.message ?? "Failed to start conversation.";
+        console.error("[AppContext] startConversation: API FAILED —", msg, err);
+        throw new Error(msg); // ← MUST throw so UI can catch and show Alert
       }
+      console.log("[AppContext] startConversation: refreshing conversations...");
+      await refreshConversations();
+      console.log("[AppContext] startConversation: done. conv.id =", conv.id);
+      return conv;
     },
     [refreshConversations],
   );
@@ -795,10 +833,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         conversations,
         activeConversation,
         messages,
+        conversationMembers,
+        isLoadingConversations,
+        isLoadingMessages,
+        conversationError,
+        messageError,
         refreshConversations,
         loadMessages,
-        sendMessage,
+        sendMessage: sendMessageFn,
         setActiveConversation,
+        setMessages,
         markMessagesRead,
         startConversation,
         notifications,

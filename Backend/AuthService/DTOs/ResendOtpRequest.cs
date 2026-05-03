@@ -1,6 +1,6 @@
-﻿namespace AuthService.DTOs
+namespace AuthService.DTOs
 {
-    public class SendOtpRequest
+    public class ResendOtpRequest
     {
         public string Email { get; set; } = string.Empty;
     }

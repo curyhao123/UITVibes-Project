@@ -1,5 +1,6 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AuthService.DTOs;
+using AuthService.Models;
 using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;
 using Microsoft.AspNetCore.Authorization;
@@ -43,6 +44,19 @@ namespace AuthService.Controllers
             {
                 var response = await _authService.LoginAsync(request);
                 return Ok(response);
+            }
+            catch (CustomAuthException ex)
+            {
+                if (ex.ErrorCode == "NOT_VERIFIED")
+                {
+                    return StatusCode(403, new
+                    {
+                        errorCode = ex.ErrorCode,
+                        message = ex.Message,
+                        email = ex.Email
+                    });
+                }
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -93,7 +107,7 @@ namespace AuthService.Controllers
             }
         }
 
-  
+        [Authorize]
         [HttpPost("delete-account")]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
         {
@@ -115,69 +129,66 @@ namespace AuthService.Controllers
             }
         }
 
-        // ==================== SEND OTP (xác thực tài khoản) ====================
-        [HttpPost("send-otp")]
-        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+        [HttpPost("send-verification")]
+        public async Task<IActionResult> SendVerificationEmail([FromBody] SendVerificationRequest request)
         {
             try
             {
-                await _authService.SendOtpAsync(request.Email);
-                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+                await _authService.SendVerificationEmailAsync(request.Email);
+                return Ok(new { message = "Verification code has been sent to your email." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending OTP to {Email}", request.Email);
+                _logger.LogError(ex, "Error sending verification email to {Email}", request.Email);
                 return BadRequest(new { message = ex.Message });
             }
         }
 
-        // ==================== VERIFY OTP (xác thực tài khoản) ====================
-        [HttpPost("verify-otp")]
-        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
             try
             {
-                await _authService.VerifyOtpAsync(request.Email, request.OtpCode);
-                return Ok(new { message = "Xác thực tài khoản thành công" });
+                await _authService.VerifyEmailAsync(request.Email, request.Otp);
+                return Ok(new { message = "Email verified successfully." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying OTP for {Email}", request.Email);
+                _logger.LogError(ex, "Error verifying email {Email}", request.Email);
                 return BadRequest(new { message = ex.Message });
             }
         }
 
-        // ==================== FORGOT PASSWORD ====================
-        [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        /// <summary>
+        /// Verifies OTP then returns auth tokens.
+        /// Used by the Login → Verify flow so the frontend gets tokens immediately.
+        /// </summary>
+        [HttpPost("verify-email-and-login")]
+        public async Task<IActionResult> VerifyEmailAndLogin([FromBody] VerifyEmailRequest request)
         {
             try
             {
-                await _authService.SendForgotPasswordOtpAsync(request.Email);
-                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+                var response = await _authService.VerifyEmailAndLoginAsync(request.Email, request.Otp);
+                return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending forgot password OTP to {Email}", request.Email);
+                _logger.LogError(ex, "Error verifying email and logging in for {Email}", request.Email);
                 return BadRequest(new { message = ex.Message });
             }
         }
 
-        // ==================== RESET PASSWORD ====================
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request)
         {
             try
             {
-                await _authService.VerifyForgotPasswordOtpAsync(
-                    request.Email,
-                    request.OtpCode,
-                    request.NewPassword);
-                return Ok(new { message = "Đổi mật khẩu thành công" });
+                await _authService.ResendOtpAsync(request.Email);
+                return Ok(new { message = "A new verification code has been sent." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error resetting password for {Email}", request.Email);
+                _logger.LogError(ex, "Error resending OTP to {Email}", request.Email);
                 return BadRequest(new { message = ex.Message });
             }
         }

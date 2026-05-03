@@ -1,4 +1,4 @@
-﻿namespace MessageService.DTOs
+namespace MessageService.DTOs
 {
     public class ConversationMemberDto
     {

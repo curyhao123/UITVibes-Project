@@ -552,27 +552,30 @@ export async function updateProfile(updates: {
   bio?: string;
   website?: string;
 }): Promise<User> {
+  const onlyBio =
+    updates.bio !== undefined &&
+    updates.displayName === undefined &&
+    updates.fullName === undefined &&
+    updates.gender === undefined &&
+    updates.website === undefined;
+  if (onlyBio) {
+    return updateMyBio(updates.bio ?? null);
+  }
+
+  const body: BE_UpdateProfileRequest = {};
+  if (updates.displayName !== undefined)
+    body.displayName = updates.displayName;
+  if (updates.fullName !== undefined)
+    body.fullName = updates.fullName;
+  if (updates.gender !== undefined)
+    body.gender = updates.gender;
+  if (updates.bio !== undefined) body.bio = updates.bio;
+  if (updates.website !== undefined) body.website = updates.website;
+
+  console.log("[updateProfile] payload:", JSON.stringify(body, null, 2));
+  console.log("[updateProfile] calling PUT /user/userprofile/me");
+
   try {
-    const onlyBio =
-      updates.bio !== undefined &&
-      updates.displayName === undefined &&
-      updates.fullName === undefined &&
-      updates.gender === undefined &&
-      updates.website === undefined;
-    if (onlyBio) {
-      return updateMyBio(updates.bio ?? null);
-    }
-
-    const body: BE_UpdateProfileRequest = {};
-    if (updates.displayName !== undefined)
-      body.displayName = updates.displayName;
-    if (updates.fullName !== undefined)
-      body.fullName = updates.fullName;
-    if (updates.gender !== undefined)
-      body.gender = updates.gender;
-    if (updates.bio !== undefined) body.bio = updates.bio;
-    if (updates.website !== undefined) body.website = updates.website;
-
     const { data } = await apiClient.put<BE_UserProfile>(
       "/user/userprofile/me",
       body,
@@ -584,23 +587,22 @@ export async function updateProfile(updates: {
     let user = transformBEUserProfile(data, statsRes.data);
     user = await applyLocalUsernameToUser(user);
     setCurrentUser(user);
+    console.log("[updateProfile] SUCCESS — profile updated:", data.userId);
     return user;
-  } catch {
-    await delay(400);
-    const existing = getCurrentUser();
-    if (existing) {
-      if (updates.displayName !== undefined)
-        existing.displayName = updates.displayName;
-      if (updates.fullName !== undefined)
-        existing.fullName = updates.fullName;
-      if (updates.gender !== undefined)
-        existing.gender = updates.gender;
-      if (updates.bio !== undefined) existing.bio = updates.bio;
-      if (updates.website !== undefined) existing.website = updates.website;
-      setCurrentUser(existing);
-      return existing;
-    }
-    return {} as User;
+  } catch (err: any) {
+    const status = err?.response?.status;
+    const detail = err?.response?.data ?? err?.message;
+    console.error(
+      `[updateProfile] FAILED — HTTP ${status} | Detail:`,
+      JSON.stringify(detail, null, 2),
+    );
+    // Re-throw so callers (e.g. onboarding screens) can handle the error explicitly
+    const msg =
+      err?.response?.data?.message ??
+      err?.response?.data?.error ??
+      err?.message ??
+      "Failed to update profile.";
+    throw new Error(msg);
   }
 }
 

@@ -16,6 +16,7 @@ import { Button } from '../../components/Button';
 import { Avatar } from '../../components/Avatar';
 import { AppColors, borderRadius } from '../../constants/theme';
 import { User } from '../../data/mockData';
+import * as api from '../../services/api';
 
 interface SuggestedUserItemProps {
   user: User;
@@ -103,10 +104,28 @@ export default function OnboardingFindFriendsScreen() {
 
   const handleFindFriends = async () => {
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 300));
-    completeOnboardingStep();
-    setIsLoading(false);
-    router.replace('/(tabs)/home');
+    try {
+      // Batch-save all collected onboarding data to DB in one call
+      console.log("[Onboarding] Saving profile:", {
+        fullName: onboardingData.fullName,
+        displayName: onboardingData.displayName,
+        gender: onboardingData.gender,
+        bio: onboardingData.bio,
+      });
+      await api.updateProfile({
+        fullName: onboardingData.fullName || undefined,
+        displayName: onboardingData.displayName || undefined,
+        gender: onboardingData.gender || undefined,
+        bio: onboardingData.bio || undefined,
+      });
+      console.log("[Onboarding] Profile saved successfully.");
+    } catch (err: any) {
+      console.error("[Onboarding] Failed to save profile:", err?.response?.data ?? err);
+    } finally {
+      completeOnboardingStep();
+      setIsLoading(false);
+      router.replace('/(tabs)/home');
+    }
   };
 
   const handleSkip = async () => {
