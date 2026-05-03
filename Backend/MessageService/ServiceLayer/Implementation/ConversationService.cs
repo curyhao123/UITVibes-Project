@@ -9,11 +9,13 @@ namespace MessageService.ServiceLayer.Implementation
     {
         private readonly MessageDbContext _context;
         private readonly ILogger<ConversationService> _logger;
+        private readonly IUserProfileRpcClient _userProfileRpcClient;
 
-        public ConversationService(MessageDbContext context, ILogger<ConversationService> logger)
+        public ConversationService(MessageDbContext context, ILogger<ConversationService> logger, IUserProfileRpcClient userProfileRpcClient)
         {
             _context = context;
             _logger = logger;
+            _userProfileRpcClient = userProfileRpcClient;
         }
 
         public async Task AddMemberToGroupAsync(Guid conversationId, Guid userId, Guid targetUserId)
@@ -126,7 +128,9 @@ namespace MessageService.ServiceLayer.Implementation
                 Type = ConversationType.Private,
                 CreatedByUserId = userId,
                 CreatedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow
+                LastUpdatedAt = DateTime.UtcNow,
+                Name = null,
+                AvatarUrl = null
             };
 
             conversation.Members.Add(new ConversationMember
@@ -169,29 +173,53 @@ namespace MessageService.ServiceLayer.Implementation
             if (!conversation.Members.Any(m => m.UserId == userId && m.LeftAt == null))
                 throw new UnauthorizedAccessException("You are not a member of this conversation");
 
-            return await MapToDto(conversation, userId);
+            return await MapToDtoAsync(conversation, userId);
         }
 
         public async Task<List<ConversationDto>> GetUserConversationsAsync(Guid userId, int skip = 0, int take = 20)
         {
-            var conversations = await _context.ConversationMembers
+            var conversationIds = await _context.ConversationMembers
                 .Where(cm => cm.UserId == userId && cm.LeftAt == null)
                 .Select(cm => cm.ConversationId)
                 .ToListAsync();
 
             var result = await _context.Conversations
-                .Where(c => conversations.Contains(c.Id) && !c.IsDeleted)
+                .Where(c => conversationIds.Contains(c.Id) && !c.IsDeleted)
                 .Include(c => c.Members)
                 .OrderByDescending(c => c.LastMessageAt ?? c.CreatedAt)
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();
 
+            // Lấy tất cả otherUserId của private conversations
+            var privateOtherUserIds = result
+                .Where(c => c.Type == ConversationType.Private)
+                .Select(c => c.Members
+                    .FirstOrDefault(m => m.UserId != userId && m.LeftAt == null)?.UserId)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToList();
+
+            // Batch RPC — gọi song song, không tuần tự
+            var profileCache = new Dictionary<Guid, UserProfileRpcResponse?>();
+            if (privateOtherUserIds.Any())
+            {
+                var profileTasks = privateOtherUserIds.ToDictionary(
+                    id => id,
+                    id => _userProfileRpcClient.GetUserProfileAsync(id)
+                );
+
+                await Task.WhenAll(profileTasks.Values);
+
+                foreach (var (id, task) in profileTasks)
+                    profileCache[id] = task.Result;
+            }
+
+            // Map tất cả conversations với profileCache đã có sẵn
             var dtos = new List<ConversationDto>();
             foreach (var conversation in result)
-            {
-                dtos.Add(await MapToDto(conversation, userId));
-            }
+                dtos.Add(await MapToDtoAsync(conversation, userId, profileCache));
 
             return dtos;
         }
@@ -240,18 +268,55 @@ namespace MessageService.ServiceLayer.Implementation
             _logger.LogInformation("User {TargetUserId} removed from conversation {ConversationId} by {UserId}",
                 targetUserId, conversationId, userId);
         }
-        private async Task<ConversationDto> MapToDto(Conversation conversation, Guid currentUserId)
+        private async Task<ConversationDto> MapToDtoAsync(
+                Conversation conversation,
+                Guid currentUserId,
+                Dictionary<Guid, UserProfileRpcResponse?>? profileCache = null)
         {
-            // Calculate unread count
-            var currentMember = conversation.Members.FirstOrDefault(m => m.UserId == currentUserId);
+            string? displayName = conversation.Name;
+            string? avatarUrl = conversation.AvatarUrl;
+
+            // Private conversation — lấy info từ cache, không RPC lại
+            if (conversation.Type == ConversationType.Private)
+            {
+                var otherMember = conversation.Members
+                    .FirstOrDefault(m => m.UserId != currentUserId && m.LeftAt == null);
+
+                if (otherMember != null)
+                {
+                    UserProfileRpcResponse? profile = null;
+
+                    if (profileCache != null && profileCache.TryGetValue(otherMember.UserId, out var cached))
+                    {
+                        // Lấy từ cache — không RPC thêm
+                        profile = cached;
+                    }
+                    else
+                    {
+                        // Fallback — gọi RPC đơn lẻ (dùng cho GetConversationByIdAsync)
+                        profile = await _userProfileRpcClient
+                            .GetUserProfileAsync(otherMember.UserId);
+                    }
+
+                    if (profile?.Found == true)
+                    {
+                        displayName = profile.DisplayName;
+                        avatarUrl = profile.AvatarUrl;
+                    }
+                }
+            }
+
+            // Tính unread count
+            var currentMember = conversation.Members
+                .FirstOrDefault(m => m.UserId == currentUserId);
             var unreadCount = 0;
 
-            if (currentMember?.LastReadMessageId != null)
+            if (currentMember?.LastReadAt != null)
             {
                 unreadCount = await _context.Messages
                     .CountAsync(m => m.ConversationId == conversation.Id &&
                                      !m.IsDeleted &&
-                                     m.CreatedAt > (currentMember.LastReadAt ?? DateTime.MinValue) &&
+                                     m.CreatedAt > currentMember.LastReadAt &&
                                      m.SenderId != currentUserId);
             }
             else
@@ -266,8 +331,8 @@ namespace MessageService.ServiceLayer.Implementation
             {
                 Id = conversation.Id,
                 Type = conversation.Type.ToString(),
-                Name = conversation.Name,
-                AvatarUrl = conversation.AvatarUrl,
+                Name = displayName,
+                AvatarUrl = avatarUrl,
                 LastMessageContent = conversation.LastMessageContent,
                 LastMessageSenderId = conversation.LastMessageSenderId,
                 LastMessageAt = conversation.LastMessageAt,
