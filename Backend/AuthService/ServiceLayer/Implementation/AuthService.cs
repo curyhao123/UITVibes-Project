@@ -264,7 +264,28 @@ namespace AuthService.ServiceLayer.Implementation
             user.LastOtpSentAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            await _emailService.SendEmailAsync(email, "Verify OTP", $"Your OTP code is {otp}");
+            var subject = "Your UITVibes verification code";
+            var body = $@"<!DOCTYPE html>
+                    <html>
+                    <body style='font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;'>
+                      <div style='text-align: center;'>
+                        <h1 style='color: #D97757; font-size: 28px; margin-bottom: 8px;'>UITVibes</h1>
+                        <p style='color: #4A5568; font-size: 15px;'>Your verification code:</p>
+                        <div style='background: #F9F8F6; border: 2px dashed #D97757; border-radius: 12px;
+                                    padding: 24px; margin: 24px 0; display: inline-block;'>
+                          <span style='font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #2D3748;'>
+                            {otp}
+                          </span>
+                        </div>
+                        <p style='color: #718096; font-size: 13px;'>
+                          This code expires in <strong>5 minutes</strong>.<br/>
+                          If you did not request this, please ignore this email.
+                        </p>
+                      </div>
+                    </body>
+                    </html>";
+
+            await _emailService.SendEmailAsync(email, subject, body);
 
             return user;
         }

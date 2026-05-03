@@ -159,41 +159,50 @@ export interface BE_CommentLikeResponse {
 export interface BE_ConversationResponse {
   id: string;
   type: "Private" | "Group";
-  name: string;
-  avatarUrl: string;
-  members: Array<{
-    id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string;
-  }>;
-  lastMessageContent: string;
-  lastMessageSenderId: string;
-  lastMessageAt: string;
+  name: string | null;
+  avatarUrl: string | null;
+  lastMessageContent: string | null;
+  lastMessageSenderId: string | null;
+  lastMessageAt: string | null;
   unreadCount: number;
   createdAt: string;
-  updatedAt: string;
-  isMuted: boolean;
-  isPinned: boolean;
-  adminIds: string[];
+  members?: Array<{
+    userId: string;
+    role: string;
+    nickname: string | null;
+    lastReadAt: string | null;
+    joinedAt: string;
+  }>;
+  updatedAt?: string;
+  isMuted?: boolean;
+  isPinned?: boolean;
+  adminIds?: string[];
 }
 
 export interface BE_MessageResponse {
   id: string;
   conversationId: string;
   senderId: string;
-  content: string;
+  content: string | null;
   type: string;
-  mediaUrl: string;
-  fileName: string;
-  fileSize: number;
-  replyToMessageId: string;
+  mediaUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  replyToMessageId: string | null;
   replyToMessage: BE_MessageResponse | null;
   isEdited: boolean;
   isDeleted: boolean;
   readBy: Array<{ userId: string; readAt: string }>;
   createdAt: string;
-  editedAt: string;
+  editedAt: string | null;
+}
+
+export interface BE_ConversationMemberDto {
+  userId: string;
+  role: string;
+  nickname: string | null;
+  lastReadAt: string | null;
+  joinedAt: string;
 }
 
 export interface BE_LikeResponse {

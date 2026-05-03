@@ -36,6 +36,8 @@ export default function RootLayout() {
           <Stack.Screen name="followers/[userId]" options={{ headerShown: false }} />
           <Stack.Screen name="auth/login" options={{ headerShown: false }} />
           <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/email-verification" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/onboarding-fullname" options={{ headerShown: false }} />
           <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
           <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />
           <Stack.Screen name="auth/onboarding-find-friends" options={{ headerShown: false }} />
