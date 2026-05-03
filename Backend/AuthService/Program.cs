@@ -42,6 +42,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<IAuthService, AuthService.ServiceLayer.Implementation.AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMessagePublisher, RabbitMQPublisher>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

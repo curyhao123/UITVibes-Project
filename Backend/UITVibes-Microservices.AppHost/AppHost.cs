@@ -22,6 +22,15 @@ var jwtKey = builder.AddParameter("jwt-key", secret: true);
 var cloudinaryCloudName = builder.AddParameter("cloudinary-cloudname");
 var cloudinaryApiKey = builder.AddParameter("cloudinary-apikey", secret: true);
 var cloudinaryApiSecret = builder.AddParameter("cloudinary-apisecret", secret: true);
+var smtpServer = builder.AddParameter("smtp-server");
+var smtpPort = builder.AddParameter("smtp-port");
+var smtpUsername = builder.AddParameter("smtp-username");
+var smtpPassword = builder.AddParameter("smtp-password", secret: true);
+var smtpSenderEmail = builder.AddParameter("smtp-senderemail");
+var smtpSenderName = builder.AddParameter("smtp-sendername");
+
+
+
 
 // Auth Service - shares JWT key
 var authService = builder.AddProject<Projects.AuthService>("authservice")
@@ -33,6 +42,12 @@ var authService = builder.AddProject<Projects.AuthService>("authservice")
     .WithReference(messaging)
     .WaitFor(messaging)
     .WithEnvironment("Jwt__Key", jwtKey)
+    .WithEnvironment("SmtpSettings__Server", smtpServer)
+    .WithEnvironment("SmtpSettings__Port", smtpPort)
+    .WithEnvironment("SmtpSettings__Username", smtpUsername)
+    .WithEnvironment("SmtpSettings__Password", smtpPassword)
+    .WithEnvironment("SmtpSettings__SenderEmail", smtpSenderEmail)
+    .WithEnvironment("SmtpSettings__SenderName", smtpSenderName)
     .WithHttpHealthCheck("/health");
 
 var userService = builder.AddProject<Projects.UserService>("userservice")

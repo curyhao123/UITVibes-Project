@@ -9,6 +9,13 @@
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsVerified { get; set; } = false;
+
+        public string? OtpCode { get; set; }
+        public DateTime? OtpExpiry { get; set; }
+        public int OtpResendCount { get; set; } = 0;      // chống spam gửi lại
+        public DateTime? LastOtpSentAt { get; set; }
+
         public List<RefreshToken> RefreshTokens { get; set; } = new();
     }
 }

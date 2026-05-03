@@ -56,6 +56,49 @@
           "requestBody": {
             "refreshToken": "your-refresh-token"
           }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/send-otp",
+          "description": "Gửi mã OTP xác thực tài khoản qua email",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/verify-otp",
+          "description": "Xác thực mã OTP để kích hoạt tài khoản",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com",
+            "otpCode": "123456"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/forgot-password",
+          "description": "Yêu cầu mã OTP qua email để khôi phục mật khẩu",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/reset-password",
+          "description": "Đặt lại mật khẩu dựa trên mã OTP hợp lệ",
+          "requiresAuth": false,
+          "contentType": "application/json",
+          "requestBody": {
+            "email": "user@example.com",
+            "otpCode": "123456",
+            "newPassword": "NewPassword123!"
+          }
         }
       ]
     },

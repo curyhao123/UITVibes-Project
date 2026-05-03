@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using AuthService.DTOs;
 using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;
@@ -93,7 +93,7 @@ namespace AuthService.Controllers
             }
         }
 
-        [Authorize]
+  
         [HttpPost("delete-account")]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
         {
@@ -111,6 +111,73 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting account for user {UserId}", userId);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ==================== SEND OTP (xác thực tài khoản) ====================
+        [HttpPost("send-otp")]
+        public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+        {
+            try
+            {
+                await _authService.SendOtpAsync(request.Email);
+                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending OTP to {Email}", request.Email);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ==================== VERIFY OTP (xác thực tài khoản) ====================
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+        {
+            try
+            {
+                await _authService.VerifyOtpAsync(request.Email, request.OtpCode);
+                return Ok(new { message = "Xác thực tài khoản thành công" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying OTP for {Email}", request.Email);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ==================== FORGOT PASSWORD ====================
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            try
+            {
+                await _authService.SendForgotPasswordOtpAsync(request.Email);
+                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending forgot password OTP to {Email}", request.Email);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ==================== RESET PASSWORD ====================
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            try
+            {
+                await _authService.VerifyForgotPasswordOtpAsync(
+                    request.Email,
+                    request.OtpCode,
+                    request.NewPassword);
+                return Ok(new { message = "Đổi mật khẩu thành công" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resetting password for {Email}", request.Email);
                 return BadRequest(new { message = ex.Message });
             }
         }

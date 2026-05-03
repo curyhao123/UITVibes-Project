@@ -3,6 +3,7 @@ using AuthService.Messaging;
 using AuthService.Models;
 using AuthService.ServiceLayer.Interface;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace AuthService.ServiceLayer.Implementation
 {
@@ -12,17 +13,20 @@ namespace AuthService.ServiceLayer.Implementation
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
         private readonly IMessagePublisher _messagePublisher;
+        private readonly IEmailService _emailService;
 
         public AuthService(
             AuthDbContext context,
             ITokenService tokenService,
             IConfiguration configuration,
-            IMessagePublisher messagePublisher)  // 👈 Add this
+            IMessagePublisher messagePublisher,
+            IEmailService emailService)  // 👈 Add this
         {
             _context = context;
             _tokenService = tokenService;
             _configuration = configuration;
             _messagePublisher = messagePublisher;  // 👈 Add this
+            _emailService = emailService; 
         }
 
 
@@ -138,7 +142,8 @@ namespace AuthService.ServiceLayer.Implementation
                 {
                     Id = user.Id,
                     Email = user.Email,
-                    Username = user.Username
+                    Username = user.Username,
+                    IsVerified = user.IsVerified ? "True" : "False"
                 }
             };
         }
@@ -230,6 +235,86 @@ namespace AuthService.ServiceLayer.Implementation
             }
 
             _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+        }
+
+
+
+        private static string GenerateOtpCode()
+        {
+            return RandomNumberGenerator.GetInt32(100000, 1000000).ToString("D6");
+        }
+
+
+        // Hàm private dùng chung — chỉ lo việc tạo và lưu OTP
+        private async Task<User> GenerateAndSaveOtpAsync(string email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null) throw new Exception("User not found");
+
+            if (user.LastOtpSentAt.HasValue &&
+                DateTime.UtcNow - user.LastOtpSentAt.Value < TimeSpan.FromMinutes(1))
+            {
+                throw new Exception("Vui lòng chờ 1 phút trước khi gửi lại OTP");
+            }
+
+            var otp = GenerateOtpCode();
+            user.OtpCode = BCrypt.Net.BCrypt.HashPassword(otp);
+            user.OtpExpiry = DateTime.UtcNow.AddMinutes(5);
+            user.LastOtpSentAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            await _emailService.SendEmailAsync(email, "Verify OTP", $"Your OTP code is {otp}");
+
+            return user;
+        }
+
+        // Hàm private dùng chung — chỉ lo việc check OTP có hợp lệ không
+        private async Task<User> ValidateOtpAsync(string email, string inputOtp)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null) throw new Exception("User not found");
+
+            if (user.OtpCode == null || user.OtpExpiry == null)
+                throw new Exception("Bạn chưa yêu cầu gửi OTP");
+
+            if (DateTime.UtcNow > user.OtpExpiry)
+                throw new Exception("Mã OTP đã hết hạn");
+
+            if (!BCrypt.Net.BCrypt.Verify(inputOtp, user.OtpCode))
+                throw new Exception("Mã OTP không đúng");
+
+            // Xóa OTP sau khi validate xong
+            user.OtpCode = null;
+            user.OtpExpiry = null;
+            user.LastOtpSentAt = null;
+
+            return user;
+        }
+
+        // Xác thực tài khoản — require JWT
+        public async Task SendOtpAsync(string email)
+        {
+            await GenerateAndSaveOtpAsync(email);
+        }
+
+        public async Task VerifyOtpAsync(string email, string inputOtp)
+        {
+            var user = await ValidateOtpAsync(email, inputOtp);
+            user.IsVerified = true;         // 👈 logic riêng
+            await _context.SaveChangesAsync();
+        }
+
+        // Forgot password — không cần JWT
+        public async Task SendForgotPasswordOtpAsync(string email)
+        {
+            await GenerateAndSaveOtpAsync(email);  // tái sử dụng
+        }
+
+        public async Task VerifyForgotPasswordOtpAsync(string email, string inputOtp, string newPassword)
+        {
+            var user = await ValidateOtpAsync(email, inputOtp);  // tái sử dụng
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);  // 👈 logic riêng
             await _context.SaveChangesAsync();
         }
 

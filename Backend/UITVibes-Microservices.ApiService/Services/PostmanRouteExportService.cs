@@ -154,7 +154,7 @@ public class PostmanRouteExportService : IPostmanRouteExportService
             new
             {
                 key = "gatewayUrl",
-                value = "https://localhost:7497",
+                value = "http://localhost:5512",
                 type = "string"
             },
             new
