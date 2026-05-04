@@ -1,4 +1,4 @@
-﻿using MessageService.DTOs;
+using MessageService.DTOs;
 using MessageService.Models;
 using MessageService.DTOs;
 using MessageService.Hubs;

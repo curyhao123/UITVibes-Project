@@ -15,6 +15,7 @@ export {
   type StoryItem,
 } from "./storyService";
 export * from "./messageService";
+export * from "./onlineTrackingService";
 export * from "./notificationService";
 export * from "./musicService";
 export { patchCurrentUserLocal } from "./session";

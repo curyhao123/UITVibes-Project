@@ -10,6 +10,10 @@ interface AvatarProps {
   size?: 'tiny' | 'small' | 'medium' | 'large' | 'story';
   showBorder?: boolean;
   isViewed?: boolean;
+  /** When true, renders a green dot if the user is online. */
+  showOnlineIndicator?: boolean;
+  /** Override online status — if provided, uses this instead of global state. */
+  isOnline?: boolean;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -17,6 +21,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'medium',
   showBorder = false,
   isViewed = false,
+  showOnlineIndicator = false,
+  isOnline: isOnlineOverride,
 }) => {
   const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
@@ -67,6 +73,10 @@ export const Avatar: React.FC<AvatarProps> = ({
   // Border + circular container wraps the Image
   const outerSize = avatarSize + borderWidth * 2;
 
+  // Online indicator dot: positioned at bottom-right corner of the avatar
+  const dotSize = Math.max(10, Math.round(avatarSize * 0.28));
+  const dotOffset = Math.max(1, Math.round(avatarSize * 0.06));
+
   return (
     <View
       style={[
@@ -93,18 +103,40 @@ export const Avatar: React.FC<AvatarProps> = ({
         ]}
         contentFit="cover"
       />
+
+      {/* Online indicator dot — only shown when explicitly online */}
+      {showOnlineIndicator && isOnlineOverride && (
+        <View
+          style={[
+            styles.onlineDot,
+            {
+              width: dotSize,
+              height: dotSize,
+              borderRadius: dotSize / 2,
+              bottom: dotOffset - borderWidth,
+              right: dotOffset - borderWidth,
+            },
+          ]}
+        />
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   borderWrap: {
-    overflow: 'hidden',
+    overflow: 'visible',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
   avatarImage: {
     backgroundColor: AppColors.border,
+  },
+  onlineDot: {
+    position: 'absolute',
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+    borderColor: AppColors.surfaceElevated,
   },
 });

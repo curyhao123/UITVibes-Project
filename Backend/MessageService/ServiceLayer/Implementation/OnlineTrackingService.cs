@@ -29,7 +29,7 @@ public class OnlineTrackingService : IOnlineTrackingService
 
         // Add connection ID to user's set of connections (supports multiple devices)
         await db.SetAddAsync(userKey, connectionId);
-        await db.KeyExpireAsync(userKey, TimeSpan.FromMinutes(10)); // TTL
+        await db.KeyExpireAsync(userKey, TimeSpan.FromMinutes(2)); // TTL
         // Add user to online users set
         await db.SetAddAsync(OnlineUsersKey, userId.ToString());
 
@@ -41,7 +41,7 @@ public class OnlineTrackingService : IOnlineTrackingService
     {
         var db = _redis.GetDatabase();
         var userKey = $"{UserConnectionsPrefix}{userId}";
-        await db.KeyExpireAsync(userKey, TimeSpan.FromMinutes(10));
+        await db.KeyExpireAsync(userKey, TimeSpan.FromMinutes(2));
     }
 
 

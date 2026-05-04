@@ -15,6 +15,7 @@ import {
 } from '../data/mockData';
 import * as api from '../services/api';
 import type { Story } from '../services/storyService';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
 
 interface AppContextType {
   // Auth / User
@@ -110,6 +111,10 @@ interface AppContextType {
   refreshNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+
+  // Online Status (SignalR + Redis)
+  isUserOnline: (userId: string) => boolean;
+  onlineSignalRConnected: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -330,6 +335,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Notifications ───────────────────────────────────────
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // ─── Online Status ────────────────────────────────────────
+  const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(isAuthenticated);
 
   // ─── Feed Actions ────────────────────────────────────────
   const refreshPosts = useCallback(async () => {
@@ -627,7 +635,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setMessages([]);
     try {
       const { messages: msgs, members } = await api.getMessages(conversationId);
-      setMessages(msgs);
+      // API trả về: tin mới nhất ở đầu → cần đảo để có thứ tự Cũ→Mới (đúng cho FlatList)
+      setMessages([...msgs].reverse());
       setConversationMembers(members);
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? "Failed to load messages.";
@@ -850,6 +859,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         refreshNotifications,
         markNotificationRead,
         markAllNotificationsRead,
+        isUserOnline: isOnline,
+        onlineSignalRConnected,
       }}
     >
       {children}

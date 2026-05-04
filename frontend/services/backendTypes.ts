@@ -203,6 +203,8 @@ export interface BE_ConversationMemberDto {
   nickname: string | null;
   lastReadAt: string | null;
   joinedAt: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface BE_LikeResponse {

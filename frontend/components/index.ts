@@ -1,5 +1,6 @@
 export { Avatar } from './Avatar';
 export { Button } from './Button';
+export { OnlineIndicator } from './OnlineIndicator';
 export { PostCard } from './PostCard';
 export { StoryBar } from './StoryBar';
 export { CommentItem } from './CommentItem';
