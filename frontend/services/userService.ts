@@ -1,8 +1,4 @@
-import {
-  User,
-  Post,
-  mockUsers,
-} from "../data/mockData";
+import { User, Post, mockUsers } from "../data/mockData";
 import apiClient, { delay } from "./httpClient";
 import {
   applyLocalUsernameToUser,
@@ -154,7 +150,7 @@ export async function getUsers(): Promise<User[]> {
     }));
   } catch {
     await delay(300);
-    return [...mockUsers];
+    return [];
   }
 }
 
@@ -170,7 +166,7 @@ export async function searchUsers(query: string): Promise<User[]> {
 
     // Check isFollowing for each user in parallel
     const isFollowingResults = await Promise.all(
-      data.map((p) => checkIsFollowing(p.userId))
+      data.map((p) => checkIsFollowing(p.userId)),
     );
 
     const results = data.map((p, i) => ({
@@ -189,12 +185,7 @@ export async function searchUsers(query: string): Promise<User[]> {
     return results;
   } catch (err) {
     await delay(300);
-    const lowerQuery = query.toLowerCase();
-    return mockUsers.filter(
-      (user) =>
-        user.username.toLowerCase().includes(lowerQuery) ||
-        user.displayName.toLowerCase().includes(lowerQuery),
-    );
+    return [];
   }
 }
 
@@ -447,7 +438,9 @@ export function isFollowing(userId: string): boolean {
  * Check if current user is following a specific user via backend API.
  * Returns true/false, or null if the request fails (e.g., not logged in).
  */
-export async function checkIsFollowing(userId: string): Promise<boolean | null> {
+export async function checkIsFollowing(
+  userId: string,
+): Promise<boolean | null> {
   const currentUid = getCurrentUserId();
   if (!currentUid || currentUid === "current") return null;
   try {
@@ -563,12 +556,9 @@ export async function updateProfile(updates: {
   }
 
   const body: BE_UpdateProfileRequest = {};
-  if (updates.displayName !== undefined)
-    body.displayName = updates.displayName;
-  if (updates.fullName !== undefined)
-    body.fullName = updates.fullName;
-  if (updates.gender !== undefined)
-    body.gender = updates.gender;
+  if (updates.displayName !== undefined) body.displayName = updates.displayName;
+  if (updates.fullName !== undefined) body.fullName = updates.fullName;
+  if (updates.gender !== undefined) body.gender = updates.gender;
   if (updates.bio !== undefined) body.bio = updates.bio;
   if (updates.website !== undefined) body.website = updates.website;
 
@@ -606,7 +596,9 @@ export async function updateProfile(updates: {
   }
 }
 
-export async function checkDisplayNameAvailable(displayName: string): Promise<boolean> {
+export async function checkDisplayNameAvailable(
+  displayName: string,
+): Promise<boolean> {
   try {
     const { data } = await apiClient.get<{ available: boolean }>(
       "/user/userprofile/check-displayname",
@@ -801,7 +793,9 @@ export async function clearAllRecentSearches(): Promise<void> {
   // Backend doesn't have a bulk delete, so delete each
   await Promise.allSettled(
     searches.map((s) =>
-      apiClient.delete(`/user/userprofile/recent-searches/${s.userId}`).catch(() => {}),
+      apiClient
+        .delete(`/user/userprofile/recent-searches/${s.userId}`)
+        .catch(() => {}),
     ),
   );
 }
