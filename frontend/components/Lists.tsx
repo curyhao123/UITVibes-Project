@@ -1,20 +1,35 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, FlatList, Modal, Alert } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Post, User } from '../data/mockData';
-import { AppColors } from '../constants/theme';
-import defaultAvatar from '../assets/images/default-avatar.png';
-import { Story } from '../services/storyService';
-import { useRouter } from 'expo-router';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  Modal,
+  Alert,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { Post, User } from "../data/mockData";
+import { AppColors } from "../constants/theme";
+import defaultAvatar from "../assets/images/default-avatar.png";
+import { Story } from "../services/storyService";
+import { useRouter } from "expo-router";
 
 export const PostGrid: React.FC<{
   posts: Post[];
   onDeletePost?: (postId: string) => Promise<void>;
   currentUserId?: string;
 }> = ({ posts, onDeletePost, currentUserId }) => {
+  const router = useRouter();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handlePostPress = (post: Post) => {
+    // Navigate to post detail page
+    router.push(`/post/${post.id}` as any);
+  };
 
   const handleLongPress = (post: Post) => {
     if (!onDeletePost) return;
@@ -30,7 +45,7 @@ export const PostGrid: React.FC<{
       setDeleteModalVisible(false);
       setSelectedPost(null);
     } catch {
-      Alert.alert('Error', 'Failed to delete post. Please try again.');
+      Alert.alert("Error", "Failed to delete post. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -49,8 +64,10 @@ export const PostGrid: React.FC<{
             {row.map((post) => (
               <TouchableOpacity
                 key={post.id}
+                onPress={() => handlePostPress(post)}
                 onLongPress={() => void handleLongPress(post)}
                 delayLongPress={400}
+                activeOpacity={0.7}
                 style={styles.gridItem}
               >
                 <Image
@@ -81,7 +98,8 @@ export const PostGrid: React.FC<{
           <View style={deleteStyles.card}>
             <Text style={deleteStyles.title}>Delete post?</Text>
             <Text style={deleteStyles.body}>
-              This post will be permanently deleted. This action cannot be undone.
+              This post will be permanently deleted. This action cannot be
+              undone.
             </Text>
             <TouchableOpacity
               style={deleteStyles.deleteBtn}
@@ -89,7 +107,7 @@ export const PostGrid: React.FC<{
               disabled={isDeleting}
             >
               <Text style={deleteStyles.deleteBtnText}>
-                {isDeleting ? 'Deleting…' : 'Delete'}
+                {isDeleting ? "Deleting…" : "Delete"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -109,9 +127,9 @@ export const PostGrid: React.FC<{
 const deleteStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 24,
   },
   card: {
@@ -120,54 +138,60 @@ const deleteStyles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: AppColors.border,
-    width: '100%',
+    width: "100%",
     maxWidth: 320,
-    alignItems: 'center',
+    alignItems: "center",
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     color: AppColors.text,
     marginBottom: 8,
   },
   body: {
     fontSize: 14,
     color: AppColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 18,
   },
   deleteBtn: {
-    width: '100%',
+    width: "100%",
     backgroundColor: AppColors.error,
     paddingVertical: 14,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 8,
   },
   deleteBtnText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cancelBtn: {
-    width: '100%',
+    width: "100%",
     backgroundColor: AppColors.border,
     paddingVertical: 14,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelBtnText: {
     color: AppColors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
-export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({ user, onPress }) => {
+export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({
+  user,
+  onPress,
+}) => {
   return (
     <TouchableOpacity style={styles.userItem} onPress={onPress}>
-      <Image source={user.avatar ? { uri: user.avatar } : defaultAvatar} style={styles.avatar} />
+      <Image
+        source={user.avatar ? { uri: user.avatar } : defaultAvatar}
+        style={styles.avatar}
+      />
       <View style={styles.userInfo}>
         <Text style={styles.username}>{user.username}</Text>
         <Text style={styles.displayName}>{user.displayName}</Text>
@@ -181,7 +205,7 @@ export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({ u
 
 const styles = StyleSheet.create({
   gridRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   gridItem: {
     flex: 1,
@@ -194,26 +218,26 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.surface,
   },
   gridOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
     opacity: 0,
   },
   gridText: {
-    color: 'white',
+    color: "white",
     marginLeft: 4,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 12,
   },
   userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: AppColors.surface,
   },
@@ -227,7 +251,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   username: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 14,
     color: AppColors.text,
   },
@@ -242,8 +266,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   followText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
     fontSize: 14,
   },
 });
@@ -268,8 +292,8 @@ const StoryGridCell: React.FC<{
   const borderColor = isFirstItem
     ? AppColors.primary
     : story.isViewed
-    ? AppColors.border
-    : AppColors.primary;
+      ? AppColors.border
+      : AppColors.primary;
 
   return (
     <TouchableOpacity
@@ -284,7 +308,9 @@ const StoryGridCell: React.FC<{
           contentFit="cover"
         />
       ) : (
-        <View style={[storyGridStyles.thumbnail, storyGridStyles.placeholder]} />
+        <View
+          style={[storyGridStyles.thumbnail, storyGridStyles.placeholder]}
+        />
       )}
       {/* Overlay hiển thị tổng số items nếu > 1 */}
       {story.totalItems > 1 && (
@@ -332,7 +358,12 @@ export const StoryGrid: React.FC<{
             activeOpacity={0.7}
           >
             <View style={storyGridStyles.addCircle}>
-              <Feather name="plus" size={24} color={AppColors.primary} strokeWidth={2.5} />
+              <Feather
+                name="plus"
+                size={24}
+                color={AppColors.primary}
+                strokeWidth={2.5}
+              />
             </View>
             <Text style={storyGridStyles.addLabel}>Add</Text>
           </TouchableOpacity>
@@ -351,7 +382,10 @@ export const StoryGrid: React.FC<{
           ))}
           {/* Fill empty slots */}
           {Array.from({ length: 3 - row.length }).map((_, idx) => (
-            <View key={`story-empty-${rowIndex + 1}-${idx}`} style={storyGridStyles.cell} />
+            <View
+              key={`story-empty-${rowIndex + 1}-${idx}`}
+              style={storyGridStyles.cell}
+            />
           ))}
         </View>
       ))}
@@ -364,53 +398,53 @@ const storyGridStyles = StyleSheet.create({
     marginTop: 2,
   },
   row: {
-    flexDirection: 'row',
-  flexWrap: 'wrap',
-  // alignItems: 'stretch' giữ aspect ratio = 1:1 cell
+    flexDirection: "row",
+    flexWrap: "wrap",
+    // alignItems: 'stretch' giữ aspect ratio = 1:1 cell
   },
   cell: {
     width: `${100 / 3}%`,
     aspectRatio: 1,
     borderWidth: 1.5,
     borderColor: AppColors.border,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: AppColors.surface,
   },
   thumbnail: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   placeholder: {
     backgroundColor: AppColors.borderLight,
   },
   countBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 6,
     right: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   countText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   videoIcon: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 6,
     left: 6,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 10,
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
   // Add Story cell
   addCell: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderStyle: 'dashed',
+    alignItems: "center",
+    justifyContent: "center",
+    borderStyle: "dashed",
     borderColor: AppColors.border,
     backgroundColor: AppColors.surfaceElevated,
   },
@@ -419,13 +453,13 @@ const storyGridStyles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: AppColors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 6,
   },
   addLabel: {
     fontSize: 12,
     color: AppColors.text,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

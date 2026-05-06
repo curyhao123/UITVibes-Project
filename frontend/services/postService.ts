@@ -5,12 +5,15 @@ import {
   BE_CommentResponse,
   BE_CommentLikeResponse,
   BE_LikeResponse,
+  BE_HashtagDto,
   CreatePostBody,
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
 
 // ─── Comment transformer ─────────────────────────────────────────────────────
-async function fetchRepliesForComment(commentId: string): Promise<CommentType[]> {
+async function fetchRepliesForComment(
+  commentId: string,
+): Promise<CommentType[]> {
   try {
     const { data } = await apiClient.get<BE_CommentResponse[]>(
       `/post/comment/${commentId}/replies`,
@@ -31,18 +34,22 @@ async function fetchRepliesForComment(commentId: string): Promise<CommentType[]>
   }
 }
 
-async function transformComment(be: BE_CommentResponse, user?: User): Promise<CommentType> {
-  const resolvedUser = user || (await fetchUserById(be.userId)) || {
-    id: be.userId,
-    username: "",
-    displayName: "",
-    avatar: "",
-    bio: "",
-    followers: 0,
-    following: 0,
-    posts: 0,
-    isVerified: false,
-  };
+async function transformComment(
+  be: BE_CommentResponse,
+  user?: User,
+): Promise<CommentType> {
+  const resolvedUser = user ||
+    (await fetchUserById(be.userId)) || {
+      id: be.userId,
+      username: "",
+      displayName: "",
+      avatar: "",
+      bio: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isVerified: false,
+    };
 
   // Recursively transform nested replies with their own users
   const replies: CommentType[] = be.replies?.length
@@ -73,24 +80,39 @@ export async function uploadMedia(
   height?: number;
   duration?: number;
 }> {
-  if (uri.startsWith("https://res.cloudinary.com") || uri.startsWith("https://")) {
+  if (
+    uri.startsWith("https://res.cloudinary.com") ||
+    uri.startsWith("https://")
+  ) {
     return { url: uri };
   }
 
   const formData = new FormData();
 
   if (uri.startsWith("file://") || uri.startsWith("content://")) {
-    const name = uri.split("/").pop() || (type === "video" ? "video.mp4" : "image.jpg");
+    const name =
+      uri.split("/").pop() || (type === "video" ? "video.mp4" : "image.jpg");
     const mimeType = type === "video" ? "video/mp4" : "image/jpeg";
     (formData as any).append("File", { uri, type: mimeType, name } as any);
-  } else if (typeof fetch !== "undefined" && (uri.startsWith("blob:") || uri.startsWith("data:"))) {
+  } else if (
+    typeof fetch !== "undefined" &&
+    (uri.startsWith("blob:") || uri.startsWith("data:"))
+  ) {
     const res = await fetch(uri);
     const blob = await res.blob();
-    const mimeType = blob.type || (type === "video" ? "video/mp4" : "image/jpeg");
-    const ext = mimeType.includes("png") ? "png" : type === "video" ? "mp4" : "jpg";
+    const mimeType =
+      blob.type || (type === "video" ? "video/mp4" : "image/jpeg");
+    const ext = mimeType.includes("png")
+      ? "png"
+      : type === "video"
+        ? "mp4"
+        : "jpg";
     const name = `upload.${ext}`;
     if (typeof File !== "undefined") {
-      (formData as any).append("File", new File([blob], name, { type: mimeType }));
+      (formData as any).append(
+        "File",
+        new File([blob], name, { type: mimeType }),
+      );
     } else {
       (formData as any).append("File", blob as any, name);
     }
@@ -113,7 +135,12 @@ export async function uploadMedia(
 }
 
 function transformBEPost(post: BE_PostResponse, author?: User): Post {
-  console.log("[transformBEPost] post.id:", post.id, "media:", JSON.stringify(post.media));
+  console.log(
+    "[transformBEPost] post.id:",
+    post.id,
+    "media:",
+    JSON.stringify(post.media),
+  );
   return {
     id: post.id,
     userId: post.userId,
@@ -151,6 +178,55 @@ export async function getPosts(): Promise<Post[]> {
     data.map(async (post) => {
       const author = await fetchUserById(post.userId);
       return transformBEPost(post, author);
+    }),
+  );
+  return posts;
+}
+
+export async function getTrendingHashtags(
+  skip = 0,
+  take = 20,
+): Promise<BE_HashtagDto[]> {
+  const { data } = await apiClient.get<BE_HashtagDto[]>(
+    "/post/hashtag/trending",
+    { params: { skip, take } },
+  );
+  return data || [];
+}
+
+export async function searchHashtags(
+  query: string,
+  skip = 0,
+  take = 20,
+): Promise<BE_HashtagDto[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const { data } = await apiClient.get<BE_HashtagDto[]>(
+    "/post/hashtag/search",
+    { params: { q: trimmed, skip, take } },
+  );
+  return data || [];
+}
+
+export async function getPostsByHashtag(
+  hashtagName: string,
+  skip = 0,
+  take = 20,
+): Promise<Post[]> {
+  const normalized = hashtagName.trim().replace(/^#+/, "");
+  if (!normalized) return [];
+  const { data } = await apiClient.get<BE_PostResponse[]>(
+    `/post/hashtag/${encodeURIComponent(normalized)}/posts`,
+    { params: { skip, take } },
+  );
+  const posts = await Promise.all(
+    (data || []).map(async (post) => {
+      try {
+        const author = await fetchUserById(post.userId);
+        return transformBEPost(post, author);
+      } catch {
+        return transformBEPost(post, undefined);
+      }
     }),
   );
   return posts;
@@ -197,16 +273,26 @@ export async function getPostComments(postId: string): Promise<CommentType[]> {
 
 export async function getMyPosts(): Promise<Post[]> {
   try {
-    const { data, status } = await apiClient.get<BE_PostResponse[]>("/post/my-posts", {
-      params: { skip: 0, take: 50 },
-    });
-    console.log("[getMyPosts] status:", status, "data length:", data?.length, "data:", JSON.stringify(data));
-    
+    const { data, status } = await apiClient.get<BE_PostResponse[]>(
+      "/post/my-posts",
+      {
+        params: { skip: 0, take: 50 },
+      },
+    );
+    console.log(
+      "[getMyPosts] status:",
+      status,
+      "data length:",
+      data?.length,
+      "data:",
+      JSON.stringify(data),
+    );
+
     if (!data || data.length === 0) {
       console.log("[getMyPosts] No posts returned from API");
       return [];
     }
-    
+
     // Xử lý từng post riêng, không throw nếu 1 post lỗi
     const posts: Post[] = [];
     for (const post of data) {
@@ -214,7 +300,11 @@ export async function getMyPosts(): Promise<Post[]> {
         const author = await fetchUserById(post.userId);
         posts.push(transformBEPost(post, author));
       } catch (authorError) {
-        console.warn("[getMyPosts] Failed to fetch author for post", post.id, authorError);
+        console.warn(
+          "[getMyPosts] Failed to fetch author for post",
+          post.id,
+          authorError,
+        );
         // Vẫn thêm post vào danh sách, author sẽ là empty user
         posts.push(transformBEPost(post, undefined));
       }
@@ -222,16 +312,24 @@ export async function getMyPosts(): Promise<Post[]> {
     console.log("[getMyPosts] Transformed posts:", posts.length, "posts");
     return posts;
   } catch (e: any) {
-    console.error("[getMyPosts] FATAL ERROR:", e?.response?.status, e?.response?.data, e?.message);
+    console.error(
+      "[getMyPosts] FATAL ERROR:",
+      e?.response?.status,
+      e?.response?.data,
+      e?.message,
+    );
     throw e;
   }
 }
 
 export async function getUserPosts(userId: string): Promise<Post[]> {
   try {
-    const { data } = await apiClient.get<BE_PostResponse[]>(`/post/user/${userId}`, {
-      params: { skip: 0, take: 50 },
-    });
+    const { data } = await apiClient.get<BE_PostResponse[]>(
+      `/post/user/${userId}`,
+      {
+        params: { skip: 0, take: 50 },
+      },
+    );
     if (!data || !Array.isArray(data)) {
       console.warn("[getUserPosts] Expected array, got:", data);
       return [];
@@ -248,7 +346,11 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
     );
     return posts;
   } catch (err: any) {
-    console.error("[getUserPosts] API error:", err?.response?.status, err?.response?.data);
+    console.error(
+      "[getUserPosts] API error:",
+      err?.response?.status,
+      err?.response?.data,
+    );
     return [];
   }
 }
@@ -346,7 +448,9 @@ export async function deletePost(postId: string): Promise<boolean> {
 }
 
 export async function toggleLike(postId: string): Promise<boolean> {
-  const { data } = await apiClient.post<BE_LikeResponse>(`/post/${postId}/like`);
+  const { data } = await apiClient.post<BE_LikeResponse>(
+    `/post/${postId}/like`,
+  );
   return data.totalLikes > 0;
 }
 
@@ -381,11 +485,11 @@ export async function deleteComment(
   return true;
 }
 
-export async function toggleCommentLike(
-  commentId: string,
-): Promise<boolean> {
+export async function toggleCommentLike(commentId: string): Promise<boolean> {
   try {
-    await apiClient.post<BE_CommentLikeResponse>(`/post/comment/${commentId}/like`);
+    await apiClient.post<BE_CommentLikeResponse>(
+      `/post/comment/${commentId}/like`,
+    );
     return true;
   } catch (err: any) {
     const msg = err?.response?.data?.message || "";

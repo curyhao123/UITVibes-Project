@@ -339,10 +339,20 @@ namespace MessageService.ServiceLayer.Implementation
                     .Where(m => m.LeftAt == null)
                     .Select(m =>
                     {
-                        var profile = profileCache != null
-                            && profileCache.TryGetValue(m.UserId, out var cached)
-                            ? cached
-                            : null;
+                        UserProfileRpcResponse? profile = null;
+
+                        if (profileCache != null && profileCache.TryGetValue(m.UserId, out var cached))
+                        {
+                            profile = cached;
+                        }
+                        else
+                        {
+                            // profileCache is null when called from CreatePrivateConversationAsync.
+                            // Fallback: call RPC directly for this member so members always have
+                            // displayName and avatarUrl populated, even for brand-new conversations.
+                            profile = _userProfileRpcClient
+                                .GetUserProfileAsync(m.UserId).Result;
+                        }
 
                         return new ConversationMemberDto
                         {
