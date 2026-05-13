@@ -4,6 +4,11 @@ namespace NotificationService.Models
 {
     public class NotificationDbContext : DbContext
     {
+        public NotificationDbContext(DbContextOptions<NotificationDbContext> options)
+            : base(options)
+        {
+        }
+
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
         public DbSet<UserNotificationSetting> UserNotificationSettings => Set<UserNotificationSetting>();

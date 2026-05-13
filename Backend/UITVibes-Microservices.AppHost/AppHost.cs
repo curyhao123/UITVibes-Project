@@ -6,7 +6,7 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
- 
+
 var authDb = postgres.AddDatabase("authdb");
 var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");
@@ -28,7 +28,7 @@ var smtpUsername = builder.AddParameter("smtp-username");
 var smtpPassword = builder.AddParameter("smtp-password", secret: true);
 var smtpSenderEmail = builder.AddParameter("smtp-senderemail");
 var smtpSenderName = builder.AddParameter("smtp-sendername");
-
+var firebaseCredentialPath = builder.AddParameter("firebase-credentialpath", secret: true);
 
 
 
@@ -100,6 +100,7 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
     .WaitFor(cache)
     .WithReference(messaging)
     .WaitFor(messaging)
+    .WithEnvironment("Firebase__CredentialPath", firebaseCredentialPath)
     .WithHttpHealthCheck("/health");
 
 
