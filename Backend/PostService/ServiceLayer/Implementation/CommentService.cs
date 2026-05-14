@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 
@@ -9,11 +10,16 @@ public class CommentService : ICommentService
 {
     private readonly PostDbContext _context;
     private readonly ILogger<CommentService> _logger;
+    private readonly IPostCommentedPublisher _postCommentedPublisher;
+    private readonly IUserProfileRpcClient _userProfileRpcClient;
 
-    public CommentService(PostDbContext context, ILogger<CommentService> logger)
+
+    public CommentService(PostDbContext context, ILogger<CommentService> logger, IPostCommentedPublisher postCommentedPublisher, IUserProfileRpcClient userProfileRpcClient)
     {
         _context = context;
         _logger = logger;
+        _postCommentedPublisher = postCommentedPublisher;
+        _userProfileRpcClient = userProfileRpcClient;
     }
 
     public async Task<CommentDto> CreateCommentAsync(Guid postId, Guid userId, CreateCommentRequest request)
@@ -70,6 +76,27 @@ public class CommentService : ICommentService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("User {UserId} commented on post {PostId}", userId, postId);
+
+        var commenterProfile = await _userProfileRpcClient.GetProfileAsync(userId);
+        var commenterName = commenterProfile?.DisplayName ?? string.Empty;
+        var commentPreview = request.Content.Length <= 100
+            ? request.Content
+            : request.Content[..100];
+
+        try
+        {
+            await _postCommentedPublisher.PublishAsync(new PostCommentedEvent(
+                post.UserId,
+                userId,
+                commenterName,
+                postId,
+                commentPreview));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish PostCommented event for post {PostId}", postId);
+        }
+
 
         return MapToDto(comment, userId);
     }

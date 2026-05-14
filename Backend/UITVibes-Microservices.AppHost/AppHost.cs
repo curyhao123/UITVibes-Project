@@ -6,7 +6,7 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
-
+ 
 var authDb = postgres.AddDatabase("authdb");
 var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");
@@ -118,10 +118,9 @@ var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>(
     .WaitFor(postService)
     .WithReference(messageService)
     .WaitFor(messageService)
+    .WithReference(notificationService)
+    .WaitFor(notificationService)
     .WithEnvironment("Jwt__Key", jwtKey);
-
-
-
 
 
 

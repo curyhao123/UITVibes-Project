@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Messaging.Implementation;
+using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 using System.Text.RegularExpressions;
@@ -12,17 +14,22 @@ public class PostService : IPostService
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IUserFollowRpcClient _userFollowRpcClient;
     private readonly ILogger<PostService> _logger;
-
+    private readonly IPostLikedPublisher _postLikedPublisher;
+    private readonly IUserProfileRpcClient _userProfileRpcClient;
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
         IUserFollowRpcClient userFollowRpcClient,
-        ILogger<PostService> logger)
+        ILogger<PostService> logger,
+        IPostLikedPublisher postLikedPublisher,
+        IUserProfileRpcClient userProfileRpcClient)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
         _userFollowRpcClient = userFollowRpcClient;
         _logger = logger;
+        _userProfileRpcClient = userProfileRpcClient;
+        _postLikedPublisher = postLikedPublisher;
     }
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
@@ -395,6 +402,24 @@ public class PostService : IPostService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("User {UserId} liked post {PostId}", userId, postId);
+
+        var likerProfile = await _userProfileRpcClient.GetProfileAsync(userId);
+        var likerName = likerProfile.Found ? likerProfile.DisplayName : "Someone";
+
+        try
+        {
+            await _postLikedPublisher.PublishAsync(new PostLikedEvent(
+                post.UserId,
+                userId,
+                likerName,
+                postId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish PostLikedevent for post {PostId}", postId);
+        }
+
+
 
         return new LikeResponse
         {

@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using UserService.Messaging;
+using UserService.Messaging.Implementation;
+using UserService.Messaging.Interface;
 using UserService.Models;
 using UserService.ServiceLayer.Implementation;
 using UserService.ServiceLayer.Interface;
@@ -45,6 +47,7 @@ builder.Services.AddHostedService<FriendListRpcConsumer>();
 builder.Services.AddHostedService<UserFollowRpcConsumer>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IBlockService, BlockService>();
+builder.Services.AddScoped<IUserFollowPublisher, UserFollowPublisher>();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {

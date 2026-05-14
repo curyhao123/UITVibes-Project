@@ -36,4 +36,10 @@ public class ServiceDiscovery : IServiceDiscovery
             ?? _configuration["services:messageservice:https:0"]
             ?? "http://localhost:5240";
     }
+    public string GetNotificationServiceUrl()
+    {
+        return _configuration["services:notificationservice:http:0"]
+            ?? _configuration["services:notificationservice:https:0"]
+            ?? "http://localhost:5091";
+    }
 }

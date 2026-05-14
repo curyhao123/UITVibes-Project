@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using PostService.Messaging.Implementation;
+using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
 using PostService.ServiceLayer.Interface;
@@ -23,8 +25,8 @@ builder.Services.AddScoped<IHashtagService, HashtagService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<IUserProfileRpcClient, UserProfileRpcClient>();
 builder.Services.AddScoped<IUserFollowRpcClient, UserFollowRpcClient>();
-
-
+builder.Services.AddScoped<IPostCommentedPublisher, PostCommentedPublisher>();
+builder.Services.AddScoped<IPostLikedPublisher, PostLikedPublisher>();
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

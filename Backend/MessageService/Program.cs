@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using MessageService.Hubs;
+﻿using MessageService.Hubs;
+using MessageService.Messaging.Implementation;
+using MessageService.Messaging.Interface;
 using MessageService.Models;
 using MessageService.ServiceLayer.Implementation;
 using MessageService.ServiceLayer.Interface;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,7 +26,7 @@ builder.Services.AddScoped<IMessageService, ChatMessageService>();
 builder.Services.AddScoped<IFriendListRpcClient, FriendListRpcClient>();
 builder.Services.AddScoped<IOnlineTrackingService, OnlineTrackingService>();
 builder.Services.AddScoped<IUserProfileRpcClient, UserProfileRpcClient>();
-
+builder.Services.AddScoped<IMessageSentPublisher, MessageSentPublisher>();
 // Add SignalR with Redis backplane for scaling
 builder.Services.AddSignalR();
    

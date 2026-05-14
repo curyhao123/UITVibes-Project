@@ -25,6 +25,8 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         builder.Configuration["services:postservice:http:0"] ?? "http://localhost:5078",
     ["ReverseProxy:Clusters:message-cluster:Destinations:destination1:Address"] =
         builder.Configuration["services:messageservice:http:0"] ?? "http://localhost:5240",
+    ["ReverseProxy:Clusters:notification-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:notificationservice:http:0"] ?? "http://localhost:5091"
 });
 
 // ===== REGISTER SERVICE DISCOVERY =====
@@ -437,6 +439,20 @@ app.MapGet("/gateway/routes", (IServiceDiscovery discovery) =>
                 new { gateway = "/message/conversations", proxiedTo = "/api/conversation", auth = "Required" },
                 new { gateway = "/message/onlinetracking/online-users", proxiedTo = "/api/onlinetracking/online-users", auth = "Required (POST)" },
                 new { gateway = "/message/onlinetracking/online-friends", proxiedTo = "/api/onlinetracking/online-friends", auth = "Required (GET)" }
+            }
+        },
+        new
+        {
+            service = "NotificationService",
+            baseUrl = discovery.GetNotificationServiceUrl(),
+            routes = new[]
+            {
+                new { gateway = "/notification/device/register", proxiedTo = "/api/device/register", auth = "Required (POST)" },
+                new { gateway = "/notification", proxiedTo = "/api/notification", auth = "Required (GET)" },
+                new { gateway = "/notification/{id}/read", proxiedTo = "/api/notification/{id}/read", auth = "Required (PUT)" },
+                new { gateway = "/notification/read-all", proxiedTo = "/api/notification/read-all", auth = "Required (PUT)" },
+                new { gateway = "/notification/unread-count", proxiedTo = "/api/notification/unread-count", auth = "Required (GET)" },
+                new { gateway = "/notifications/settings", proxiedTo = "/api/notifications/settings", auth = "Required (GET/PUT)" }
             }
         }
     };

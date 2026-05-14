@@ -6,5 +6,7 @@ public interface IServiceDiscovery
         string GetAuthServiceUrl();
         string GetUserServiceUrl();
         string GetPostServiceUrl();
+        string GetMessageServiceUrl();
+        string GetNotificationServiceUrl();
 }
 

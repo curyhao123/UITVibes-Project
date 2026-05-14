@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UserService.DTOs;
+using UserService.Messaging.Interface;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
 
@@ -9,11 +10,13 @@ public class FollowService : IFollowService
 {
     private readonly UserDbContext _context;
     private readonly ILogger<FollowService> _logger;
+    private readonly IUserFollowPublisher _userFollowPublisher;
 
-    public FollowService(UserDbContext context, ILogger<FollowService> logger)
+    public FollowService(UserDbContext context, ILogger<FollowService> logger, IUserFollowPublisher userFollowPublisher)
     {
         _context = context;
         _logger = logger;
+        _userFollowPublisher = userFollowPublisher;
     }
 
     public async Task<FollowDto> FollowUserAsync(Guid followerId, Guid followingId)
@@ -32,7 +35,7 @@ public class FollowService : IFollowService
             throw new InvalidOperationException("Cannot follow user due to block relationship");
         }
 
-            var followerProfile = await _context.UserProfiles
+        var followerProfile = await _context.UserProfiles
            .FirstOrDefaultAsync(p => p.UserId == followerId);
         var followingProfile = await _context.UserProfiles
             .FirstOrDefaultAsync(p => p.UserId == followingId);
@@ -76,6 +79,22 @@ public class FollowService : IFollowService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("User {FollowerId} followed user {FollowingId}", followerId, followingId);
+        
+        var followerName = followerProfile.DisplayName ?? "Someone";
+        var followAt = follow.CreatedAt;
+
+        try
+        {
+            await _userFollowPublisher.PublishAsync(new UserFollowedEvent(
+                followerId,
+                followingId,
+                followerName,
+                followAt));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish UserFollowed event for follower {FollowerId} and followee {FolloweeId}", followerId, followingId);
+        }
 
         return new FollowDto
         {

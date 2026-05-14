@@ -1,6 +1,7 @@
 ﻿using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
+using NotificationService.Messaging;
 using NotificationService.Models;
 using NotificationService.ServiceLayer.Implementation;
 using NotificationService.ServiceLayer.Interface;
@@ -27,6 +28,12 @@ builder.Services.AddScoped<IUserNotificationSettingService, UserNotificationSett
 builder.Services.AddScoped<OutboxService>();
 builder.Services.AddHostedService<OutboxService>();
 builder.Services.AddScoped<IDeviceTokenService, DeviceTokenService>();
+
+//message event
+builder.Services.AddHostedService<MessageSentConsumer>();
+builder.Services.AddHostedService<PostLikedConsumer>();
+builder.Services.AddHostedService<PostCommentedConsumer>();
+builder.Services.AddHostedService<UserFollowedConsumer>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

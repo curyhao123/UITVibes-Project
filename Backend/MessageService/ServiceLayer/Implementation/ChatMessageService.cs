@@ -5,6 +5,7 @@ using MessageService.Hubs;
 using MessageService.ServiceLayer.Interface;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using MessageService.Messaging.Interface;
 
 namespace MessageService.ServiceLayer.Implementation
 {
@@ -13,12 +14,21 @@ namespace MessageService.ServiceLayer.Implementation
         private readonly MessageDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly ILogger<ChatMessageService> _logger;
+        private readonly IUserProfileRpcClient _userProfileRpcClient;
+        private readonly IMessageSentPublisher _messageSentPublisher;
 
-        public ChatMessageService(MessageDbContext context, IHubContext<ChatHub> hubContext, ILogger<ChatMessageService> logger)
+        public ChatMessageService(
+            MessageDbContext context,
+            IHubContext<ChatHub> hubContext,
+            ILogger<ChatMessageService> logger,
+            IUserProfileRpcClient userProfileRpcClient,
+            IMessageSentPublisher messageSentPublisher)
         {
             _context = context;
             _hubContext = hubContext;
             _logger = logger;
+            _userProfileRpcClient = userProfileRpcClient;
+            _messageSentPublisher = messageSentPublisher;
         }
 
         public async Task DeleteMessageAsync(Guid messageId, Guid userId)
@@ -196,6 +206,34 @@ namespace MessageService.ServiceLayer.Implementation
 
             var messageDto = MapToDto(message);
             await _hubContext.Clients.Group(conversationId.ToString()).SendAsync("ReceiveMessage", messageDto);
+
+            var profile = await _userProfileRpcClient.GetUserProfileAsync(senderId);
+            var senderName = profile?.Found == true ? profile.DisplayName : "Someone";
+
+            var preview = message.Type == MessageType.Text
+                ? message.Content ?? string.Empty
+                : $"[{message.Type}]";
+
+            if (preview.Length > 100)
+            {
+                preview = preview[..100];
+            }
+
+            var recipients = await _context.ConversationMembers
+                .Where(m => m.ConversationId == conversationId && m.UserId != senderId && m.LeftAt == null)
+                .Select(m => m.UserId)
+                .ToListAsync();
+
+            foreach (var recipientId in recipients)
+            {
+                await _messageSentPublisher.PublishAsync(
+                    new MessageSentEvent(
+                        recipientId,
+                        senderId,
+                        senderName,
+                        conversationId,
+                        preview));
+            }
 
             return messageDto;
         }

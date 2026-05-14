@@ -834,6 +834,70 @@
           }
         }
       ]
+    },
+    {
+      "name": "NotificationService",
+      "description": "User notifications, settings, and device tokens",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/notification/device/register",
+          "description": "Register a device token for push notifications",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "token": "device-token",
+            "platform": "ios|android|web"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notification",
+          "description": "Get notifications for current user",
+          "requiresAuth": true,
+          "queryParameters": {
+            "page": 1,
+            "pageSize": 20
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/notification/{id}/read",
+          "description": "Mark a notification as read",
+          "requiresAuth": true,
+          "pathParameters": {
+            "id": "guid"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/notification/read-all",
+          "description": "Mark all notifications as read",
+          "requiresAuth": true
+        },
+        {
+          "method": "GET",
+          "path": "/notification/unread-count",
+          "description": "Get unread notifications count",
+          "requiresAuth": true
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/settings",
+          "description": "Get notification settings for current user",
+          "requiresAuth": true
+        },
+        {
+          "method": "PUT",
+          "path": "/notifications/settings",
+          "description": "Update notification settings for current user",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "isEnabled": true
+          }
+        }
+      ]
     }
   ]
 }
