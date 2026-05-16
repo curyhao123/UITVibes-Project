@@ -3,49 +3,36 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppColors } from '../../constants/theme';
-import { Typography } from '../../constants/typography';
-import { CustomTabBar } from '../../components/CustomTabBar';
+import { ModernTabBar } from '../../components/ModernTabBar';
 
 /**
- * Bottom tabs only (no `index` route in this folder) — Home, Search, Music, Create, Reels, Message, Profile.
- * Unified Feather stroke weight for tab icons.
+ * Bottom tabs — Home, Search, Music, Create, Reels, Message, Profile.
+ *
+ * All icon sizes use 23px stroke weight for consistency.
+ * Labels are intentionally hidden: icon-only feels more premium on a floating bar.
+ * The floating capsule is rendered entirely by ModernTabBar.
  */
-const TAB_ICON_SIZE = 22;
-const CREATE_SIZE = 20;
-const CREATE_BUTTON = 42;
+const TAB_ICON_SIZE = 23;
+const CREATE_ICON_SIZE = 26;
 
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <ModernTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: AppColors.primary,
         tabBarInactiveTintColor: AppColors.iconMuted,
         tabBarStyle: {
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: AppColors.border,
-          backgroundColor: AppColors.surfaceElevated,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 2 : 6,
-          minHeight: 52,
-          ...Platform.select({
-            ios: {
-              shadowColor: '#2D3748',
-              shadowOffset: { width: 0, height: -1 },
-              shadowOpacity: 0.04,
-              shadowRadius: 4,
-            },
-            android: { elevation: 4 },
-          }),
+          // Suppress the default bottom-tabs bar — ModernTabBar replaces it completely
+          display: 'none',
         },
         tabBarLabelStyle: {
-          ...Typography.tabLabel,
-          marginTop: 2,
+          display: 'none',
         },
         tabBarIconStyle: {
-          marginTop: 0,
+          display: 'none',
         },
       }}
     >
@@ -80,17 +67,16 @@ export default function TabLayout() {
         name="create"
         options={{
           title: 'Create',
-          tabBarActiveTintColor: AppColors.primary,
-          tabBarInactiveTintColor: AppColors.primary,
           tabBarIcon: () => (
             <View style={styles.createIconWrap}>
-              <Feather name="plus" size={CREATE_SIZE} color="#FFFFFF" strokeWidth={2.2} />
+              <Feather
+                name="plus"
+                size={CREATE_ICON_SIZE}
+                color="#FFFFFF"
+                strokeWidth={2.4}
+              />
             </View>
           ),
-          tabBarLabelStyle: {
-            ...Typography.tabLabel,
-            marginTop: 4,
-          },
         }}
       />
       <Tabs.Screen
@@ -126,22 +112,21 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   createIconWrap: {
-    width: CREATE_BUTTON,
-    height: CREATE_BUTTON,
-    borderRadius: CREATE_BUTTON / 2,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -8,
-    marginBottom: 0,
+    marginTop: -10,
     ...Platform.select({
       ios: {
         shadowColor: AppColors.primaryDark,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.28,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.36,
+        shadowRadius: 8,
       },
-      android: { elevation: 3 },
+      android: { elevation: 8 },
     }),
   },
 });

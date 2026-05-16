@@ -8,6 +8,7 @@ import {
   Share,
   ActivityIndicator,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
 
   // Loading state cho posts
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Stories state
   const [profileStories, setProfileStories] = useState<api.Story[]>([]);
@@ -51,6 +53,20 @@ export default function ProfileScreen() {
       });
     }, []), // Empty deps - chỉ chạy khi mount/unmount
   );
+
+  // Pull-to-Refresh handler
+  const handleRefresh = useCallback(async () => {
+    if (!currentUser?.id) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refreshMyPosts(),
+        api.getUserStories(currentUser.id).then((stories) => setProfileStories(stories)),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshMyPosts, currentUser?.id]);
 
   // Refresh stories khi profileStories tab được active hoặc mỗi khi focus
   useFocusEffect(
@@ -118,7 +134,17 @@ export default function ProfileScreen() {
         }
       />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={AppColors.primary}
+            colors={[AppColors.primary]}
+          />
+        }
+      >
         <View style={styles.profileInfo}>
           <Avatar user={currentUser} size="large" />
           <View style={styles.statsContainer}>

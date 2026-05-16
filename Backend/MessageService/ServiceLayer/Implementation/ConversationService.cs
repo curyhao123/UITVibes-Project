@@ -43,7 +43,8 @@ namespace MessageService.ServiceLayer.Implementation
                 ConversationId = conversationId,
                 UserId = targetUserId,
                 Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow,
             });
 
             await _context.SaveChangesAsync();
@@ -77,7 +78,8 @@ namespace MessageService.ServiceLayer.Implementation
                 ConversationId = conversation.Id,
                 UserId = userId,
                 Role = MemberRole.Admin,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow,
             });
 
             // Add other members
@@ -91,7 +93,8 @@ namespace MessageService.ServiceLayer.Implementation
                     ConversationId = conversation.Id,
                     UserId = memberId,
                     Role = MemberRole.Member,
-                    JoinedAt = DateTime.UtcNow
+                    JoinedAt = DateTime.UtcNow,
+                    LastReadAt = DateTime.UtcNow,
                 });
             }
 
@@ -139,16 +142,19 @@ namespace MessageService.ServiceLayer.Implementation
                 ConversationId = conversation.Id,
                 UserId = userId,
                 Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow,
             });
 
+            // Add other member
             conversation.Members.Add(new ConversationMember
             {
                 Id = Guid.NewGuid(),
                 ConversationId = conversation.Id,
                 UserId = request.OtherUserId,
                 Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.UtcNow,
+                LastReadAt = DateTime.UtcNow,
             });
 
             _context.Conversations.Add(conversation);
