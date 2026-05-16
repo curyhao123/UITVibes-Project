@@ -24,6 +24,7 @@ import {
   saveRecentSearch,
   removeRecentSearch,
   clearAllRecentSearches,
+  isFollowing,
 } from "../../services/api";
 import { User, Post } from "../../data/mockData";
 import { RecentSearch } from "../../services/session";
@@ -223,16 +224,9 @@ export default function SearchScreen() {
   };
 
   const handleFollowToggle = async (userId: string) => {
-    // Capture original state before optimistic update so revert can use it
-    let originalState: { isFollowing: boolean; followers: number } | null =
-      null;
     setUsers((prev) =>
       prev.map((u) => {
-        if (u.id === userId && originalState === null) {
-          originalState = {
-            isFollowing: u.isFollowing,
-            followers: u.followers,
-          };
+        if (u.id === userId) {
           return {
             ...u,
             isFollowing: !u.isFollowing,
@@ -243,31 +237,13 @@ export default function SearchScreen() {
       }),
     );
 
-    try {
-      const nextIsFollowing = await toggleFollow(userId);
-      // Sync with server truth: only correct isFollowing (followers already correct from optimistic)
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId ? { ...u, isFollowing: nextIsFollowing } : u,
-        ),
-      );
-    } catch (error) {
-      // Revert to original state on failure
-      if (originalState) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId
-              ? {
-                  ...u,
-                  isFollowing: originalState!.isFollowing,
-                  followers: originalState!.followers,
-                }
-              : u,
-          ),
-        );
-      }
-      console.error("Failed to toggle follow:", error);
-    }
+    await toggleFollow(userId);
+    const serverState = isFollowing(userId);
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, isFollowing: serverState } : u,
+      ),
+    );
   };
 
   const handleHashtagSelect = async (tag: HashtagOption) => {
@@ -828,7 +804,7 @@ const styles = StyleSheet.create({
     color: AppColors.primary,
   },
   recentListContent: {
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   recentItem: {
     flexDirection: "row",

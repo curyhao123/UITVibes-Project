@@ -7,18 +7,18 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { User, activeUserFollowingIds } from "../../data/mockData";
+import { useApp } from "../../context/AppContext";
+import { User } from "../../data/mockData";
 import {
   getFollowers,
   getFollowing,
   toggleFollow,
-  unfollowUser,
   getUserById,
+  isFollowing,
 } from "../../services/api";
 import { AppColors } from "../../constants/theme";
 import defaultAvatar from "../../assets/images/default-avatar.png";
@@ -29,6 +29,7 @@ export default function FollowersScreen() {
     userId: string;
     tab?: string;
   }>();
+  const { toggleFollow, currentUser } = useApp();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"followers" | "following">("followers");
@@ -50,7 +51,7 @@ export default function FollowersScreen() {
     const loadProfileInfo = async () => {
       const targetId = userId || "current";
       if (targetId === "current") {
-        setProfileDisplayName("myusername");
+        setProfileDisplayName(currentUser?.displayName || currentUser?.username || "Me");
         return;
       }
       try {
@@ -74,11 +75,13 @@ export default function FollowersScreen() {
           ? await getFollowers(id)
           : await getFollowing(id);
 
-      // Enrich each user with isFollowing from activeUserFollowingIds
-      const enriched = data.map((u) => ({
-        ...u,
-        isFollowing: filter === "following" ? true : activeUserFollowingIds.has(u.id),
-      }));
+      // Enrich each user with isFollowing from API
+      const enriched = await Promise.all(
+        data.map(async (u) => ({
+          ...u,
+          isFollowing: (await isFollowing(u.id)) ?? (filter === "following"),
+        })),
+      );
       setUsers(enriched);
     } catch (error) {
       console.error("Failed to load users:", error);
@@ -91,67 +94,15 @@ export default function FollowersScreen() {
     targetUserId: string,
     isFollowing: boolean,
   ) => {
-    if (isFollowing) {
-      Alert.alert("Unfollow user?", "Do you want to unfollow this user?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Unfollow",
-          style: "destructive",
-          onPress: async () => {
-            // Optimistic update: immediately show unfollowed state
-            setUsers((prev) =>
-              prev.map((u) =>
-                u.id === targetUserId
-                  ? { ...u, isFollowing: false, followers: Math.max(0, u.followers - 1) }
-                  : u,
-              ),
-            );
-            try {
-              await unfollowUser(targetUserId);
-            } catch (error) {
-              // Revert on failure
-              setUsers((prev) =>
-                prev.map((u) =>
-                  u.id === targetUserId
-                    ? { ...u, isFollowing: true, followers: u.followers + 1 }
-                    : u,
-                ),
-              );
-              console.error("Failed to unfollow user:", error);
-            }
-          },
-        },
-      ]);
-      return;
-    }
-
-    // Optimistic update: immediately show followed state
     setUsers((prev) =>
       prev.map((u) =>
         u.id === targetUserId
-          ? { ...u, isFollowing: true, followers: u.followers + 1 }
+          ? { ...u, isFollowing: !isFollowing, followers: isFollowing ? Math.max(0, u.followers - 1) : u.followers + 1 }
           : u,
       ),
     );
-    try {
-      const nextIsFollowing = await toggleFollow(targetUserId);
-      // Sync with server truth: only correct isFollowing (followers count already correct from optimistic)
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === targetUserId ? { ...u, isFollowing: nextIsFollowing } : u,
-        ),
-      );
-    } catch (error) {
-      // Revert both fields on failure
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === targetUserId
-            ? { ...u, isFollowing: false, followers: Math.max(0, u.followers - 1) }
-            : u,
-        ),
-      );
-      console.error("Failed to follow user:", error);
-    }
+
+    await toggleFollow(targetUserId);
   };
 
   const renderItem = ({ item }: { item: User }) => (

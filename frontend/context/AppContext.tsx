@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
   ReactNode,
+  useRef,
 } from 'react';
 import {
   User,
@@ -16,6 +17,9 @@ import {
 import * as api from '../services/api';
 import type { Story } from '../services/storyService';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { getConnection } from '../services/signalrService';
+import type { BE_MessageResponse } from '../services/backendTypes';
+import { transformBEMessage } from '../services/messageService';
 
 interface AppContextType {
   // Auth / User
@@ -105,6 +109,9 @@ interface AppContextType {
   markMessagesRead: (conversationId: string) => Promise<void>;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   startConversation: (userId: string) => Promise<Conversation | null>;
+
+  // Typing
+  partnerTyping: boolean;
 
   // Notifications
   notifications: Notification[];
@@ -333,9 +340,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [conversationError, setConversationError] = useState<string | null>(null);
   const [messageError, setMessageError] = useState<string | null>(null);
 
+  // Ref to store current conversationMembers without triggering effect re-runs
+  const conversationMembersRef = useRef<Conversation["members"]>([]);
+  // Ref to track activeConversation for use in closures without stale values
+  const activeConversationRef = useRef<Conversation | null>(null);
+  activeConversationRef.current = activeConversation;
+
   // ─── Notifications ───────────────────────────────────────
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // ─── Typing ──────────────────────────────────────────────
+  const [partnerTyping, setPartnerTyping] = useState(false);
 
   // ─── Online Status ────────────────────────────────────────
   const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(isAuthenticated);
@@ -620,7 +636,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (data.length > 0) {
         console.log("[AppContext] refreshConversations: first conv id:", data[0].id, "members:", data[0].members.length);
       }
-      setConversations(data);
+      // Merge server data with local unread counts to preserve optimistic updates from SignalR
+      setConversations((prev) => {
+        if (prev.length === 0) return data;
+        const localUnreadMap = new Map(prev.map((c) => [c.id, c.unreadCount ?? 0]));
+        return data.map((conv) => ({
+          ...conv,
+          unreadCount: localUnreadMap.has(conv.id)
+            ? localUnreadMap.get(conv.id)!
+            : conv.unreadCount,
+        }));
+      });
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? "Failed to load conversations.";
       console.error("[AppContext] refreshConversations: FAILED —", msg, error);
@@ -657,7 +683,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         if (sender) {
           newMsg.sender = sender;
         }
-        setMessages((prev) => [...prev, newMsg]);
+        console.log("[AppContext] sendMessage: Adding message optimistically - ID:", newMsg.id);
+        setMessages((prev) => {
+          const isDuplicate = prev.some((m) => m.id === newMsg.id);
+          if (isDuplicate) {
+            console.log("[AppContext] sendMessage: Message already exists, skipping");
+            return prev;
+          }
+          return [...prev, newMsg];
+        });
         await refreshConversations();
       } catch (error: any) {
         const msg = error?.response?.data?.message ?? "Failed to send message.";
@@ -827,6 +861,142 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     fetchSuggestedUsers,
   ]);
 
+  // ─── Sync conversationMembers to ref (without triggering listener re-run) ───
+  useEffect(() => {
+    console.log("[AppContext] conversationMembers updated, syncing to ref");
+    conversationMembersRef.current = conversationMembers;
+  }, [conversationMembers]);
+
+  // Ref to track partnerTyping setter for use in handlers without deps issues
+  const setPartnerTypingRef = useRef(setPartnerTyping);
+  setPartnerTypingRef.current = setPartnerTyping;
+
+  // ─── Listen to SignalR ReceiveMessage events ──────────────
+  useEffect(() => {
+    if (!activeConversation) return;
+
+    const connection = getConnection();
+    if (!connection) {
+      console.warn("[AppContext] SignalR connection not available for message listener");
+      return;
+    }
+
+    console.log(`[AppContext] Registering ReceiveMessage listener for conversation: ${activeConversation.id}`);
+
+    // Handler to receive new messages from SignalR
+    const messageHandler = (messageData: BE_MessageResponse) => {
+      // Ensure this message belongs to the current conversation
+      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
+      if (messageConvId !== activeConversation.id) {
+        console.log(`[AppContext] ReceiveMessage: Ignoring message for wrong conversation. Expected: ${activeConversation.id}, got: ${messageConvId}`);
+        return;
+      }
+
+      const messageId = messageData.id ?? (messageData as any).Id;
+      console.log(`[AppContext] ReceiveMessage event for conv ${activeConversation.id}, messageId: ${messageId}`);
+
+      // Transform backend message format to frontend Message type using ref (won't re-trigger effect)
+      const newMessage = transformBEMessage(messageData, conversationMembersRef.current);
+
+      // Add to messages state
+      setMessages((prev) => {
+        // Avoid duplicates: check if message ID already exists
+        const isDuplicate = prev.some((m) => m.id === newMessage.id);
+        if (isDuplicate) {
+          console.log(`[AppContext] ReceiveMessage: Message already exists (ID: ${newMessage.id}), skipping duplicate`);
+          return prev;
+        }
+        console.log(`[AppContext] ReceiveMessage: Added new message (ID: ${newMessage.id}). Total: ${prev.length + 1}`);
+        return [...prev, newMessage];
+      });
+    };
+
+    // Register the listener
+    connection.on("ReceiveMessage", messageHandler);
+
+    // Cleanup: unregister listener when conversation changes
+    return () => {
+      console.log(`[AppContext] Unregistering ReceiveMessage listener for conversation: ${activeConversation.id}`);
+      connection.off("ReceiveMessage", messageHandler);
+    };
+  }, [activeConversation]);
+
+  // ─── Update conversations list when a new message arrives (any conversation) ──
+  // This listener runs independently of activeConversation so the ChatList updates
+  // in real-time even when no conversation is open.
+  useEffect(() => {
+    const connection = getConnection();
+    if (!connection) return;
+
+    const convListHandler = (messageData: BE_MessageResponse) => {
+      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
+      const senderId = messageData.senderId ?? (messageData as any).SenderId;
+      const content = messageData.content ?? (messageData as any).Content ?? "";
+      const createdAt = messageData.createdAt ?? (messageData as any).CreatedAt;
+
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.id === messageConvId);
+        if (idx === -1) return prev;
+
+        const updated = [...prev];
+        const conv = { ...updated[idx] };
+        conv.lastMessage = {
+          id: messageData.id ?? (messageData as any).Id ?? "",
+          conversationId: messageConvId,
+          senderId,
+          sender: { id: senderId } as User,
+          text: content,
+          createdAt: createdAt ?? new Date().toISOString(),
+          isRead: false,
+        };
+
+        // Only increment unreadCount when NOT the active conversation
+        // Use ref to avoid stale closure
+        const isActive = activeConversationRef.current?.id === messageConvId;
+        conv.unreadCount = isActive ? 0 : (conv.unreadCount ?? 0) + 1;
+
+        // Move conversation to top
+        updated.splice(idx, 1);
+        return [conv, ...updated];
+      });
+
+      // Clear typing indicator when partner sends a message
+      const isMsgFromPartner = senderId !== currentUser?.id;
+      if (isMsgFromPartner) {
+        setPartnerTypingRef.current(false);
+      }
+    };
+
+    connection.on("ReceiveMessage", convListHandler);
+    return () => {
+      connection.off("ReceiveMessage", convListHandler);
+    };
+  }, [currentUser]); // only re-register when currentUser changes (login/logout)
+
+  // ─── Listen to SignalR UserTyping events ──────────────────
+  useEffect(() => {
+    const connection = getConnection();
+    if (!connection) return;
+
+    const typingHandler = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
+      const typingConvId = data.conversationId;
+      const typingUserId = data.userId;
+      const isTyping = data.isTyping;
+
+      // Only care about the active conversation
+      if (typingConvId !== activeConversation?.id) return;
+      // Ignore typing events from ourselves
+      if (typingUserId === currentUser?.id) return;
+
+      setPartnerTyping(isTyping);
+    };
+
+    connection.on("UserTyping", typingHandler);
+    return () => {
+      connection.off("UserTyping", typingHandler);
+    };
+  }, [activeConversation, currentUser]);
+
   // ─── Provider ──────────────────────────────────────────────
   return (
     <AppContext.Provider
@@ -887,6 +1057,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         markMessagesRead,
         markConversationAsRead,
         startConversation,
+        partnerTyping,
         notifications,
         unreadCount,
         refreshNotifications,

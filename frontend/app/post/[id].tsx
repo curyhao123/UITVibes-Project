@@ -365,10 +365,11 @@ export default function PostDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView
+          style={styles.kavContainer}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <FlatList
           data={post.comments}
           keyExtractor={(item) => item.id}
@@ -441,7 +442,8 @@ export default function PostDetailScreen() {
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </>
   );
 }
@@ -450,6 +452,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
+  },
+  kavContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",
