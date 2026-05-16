@@ -104,6 +104,8 @@ interface AppContextType {
   refreshConversations: () => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
+  editMessage: (conversationId: string, messageId: string, text: string) => Promise<void>;
+  deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
   setActiveConversation: (conv: Conversation | null) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   markMessagesRead: (conversationId: string) => Promise<void>;
@@ -702,6 +704,36 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [refreshConversations, conversationMembers],
   );
 
+  const editMessage = useCallback(
+    async (conversationId: string, messageId: string, text: string) => {
+      try {
+        await api.editMessage(conversationId, messageId, text);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, text, isEdited: true } : m))
+        );
+      } catch (error: any) {
+        const msg = error?.response?.data?.message ?? "Failed to edit message.";
+        console.error("[AppContext] editMessage:", msg, error);
+        throw new Error(msg);
+      }
+    },
+    [],
+  );
+
+  const deleteMessageFn = useCallback(
+    async (conversationId: string, messageId: string) => {
+      try {
+        await api.deleteMessage(conversationId, messageId);
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      } catch (error: any) {
+        const msg = error?.response?.data?.message ?? "Failed to delete message.";
+        console.error("[AppContext] deleteMessage:", msg, error);
+        throw new Error(msg);
+      }
+    },
+    [],
+  );
+
   const markMessagesRead = useCallback(
     async (conversationId: string) => {
       try {
@@ -1052,6 +1084,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         refreshConversations,
         loadMessages,
         sendMessage: sendMessageFn,
+        editMessage,
+        deleteMessage: deleteMessageFn,
         setActiveConversation,
         setMessages,
         markMessagesRead,
