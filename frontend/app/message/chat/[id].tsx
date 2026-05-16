@@ -25,6 +25,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -35,6 +36,8 @@ import * as api from '../../../services/api';
 import { invokeHub } from '../../../services/signalrService';
 import { Avatar } from '../../../components/Avatar';
 import { OnlineIndicator } from '../../../components/OnlineIndicator';
+import { MessageContextMenu } from '../../../components/MessageContextMenu';
+import { EditMessageModal } from '../../../components/EditMessageModal';
 import { formatDistanceToNow } from '../../../utils/time';
 import { AppColors, layoutPadding } from '../../../constants/theme';
 import { Typography } from '../../../constants/typography';
@@ -58,6 +61,8 @@ export default function ChatScreen() {
     markMessagesRead,
     partnerTyping,
     isUserOnline,
+    editMessage,
+    deleteMessage,
   } = useApp();
 
   const [messageText, setMessageText] = useState('');
@@ -67,6 +72,16 @@ export default function ChatScreen() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const iStartedTypingRef = useRef(false);
   const [convMembers, setConvMembers] = useState<any[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean; messageId: string; text: string }>({
+    visible: false,
+    messageId: '',
+    text: '',
+  });
+  const [editModal, setEditModal] = useState<{ visible: boolean; messageId: string; text: string }>({
+    visible: false,
+    messageId: '',
+    text: '',
+  });
 
   // Find the conversation from the global list by id
   const conversation = conversations.find((c) => c.id === id) ?? null;
@@ -179,6 +194,12 @@ export default function ChatScreen() {
       !mine &&
       (index === 0 || messages[index - 1]?.senderId !== item.senderId);
 
+    const handleLongPress = () => {
+      if (mine) {
+        setContextMenu({ visible: true, messageId: item.id, text: item.text ?? '' });
+      }
+    };
+
     return (
       <View style={[styles.messageRow, mine && styles.messageRowMine]}>
         {!mine && (
@@ -195,10 +216,13 @@ export default function ChatScreen() {
             )}
           </View>
         )}
-        <View
-          style={[
+        <Pressable
+          onLongPress={handleLongPress}
+          delayLongPress={500}
+          style={({ pressed }) => [
             styles.bubbleContainer,
             mine ? styles.bubbleContainerMine : styles.bubbleContainerTheirs,
+            pressed && styles.bubblePressed,
           ]}
         >
           {!mine && showAvatar && (
@@ -224,9 +248,36 @@ export default function ChatScreen() {
               {formatDistanceToNow(new Date(item.createdAt))}
             </Text>
           </View>
-        </View>
+        </Pressable>
       </View>
     );
+  };
+
+  const handleContextEdit = () => {
+    setEditModal({ visible: true, messageId: contextMenu.messageId, text: contextMenu.text });
+  };
+
+  const handleContextDelete = () => {
+    const msgId = contextMenu.messageId;
+    Alert.alert(
+      'Delete message?',
+      'This message will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteMessage(conversation!.id, msgId);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleEditSave = async (text: string) => {
+    await editMessage(conversation!.id, editModal.messageId, text);
+    setEditModal({ visible: false, messageId: '', text: '' });
   };
 
   if (!conversation) {
@@ -399,6 +450,19 @@ export default function ChatScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <MessageContextMenu
+        visible={contextMenu.visible}
+        actions={{ onEdit: handleContextEdit, onDelete: handleContextDelete }}
+        onClose={() => setContextMenu((p) => ({ ...p, visible: false }))}
+      />
+
+      <EditMessageModal
+        visible={editModal.visible}
+        initialText={editModal.text}
+        onSave={handleEditSave}
+        onCancel={() => setEditModal({ visible: false, messageId: '', text: '' })}
+      />
     </>
   );
 }
@@ -502,6 +566,9 @@ const styles = StyleSheet.create({
   },
   bubbleContainerTheirs: {
     alignItems: 'flex-start',
+  },
+  bubblePressed: {
+    opacity: 0.7,
   },
   senderName: {
     ...Typography.caption,

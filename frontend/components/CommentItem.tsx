@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, GestureResponderEvent } from 'react-native';
 import { Avatar } from './Avatar';
 import { Comment } from '../data/mockData';
 import { Feather } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { CommentContextMenu } from './CommentContextMenu';
 import { SPRING_BOUNCE, SPRING_GENTLE } from '../animations/spring';
 
 interface CommentItemProps {
@@ -16,6 +17,9 @@ interface CommentItemProps {
   isReply?: boolean;
   onReply?: (comment: Comment) => void;
   onLike?: (commentId: string) => void;
+  onEdit?: (commentId: string) => void;
+  onDelete?: (commentId: string) => void;
+  currentUserId?: string;
 }
 
 export const CommentItem: React.FC<CommentItemProps> = ({
@@ -23,9 +27,23 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   isReply = false,
   onReply,
   onLike,
+  onEdit,
+  onDelete,
+  currentUserId,
 }) => {
+  const isOwner = currentUserId != null && comment.user.id === currentUserId;
+
   const [isLiked, setIsLiked] = useState(comment.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(comment.likes);
+
+  // Long-press context menu state
+  const [menuVisible, setMenuVisible] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const hasMoved = useRef(false);
+
+  const LONG_PRESS_DURATION = 500;
+  const MOVE_THRESHOLD = 10;
 
   const formatTimeAgo = (dateString: string): string => {
     const date = new Date(dateString);
@@ -61,79 +79,141 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     transform: [{ scale: scale.value }],
   }));
 
+  // ── Long-press handlers ──────────────────────────────────────────────
+  const handleLongPressStart = (e: GestureResponderEvent) => {
+    if (!isOwner) return;
+    hasMoved.current = false;
+    pressOrigin.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+
+    longPressTimer.current = setTimeout(() => {
+      if (!hasMoved.current) {
+        setMenuVisible(true);
+      }
+    }, LONG_PRESS_DURATION);
+  };
+
+  const handleLongPressMove = (e: GestureResponderEvent) => {
+    if (!pressOrigin.current) return;
+    const dx = Math.abs(e.nativeEvent.pageX - pressOrigin.current.x);
+    const dy = Math.abs(e.nativeEvent.pageY - pressOrigin.current.y);
+    if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+      hasMoved.current = true;
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    }
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    pressOrigin.current = null;
+    hasMoved.current = false;
+  };
+
+  const menuActions = {
+    onEdit: () => onEdit?.(comment.id),
+    onDelete: () => onDelete?.(comment.id),
+  };
+
   return (
-    <View style={[styles.container, isReply && styles.replyContainer]}>
-      {/* Left accent bar for replies */}
-      {isReply && <View style={styles.replyBar} />}
-
-      <Avatar user={comment.user} size="small" />
-
-      <View style={styles.body}>
-        {/* @displayName */}
-        <Text style={styles.name} numberOfLines={1}>
-          @{(comment.user.displayName || comment.user.username)}
-        </Text>
-
-        {/* Comment text */}
-        <Text style={styles.text} numberOfLines={undefined}>
-          {comment.text}
-        </Text>
-
-        {/* Meta row: time · likes · reply */}
-        <View style={styles.meta}>
-          <Text style={styles.time}>{formatTimeAgo(comment.createdAt)}</Text>
-
-          {likeCount > 0 && (
-            <>
-              <Text style={styles.dot}>·</Text>
-              <Text style={styles.metaText}>{likeCount} likes</Text>
-            </>
-          )}
-
-          {onReply && (
-            <>
-              <Text style={styles.dot}>·</Text>
-              <TouchableOpacity onPress={() => onReply(comment)}>
-                <Text style={styles.reply}>Reply</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {/* Nested replies */}
-        {comment.replies && comment.replies.length > 0 && (
-          <View style={styles.replies}>
-            {comment.replies.map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                isReply
-                onReply={onReply}
-                onLike={onLike}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Like button */}
-      <TouchableOpacity
-        style={styles.likeButton}
-        onPress={handleLikePress}
-        onPressIn={handleLikePressIn}
-        onPressOut={handleLikePressOut}
-        activeOpacity={1}
+    <>
+      <Pressable
+        onPressIn={handleLongPressStart}
+        onTouchMove={handleLongPressMove}
+        onPressOut={handleLongPressEnd}
+        delayLongPress={LONG_PRESS_DURATION}
+        style={({ pressed }) => [
+          pressed && styles.pressed,
+        ]}
       >
-        <Animated.View style={heartAnimatedStyle}>
-          <Feather
-            name="heart"
-            size={14}
-            color={isLiked ? AppColors.primary : AppColors.textMuted}
-            fill={isLiked ? AppColors.primary : 'transparent'}
-          />
-        </Animated.View>
-      </TouchableOpacity>
-    </View>
+        <View style={[styles.container, isReply && styles.replyContainer]}>
+          {/* Left accent bar for replies */}
+          {isReply && <View style={styles.replyBar} />}
+
+          <Avatar user={comment.user} size="small" />
+
+          <View style={styles.body}>
+            {/* @displayName */}
+            <Text style={styles.name} numberOfLines={1}>
+              @{(comment.user.displayName || comment.user.username)}
+            </Text>
+
+            {/* Comment text */}
+            <Text style={styles.text} numberOfLines={undefined}>
+              {comment.text}
+            </Text>
+
+            {/* Meta row: time · likes · reply */}
+            <View style={styles.meta}>
+              <Text style={styles.time}>{formatTimeAgo(comment.createdAt)}</Text>
+
+              {likeCount > 0 && (
+                <>
+                  <Text style={styles.dot}>·</Text>
+                  <Text style={styles.metaText}>{likeCount} likes</Text>
+                </>
+              )}
+
+              {onReply && (
+                <>
+                  <Text style={styles.dot}>·</Text>
+                  <TouchableOpacity onPress={() => onReply(comment)}>
+                    <Text style={styles.reply}>Reply</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            {/* Nested replies */}
+            {comment.replies && comment.replies.length > 0 && (
+              <View style={styles.replies}>
+                {comment.replies.map((reply) => (
+                  <CommentItem
+                    key={reply.id}
+                    comment={reply}
+                    isReply
+                    onReply={onReply}
+                    onLike={onLike}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    currentUserId={currentUserId}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Like button */}
+          <TouchableOpacity
+            style={styles.likeButton}
+            onPress={handleLikePress}
+            onPressIn={handleLikePressIn}
+            onPressOut={handleLikePressOut}
+            activeOpacity={1}
+          >
+            <Animated.View style={heartAnimatedStyle}>
+              <Feather
+                name="heart"
+                size={14}
+                color={isLiked ? AppColors.primary : AppColors.textMuted}
+                fill={isLiked ? AppColors.primary : 'transparent'}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+
+      <CommentContextMenu
+        visible={menuVisible}
+        commentId={comment.id}
+        actions={menuActions}
+        onClose={() => setMenuVisible(false)}
+      />
+    </>
   );
 };
 
@@ -143,6 +223,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 10,
     paddingHorizontal: 16,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   replyContainer: {
     paddingLeft: 8,

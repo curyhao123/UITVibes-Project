@@ -112,7 +112,7 @@ export const AnimatedHeartIcon: React.FC<AnimatedHeartIconProps> = ({ isLiked, s
       <Feather
         name="heart"
         size={24}
-        color={isLiked ? AppColors.primary : '#FFFFFF'}
+        color={isLiked ? AppColors.primary : AppColors.iconMuted}
         fill={isLiked ? AppColors.primary : 'transparent'}
         strokeWidth={2}
       />

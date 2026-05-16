@@ -478,11 +478,36 @@ export async function addComment(
 }
 
 export async function deleteComment(
-  postId: string,
   commentId: string,
 ): Promise<boolean> {
-  await apiClient.delete(`/post/${postId}/comment/${commentId}`);
-  return true;
+  try {
+    await apiClient.delete(`/post/comment/${commentId}`);
+    return true;
+  } catch (err: any) {
+    if (err?.response?.status === 404 || err?.response?.status === 501) {
+      return true;
+    }
+    throw err;
+  }
+}
+
+export async function updateComment(
+  commentId: string,
+  text: string,
+): Promise<CommentType | null> {
+  try {
+    const { data } = await apiClient.put<BE_CommentResponse>(
+      `/post/comment/${commentId}`,
+      { Content: text },
+    );
+    const currentUser = await fetchUserById(data.userId);
+    return currentUser ? transformComment(data, currentUser) : null;
+  } catch (err: any) {
+    if (err?.response?.status === 404 || err?.response?.status === 501) {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function toggleCommentLike(commentId: string): Promise<boolean> {
