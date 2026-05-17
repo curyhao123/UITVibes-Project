@@ -124,7 +124,7 @@ export default function CreateStoryScreen() {
           activeOpacity={0.7}
           disabled={isPosting}
         >
-          <Feather name="x" size={24} color={AppColors.text} strokeWidth={2} />
+          <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>New Story</Text>
@@ -252,21 +252,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: layoutPadding,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    paddingVertical: 14,
+    backgroundColor: AppColors.background,
+    gap: 12,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: borderRadius.sm + 2,
+    backgroundColor: AppColors.surfaceElevated,
   },
   headerTitle: {
-    ...Typography.screenTitle,
     flex: 1,
     textAlign: "center",
     fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.3,
     color: AppColors.text,
   },
   shareBtn: {

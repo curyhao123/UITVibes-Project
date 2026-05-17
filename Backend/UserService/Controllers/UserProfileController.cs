@@ -323,8 +323,12 @@ public class UserProfileController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<List<SearchUserProfileDto>>> SearchProfiles([FromQuery] string query)
     {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        Guid? currentUserId = null;
+        if (!string.IsNullOrEmpty(userIdHeader) && Guid.TryParse(userIdHeader, out var uid))
+            currentUserId = uid;
 
-        var results = await _userProfileService.SearchUserProfileAsync(query);
+        var results = await _userProfileService.SearchUserProfileAsync(query, currentUserId);
         return Ok(results);
     }
     // Call this when user CLICKS on a search result

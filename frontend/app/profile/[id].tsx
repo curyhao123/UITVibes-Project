@@ -7,7 +7,11 @@ import { getUserById, getUserPosts, getUserStories, toggleFollow, type Story } f
 import { getCurrentUserId } from '../../services/session';
 import { User, Post } from '../../data/mockData';
 import { Avatar, PostGrid, StoryGrid } from '../../components';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { AppColors, layoutPadding, borderRadius } from '../../constants/theme';
+import { Typography } from '../../constants/typography';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
+import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
 import defaultAvatar from '../../assets/images/default-avatar.png';
 
 export default function UserProfileScreen() {
@@ -16,7 +20,9 @@ export default function UserProfileScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [blockStatus, setBlockStatus] = useState<BlockStatusDto | null>(null);
   const [profileTab, setProfileTab] = useState<'posts' | 'stories'>('posts');
+  const [actionsSheetVisible, setActionsSheetVisible] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,10 +33,24 @@ export default function UserProfileScreen() {
   const loadUserData = async () => {
     setIsLoading(true);
     try {
+      const targetId = id as string;
+      const currentUserId = getCurrentUserId();
+      setBlockStatus(null);
+      if (targetId && currentUserId && targetId !== currentUserId) {
+        const status = await getBlockStatus(targetId);
+        setBlockStatus(status);
+        if (status.blockedByMe || status.blockedMe) {
+          setUser(null);
+          setPosts([]);
+          setStories([]);
+          return;
+        }
+      }
+
       const [userData, userPosts, userStories] = await Promise.all([
-        getUserById(id as string),
-        getUserPosts(id as string),
-        getUserStories(id as string),
+        getUserById(targetId),
+        getUserPosts(targetId),
+        getUserStories(targetId),
       ]);
       setUser(userData || null);
       setPosts(userPosts);
@@ -69,6 +89,21 @@ export default function UserProfileScreen() {
     router.push('/(tabs)/message' as any);
   };
 
+  const handleBlockUser = async () => {
+    if (!user) return;
+    console.log('[handleBlockUser] currentUserId:', getCurrentUserId(), 'blockedId:', user.id);
+    await blockUser(user.id);
+    setBlockStatus({ blockedByMe: true, blockedMe: false });
+    setUser(null);
+    setPosts([]);
+    setStories([]);
+  };
+
+  const handleReportUser = () => {
+    // TODO: implement actual report submission
+    console.log('[Report] user:', user.id);
+  };
+
   const formatCount = (count: number | undefined | null): string => {
     const n = Number(count) || 0;
     if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -78,31 +113,57 @@ export default function UserProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <ActivityIndicator size="large" color={AppColors.primary} />
       </SafeAreaView>
     );
   }
 
   if (!user) {
+    const isBlocked = !!(blockStatus?.blockedByMe || blockStatus?.blockedMe);
+    if (isBlocked) {
+      return (
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <ScreenHeader title="Profile" onBack={() => router.back()} />
+          <View style={styles.blockedContainer}>
+            <Feather name="slash" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
+            <Text style={styles.blockedTitle}>Profile unavailable</Text>
+            <Text style={styles.blockedText}>
+              You cannot view this profile.
+            </Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
     return (
-      <SafeAreaView style={styles.container}>
-        <Text>User not found</Text>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader title="Profile" onBack={() => router.back()} />
+        <View style={styles.notFoundContainer}>
+          <Feather name="user-x" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
+          <Text style={styles.notFoundText}>User not found</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: user.username,
-          headerBackTitle: 'Back',
-          headerTintColor: AppColors.primary,
-        }}
-      />
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <ScreenHeader
+          title={user.username}
+          onBack={() => router.back()}
+          rightAction={
+            <TouchableOpacity
+              style={styles.moreBtn}
+              activeOpacity={0.7}
+              onPress={() => setActionsSheetVisible(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="more-horizontal" size={22} color={AppColors.text} strokeWidth={2.5} />
+            </TouchableOpacity>
+          }
+        />
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.profileInfo}>
             <Avatar user={user} size="large" />
@@ -204,6 +265,14 @@ export default function UserProfileScreen() {
             <StoryGrid stories={stories} isCurrentUser={false} />
           )}
         </ScrollView>
+
+        <UserActionsSheet
+          visible={actionsSheetVisible}
+          onClose={() => setActionsSheetVisible(false)}
+          onBlock={handleBlockUser}
+          onReport={handleReportUser}
+          blockedUsername={user.username}
+        />
       </SafeAreaView>
     </>
   );
@@ -213,6 +282,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
+  },
+  moreBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm + 2,
+    backgroundColor: AppColors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -357,5 +434,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: AppColors.textMuted,
+  },
+  notFoundContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  notFoundText: {
+    ...Typography.sectionTitle,
+    color: AppColors.iconMuted,
+  },
+  blockedContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: layoutPadding + 20,
+  },
+  blockedTitle: {
+    ...Typography.sectionTitle,
+    color: AppColors.text,
+    marginTop: 12,
+  },
+  blockedText: {
+    ...Typography.body,
+    color: AppColors.textMuted,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

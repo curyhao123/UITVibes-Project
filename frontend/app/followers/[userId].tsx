@@ -21,6 +21,7 @@ import {
   isFollowing,
 } from "../../services/api";
 import { AppColors } from "../../constants/theme";
+import { ScreenHeader } from "../../components/ScreenHeader";
 import defaultAvatar from "../../assets/images/default-avatar.png";
 
 export default function FollowersScreen() {
@@ -158,14 +159,10 @@ export default function FollowersScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {profileDisplayName || "Followers"}
-        </Text>
-      </View>
+      <ScreenHeader
+        title={profileDisplayName || "Followers"}
+        onBack={() => router.back()}
+      />
 
       <View style={styles.tabSwitcher}>
         <TouchableOpacity
@@ -229,25 +226,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
-    gap: 8,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
-    color: AppColors.text,
   },
   tabSwitcher: {
     flexDirection: "row",

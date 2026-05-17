@@ -13,7 +13,7 @@ public interface IUserProfileService
     Task<UserProfileDto> DeleteAvatarAsync(Guid userId);
     Task<UserProfileDto> DeleteCoverImageAsync(Guid userId);
     Task DeleteProfileAsync(Guid userId);
-    Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string query);
+    Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string query, Guid? currentUserId = null);
     Task SaveRecentSearchAsync(Guid currentUserId, SearchUserProfileDto searchedUser);
     Task<List<SearchUserProfileDto>> GetRecentSearchesAsync(Guid currentUserId);
     Task RemoveRecentSearchAsync(Guid currentUserId, Guid targetUserId);

@@ -28,6 +28,7 @@ import { AppColors } from "../../constants/theme";
 import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { updateComment, deleteComment } from "../../services/postService";
 import { CommentInput } from "../../components/CommentInput";
+import { ScreenHeader } from "../../components/ScreenHeader";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
 const PostDetailSkeleton = () => (
@@ -35,8 +36,10 @@ const PostDetailSkeleton = () => (
     <Stack.Screen options={{ headerShown: false }} />
     {/* Header skeleton */}
     <View style={skelStyles.header}>
-      <SkeletonShimmer width={36} height={36} borderRadius={18} />
+      <SkeletonShimmer width={36} height={36} borderRadius={10} />
       <SkeletonShimmer width={100} height={14} style={{ marginLeft: 10 }} />
+      <View style={{ flex: 1 }} />
+      <SkeletonShimmer width={36} height={36} borderRadius={10} />
     </View>
     {/* Image skeleton */}
     <SkeletonShimmer width="100%" height={320} borderRadius={0} />
@@ -305,15 +308,7 @@ export default function PostDetailScreen() {
 
   const renderHeader = () => (
     <>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Feather name="arrow-left" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post</Text>
-      </View>
+      <ScreenHeader title="Post" onBack={() => router.back()} />
 
       {/* Post Header: User Info */}
       <View style={styles.postHeader}>
@@ -448,26 +443,6 @@ const styles = StyleSheet.create({
   },
   kavContainer: {
     flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surface,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: AppColors.text,
-    marginLeft: 16,
-  },
-  backButton: {
-    padding: 4,
   },
   postHeader: {
     flexDirection: "row",

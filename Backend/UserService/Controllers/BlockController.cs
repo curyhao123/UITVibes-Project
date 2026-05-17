@@ -120,5 +120,26 @@ public class BlockController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while checking block status" });
         }
     }
+
+    [HttpGet("{otherUserId}/status")]
+    public async Task<ActionResult<BlockStatusDto>> GetBlockStatus(Guid otherUserId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            var status = await _blockService.GetBlockStatusAsync(currentUserId, otherUserId);
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking mutual block status for user {OtherUserId} and user {UserId}", otherUserId, currentUserId);
+            return StatusCode(500, new { message = "An error occurred while checking block status" });
+        }
+    }
 }
 
