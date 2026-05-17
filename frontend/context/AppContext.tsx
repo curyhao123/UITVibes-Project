@@ -56,6 +56,8 @@ interface AppContextType {
   stories: Story[];
   refreshPosts: () => Promise<void>;
   refreshStories: () => Promise<void>;
+  lastPostsFetch: number;
+  lastStoriesFetch: number;
 
   myPosts: Post[];           // Posts của user hiện tại cho profile
   refreshMyPosts: () => Promise<void>; // Fetch riêng từ /post/my-posts
@@ -330,6 +332,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [stories, setStories] = useState<Story[]>([]);
   const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
   const [myPosts, setMyPosts] = useState<Post[]>([]); // Posts của user hiện tại cho profile
+  const [lastPostsFetch, setLastPostsFetch] = useState(0); // Timestamp of last successful fetch for stale-while-revalidate
+  const [lastStoriesFetch, setLastStoriesFetch] = useState(0);
 
   // ─── Messages ─────────────────────────────────────────────
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -363,6 +367,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       const data = await api.getPosts();
       setPosts(data);
+      setLastPostsFetch(Date.now());
     } catch (error) {
       console.error("Failed to fetch posts:", error);
     }
@@ -372,6 +377,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       const data = await api.getStories();
       setStories(data);
+      setLastStoriesFetch(Date.now());
     } catch (error) {
       console.error("Failed to fetch stories:", error);
     }
@@ -1057,6 +1063,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         refreshPosts,
         refreshMyPosts,
         refreshStories,
+        lastPostsFetch,
+        lastStoriesFetch,
         feedTab,
         setFeedTab,
         toggleLike,

@@ -14,6 +14,7 @@ import { useApp } from '../context/AppContext';
 import { Notification } from '../data/mockData';
 import { AppColors } from '../constants/theme';
 import { formatDistanceToNow } from '../utils/time';
+import { ScreenHeader } from '../components/ScreenHeader';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function NotificationsScreen() {
@@ -91,17 +92,20 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllNotificationsRead} style={styles.markAllBtn}>
-            <Text style={styles.markAllText}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <ScreenHeader
+        title="Notifications"
+        onBack={() => router.back()}
+        rightAction={
+          unreadCount > 0 ? (
+            <TouchableOpacity
+              onPress={markAllNotificationsRead}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.markAllText}>Mark all read</Text>
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
 
       <FlatList
         data={notifications}
@@ -127,28 +131,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
-    gap: 8,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: AppColors.text,
-  },
-  markAllBtn: {
-    paddingHorizontal: 8,
   },
   markAllText: {
     fontSize: 14,

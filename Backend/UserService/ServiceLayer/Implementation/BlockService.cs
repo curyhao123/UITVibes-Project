@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using UserService.DTOs;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
@@ -96,6 +96,7 @@ namespace UserService.ServiceLayer.Implementation
                         BlockedUserId = block.BlockedId,
                         DisplayName = user.DisplayName,
                         AvatarUrl = user.AvatarUrl,
+                        Bio = user.Bio,
                         BlockedAt = block.CreatedAt
                     }).ToListAsync();
             return blockedUsers;
@@ -106,6 +107,25 @@ namespace UserService.ServiceLayer.Implementation
             var block = await _context.Blocks
                 .FirstOrDefaultAsync(b => b.BlockerId == blockerId && b.BlockedId == blockedId);
             return block != null;
+        }
+
+        public async Task<BlockStatusDto> GetBlockStatusAsync(Guid currentUserId, Guid otherUserId)
+        {
+            if (currentUserId == otherUserId)
+            {
+                return new BlockStatusDto { BlockedByMe = false, BlockedMe = false };
+            }
+
+            var blockedByMe = await _context.Blocks
+                .AnyAsync(b => b.BlockerId == currentUserId && b.BlockedId == otherUserId);
+            var blockedMe = await _context.Blocks
+                .AnyAsync(b => b.BlockerId == otherUserId && b.BlockedId == currentUserId);
+
+            return new BlockStatusDto
+            {
+                BlockedByMe = blockedByMe,
+                BlockedMe = blockedMe
+            };
         }
 
         public async Task UnblockUserAsync(Guid blockerId, Guid blockedId)
