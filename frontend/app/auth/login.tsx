@@ -17,29 +17,39 @@ import { Feather } from "@expo/vector-icons";
 import { FormInput } from "../../components/FormInput";
 import { Button } from "../../components/Button";
 import { Toast } from "../../components/Toast";
+import { ForgotPasswordModal } from "../../components/ForgotPasswordModal";
 import { useApp } from "../../context/AppContext";
 import { AppColors, borderRadius } from "../../constants/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login} = useApp();
+  const { login } = useApp();
 
+  // ── Form state ─────────────────────────────────────────────────────────────
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // ── Toast state ────────────────────────────────────────────────────────────
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
+
+  // ── Verify modal state (unverified account) ────────────────────────────────
   const [verifyModalVisible, setVerifyModalVisible] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const modalScale = useState(new Animated.Value(0.8))[0];
   const modalOpacity = useState(new Animated.Value(0))[0];
 
+  // ── Forgot password modal state ──────────────────────────────────────────
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+
   const isFormFilled = email.trim().length > 0 && password.trim().length > 0;
 
+  // ── Validators ────────────────────────────────────────────────────────────
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value.trim()) {
@@ -61,6 +71,7 @@ export default function LoginScreen() {
     }
   };
 
+  // ── Login handler ─────────────────────────────────────────────────────────
   const handleLogin = async () => {
     validateEmail(email);
     validatePassword(password);
@@ -76,7 +87,6 @@ export default function LoginScreen() {
       if (err?.errorCode === "NOT_VERIFIED") {
         handleNotVerified(err?.email ?? email);
       } else {
-        // Fallback: show inline error for other errors
         setToastType("error");
         setToastMessage(err?.message ?? "Login failed. Please try again.");
         setToastVisible(true);
@@ -86,23 +96,55 @@ export default function LoginScreen() {
     }
   };
 
+  // ── Verify modal (unverified) ────────────────────────────────────────────
   const handleNotVerified = (errEmail: string) => {
     setPendingEmail(errEmail);
     setVerifyModalVisible(true);
     Animated.parallel([
-      Animated.spring(modalScale, { toValue: 1, friction: 8, tension: 65, useNativeDriver: true }),
-      Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(modalScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 65,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
   const handleVerifyNow = () => {
     Animated.parallel([
-      Animated.timing(modalOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-      Animated.timing(modalScale, { toValue: 0.8, duration: 180, useNativeDriver: true }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalScale, {
+        toValue: 0.8,
+        duration: 180,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       setVerifyModalVisible(false);
-      router.push({ pathname: "/auth/email-verification", params: { email: pendingEmail, fromLogin: "1" } });
+      router.push({
+        pathname: "/auth/email-verification",
+        params: { email: pendingEmail, fromLogin: "1" },
+      });
     });
+  };
+
+  // ── Forgot password success ───────────────────────────────────────────────
+  const handleForgotPasswordSuccess = () => {
+    // After password reset, show a toast and let the modal close itself.
+    // The user can now log in with the new password.
+    setToastType("success");
+    setToastMessage(
+      "Password reset complete! You can now log in with your new password.",
+    );
+    setToastVisible(true);
   };
 
   return (
@@ -116,7 +158,7 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo / Brand */}
+          {/* ── Logo / Brand ── */}
           <View style={styles.logoSection}>
             <Image
               source={require("../../assets/images/UITVibesLogo.png")}
@@ -125,7 +167,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Heading */}
+          {/* ── Heading ── */}
           <View style={styles.headingSection}>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>
@@ -133,7 +175,7 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* Form */}
+          {/* ── Form ── */}
           <View style={styles.formSection}>
             <FormInput
               label="Email"
@@ -179,10 +221,18 @@ export default function LoginScreen() {
               }
             />
 
-          
+            {/* ── Forgot Password link ── */}
+            <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={() => setForgotModalVisible(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Log In Button */}
+          {/* ── Log In Button ── */}
           <Button
             title="Log In"
             onPress={handleLogin}
@@ -192,14 +242,14 @@ export default function LoginScreen() {
             style={styles.logInBtn}
           />
 
-          {/* Divider */}
+          {/* ── Divider ── */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>or</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Social logins */}
+          {/* ── Social logins ── */}
           <View style={styles.socialSection}>
             <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
               <Feather name="facebook" size={20} color={AppColors.text} />
@@ -212,7 +262,7 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
 
-        {/* Footer */}
+        {/* ── Footer ── */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Don't have an account?{" "}
@@ -226,6 +276,7 @@ export default function LoginScreen() {
         </View>
       </KeyboardAvoidingView>
 
+      {/* ── Toast ── */}
       <Toast
         visible={toastVisible}
         message={toastMessage}
@@ -233,6 +284,7 @@ export default function LoginScreen() {
         onHide={() => setToastVisible(false)}
       />
 
+      {/* ── Verify Email Modal (unverified account) ── */}
       <Modal
         visible={verifyModalVisible}
         transparent
@@ -251,11 +303,17 @@ export default function LoginScreen() {
             ]}
           >
             <View style={styles.modalIconWrap}>
-              <Feather name="mail" size={32} color={AppColors.primary} strokeWidth={1.5} />
+              <Feather
+                name="mail"
+                size={32}
+                color={AppColors.primary}
+                strokeWidth={1.5}
+              />
             </View>
             <Text style={styles.modalTitle}>Verify your email</Text>
             <Text style={styles.modalMessage}>
-              Your account is not verified yet. Please verify your email to continue.
+              Your account is not verified yet. Please verify your email to
+              continue.
             </Text>
             <Text style={styles.modalEmail}>{pendingEmail}</Text>
             <Button
@@ -270,6 +328,13 @@ export default function LoginScreen() {
           </Animated.View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── Forgot Password Modal ── */}
+      <ForgotPasswordModal
+        visible={forgotModalVisible}
+        onClose={() => setForgotModalVisible(false)}
+        onSuccess={handleForgotPasswordSuccess}
+      />
     </SafeAreaView>
   );
 }
@@ -317,8 +382,8 @@ const styles = StyleSheet.create({
   },
   forgotLink: {
     alignSelf: "flex-end",
-    marginTop: -8,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 0,
   },
   forgotText: {
     fontSize: 14,
@@ -347,11 +412,6 @@ const styles = StyleSheet.create({
   },
   socialSection: {
     gap: 12,
-  },
-  authError: {
-    marginTop: 8,
-    fontSize: 13,
-    color: "#D64545",
   },
   socialBtn: {
     flexDirection: "row",

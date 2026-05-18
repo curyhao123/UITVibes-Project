@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;

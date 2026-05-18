@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { getPostById, toggleCommentLike } from "../../services/postService";
+import { getPostById, toggleCommentLike, repostPost, undoRepost } from "../../services/postService";
 import { Post, Comment } from "../../data/mockData";
 import { Avatar, CommentItem } from "../../components";
 import { CommentContextMenu, DeleteConfirmModal } from "../../components";
@@ -80,6 +80,8 @@ export default function PostDetailScreen() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { toggleLike, addComment, currentUser, toggleFollow } = useApp();
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
+  const [localReposted, setLocalReposted] = useState(false);
+  const [localRepostCount, setLocalRepostCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -92,6 +94,8 @@ export default function PostDetailScreen() {
     if (data) {
       setPost(data);
       setIsFollowingAuthor(!!data.user.isFollowing);
+      setLocalReposted(data.isReposted ?? false);
+      setLocalRepostCount(data.repostCount ?? 0);
     }
     setIsLoading(false);
   };
@@ -115,6 +119,29 @@ export default function PostDetailScreen() {
     if (!post) return;
     setIsFollowingAuthor((prev) => !prev);
     await toggleFollow(post.user.id);
+  };
+
+  const handleRepost = async () => {
+    if (!post) return;
+    const wasReposted = localReposted;
+    setLocalReposted(!wasReposted);
+    setLocalRepostCount((prev) => (wasReposted ? prev - 1 : prev + 1));
+
+    try {
+      if (wasReposted) {
+        const fresh = await undoRepost(post.id);
+        setLocalReposted(fresh.isReposted ?? false);
+        setLocalRepostCount(fresh.repostCount ?? localRepostCount - 1);
+      } else {
+        const fresh = await repostPost(post.id);
+        setLocalReposted(fresh.isReposted ?? true);
+        setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
+      }
+    } catch (err) {
+      setLocalReposted(wasReposted);
+      setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
+      console.error('[PostDetail] Repost error:', err);
+    }
   };
 
   // Recursively finds the comment with matching parentId at any nesting level
@@ -357,9 +384,20 @@ export default function PostDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Feather name="share-2" size={24} color={AppColors.iconMuted} strokeWidth={2} />
-          <Text style={styles.actionText}>{post.shareCount || 0} {(post.shareCount || 0) === 1 ? 'Share' : 'Shares'}</Text>
+        <TouchableOpacity
+          style={styles.actionGroup}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          onPress={handleRepost}
+        >
+          <Feather
+            name="refresh-cw"
+            size={24}
+            color={localReposted ? AppColors.primary : AppColors.iconMuted}
+            strokeWidth={2}
+          />
+          <Text style={styles.actionText}>
+            {localRepostCount} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.bookmarkGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>

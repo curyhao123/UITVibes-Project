@@ -12,6 +12,7 @@ import { Typography } from '../constants/typography';
 import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
 import { useSharedValue } from 'react-native-reanimated';
+import { repostPost, undoRepost } from '../services/postService';
 
 const ACTION_ICON = 24;
 
@@ -27,6 +28,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const { scale: heartScale, opacity: heartOpacity, play: playHeart } = useAnimatedHeart();
   const likeIconScale = useSharedValue(1);
   const [localLiked, setLocalLiked] = React.useState(post.isLiked);
+  const [localReposted, setLocalReposted] = React.useState(post.isReposted ?? false);
+  const [localRepostCount, setLocalRepostCount] = React.useState(post.repostCount ?? 0);
 
   // ── Double-tap gesture on image — runs entirely on the UI thread ─────────────────
   const handleDoubleTap = useCallback(async () => {
@@ -59,8 +62,26 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     await toggleBookmark(post.id);
   };
 
-  const handleShare = () => {
-    console.log('Share post:', post.id);
+  const handleRepost = async () => {
+    const wasReposted = localReposted;
+    // Optimistic update
+    setLocalReposted(!wasReposted);
+    setLocalRepostCount((prev) => (wasReposted ? prev - 1 : prev + 1));
+
+    try {
+      if (wasReposted) {
+        const fresh = await undoRepost(post.id);
+        setLocalRepostCount(fresh.repostCount ?? localRepostCount - 1);
+      } else {
+        const fresh = await repostPost(post.id);
+        setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
+      }
+    } catch (err) {
+      // Rollback on error
+      setLocalReposted(wasReposted);
+      setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
+      console.error('[PostCard] Repost error:', err);
+    }
   };
 
   const handleProfilePress = () => {
@@ -137,13 +158,18 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleShare}
+            onPress={handleRepost}
             style={styles.actionGroup}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Feather name="send" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
+            <Feather
+              name="refresh-cw"
+              size={ACTION_ICON}
+              color={localReposted ? AppColors.primary : AppColors.iconMuted}
+              strokeWidth={2}
+            />
             <Text style={styles.actionText}>
-              {post.shareCount ?? 0} {(post.shareCount ?? 0) === 1 ? 'Share' : 'Shares'}
+              {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
             </Text>
           </TouchableOpacity>
 
