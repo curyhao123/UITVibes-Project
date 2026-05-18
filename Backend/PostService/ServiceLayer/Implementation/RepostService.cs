@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -173,12 +173,13 @@ namespace PostService.ServiceLayer.Implementation
 
             return new PostDto
             {
-                // Thông tin của bản repost
-                Id = repost.Id,
-                UserId = repost.UserId,
+                // Id dùng bài gốc → navigate đến trang post gốc
+                Id = op.Id,
+                // UserId dùng tác giả bài gốc → avatar/link đi đến profile tác giả
+                UserId = op.UserId,
                 PostType = repost.PostType,
                 OriginalPostId = repost.OriginalPostId,
-                CreatedAt = repost.CreatedAt,
+                CreatedAt = repost.CreatedAt,   // thời điểm repost
                 UpdatedAt = repost.UpdatedAt,
 
                 // Nội dung hiển thị lấy từ bài gốc
@@ -190,6 +191,7 @@ namespace PostService.ServiceLayer.Implementation
                 SharesCount = op.SharesCount,
                 ViewsCount = op.ViewsCount,
                 RepostCount = op.RepostCount,
+                IsRepostedByCurrentUser = false,  // ← bài repost này chưa được ai repost lại
 
                 Media = op.Media.OrderBy(m => m.DisplayOrder).Select(m => new PostMediaDto
                 {
@@ -204,7 +206,42 @@ namespace PostService.ServiceLayer.Implementation
                 }).ToList(),
 
                 Hashtags = op.Hashtags.Select(ph => ph.Hashtag.Name).ToList(),
-                MentionedUserIds = op.Mentions.Select(m => m.MentionedUserId).ToList()
+                MentionedUserIds = op.Mentions.Select(m => m.MentionedUserId).ToList(),
+
+                // Gửi kèm bài gốc để frontend có thể hiển thị "reposted from @user"
+                OriginalPost = new PostDto
+                {
+                    Id = op.Id,
+                    UserId = op.UserId,
+                    Content = op.Content,
+                    Visibility = (PostVisibilityDto)op.Visibility,
+                    Location = op.Location,
+                    Media = op.Media.OrderBy(m => m.DisplayOrder).Select(m => new PostMediaDto
+                    {
+                        Id = m.Id,
+                        Type = (MediaTypeDto)m.Type,
+                        Url = m.Url,
+                        ThumbnailUrl = m.ThumbnailUrl,
+                        DisplayOrder = m.DisplayOrder,
+                        Width = m.Width,
+                        Height = m.Height,
+                        Duration = m.Duration
+                    }).ToList(),
+                    PostType = op.PostType,
+                    IsRepostedByCurrentUser = false,  // ← bài gốc chưa được current user repost
+                    RepostCount = op.RepostCount,
+                    LikesCount = op.LikesCount,
+                    CommentsCount = op.CommentsCount,
+                    SharesCount = op.SharesCount,
+                    ViewsCount = op.ViewsCount,
+                    IsLikedByCurrentUser = false,
+                    IsBookmarkedByCurrentUser = false,
+                    Hashtags = op.Hashtags.Select(ph => ph.Hashtag.Name).ToList(),
+                    MentionedUserIds = op.Mentions.Select(m => m.MentionedUserId).ToList(),
+                    OriginalPostId = op.OriginalPostId,
+                    CreatedAt = op.CreatedAt,
+                    UpdatedAt = op.UpdatedAt
+                }
             };
         }
     }

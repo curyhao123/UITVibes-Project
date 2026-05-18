@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AuthService.DTOs;
 using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;

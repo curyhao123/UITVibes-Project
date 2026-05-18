@@ -304,3 +304,62 @@ export async function verifyEmailAndLogin(
 export async function resendOtp(email: string): Promise<void> {
   await apiClient.post("/auth/auth/send-otp", { email });
 }
+
+// ─── Forgot Password ─────────────────────────────────────────────────────────
+
+export async function forgotPassword(email: string): Promise<void> {
+  if (!email.trim()) {
+    throw new Error("Email is required");
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("Please enter a valid email address");
+  }
+  try {
+    await apiClient.post("/auth/auth/forgot-password", { email });
+  } catch (error: any) {
+    console.error("[Auth] forgotPassword failed", error?.response?.data ?? error);
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to send reset code. Please try again.";
+    throw new Error(message);
+  }
+}
+
+export async function resetPassword(
+  email: string,
+  otpCode: string,
+  newPassword: string,
+): Promise<void> {
+  const trimmedOtp = (otpCode ?? "").trim();
+  const trimmedPwd = (newPassword ?? "").trim();
+  if (!trimmedOtp) {
+    throw new Error("Verification code is required");
+  }
+  if (trimmedOtp.length !== 6) {
+    throw new Error("Verification code must be 6 digits");
+  }
+  if (!trimmedPwd) {
+    throw new Error("New password is required");
+  }
+  if (trimmedPwd.length < 6) {
+    throw new Error("New password must be at least 6 characters");
+  }
+  try {
+    await apiClient.post("/auth/auth/reset-password", {
+      email,
+      otpCode: trimmedOtp,
+      newPassword: trimmedPwd,
+    });
+  } catch (error: any) {
+    console.error("[Auth] resetPassword failed", error?.response?.data ?? error);
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to reset password. Please check your code and try again.";
+    throw new Error(message);
+  }
+}

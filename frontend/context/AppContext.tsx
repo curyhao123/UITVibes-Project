@@ -69,6 +69,8 @@ interface AppContextType {
   // Post interactions
   toggleLike: (postId: string) => Promise<void>;
   toggleBookmark: (postId: string) => Promise<void>;
+  toggleRepost: (postId: string) => Promise<void>;
+  repostedPosts: Post[];           // Danh sách repost của user hiện tại
   addComment: (postId: string, text: string, parentCommentId?: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
@@ -332,6 +334,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [stories, setStories] = useState<Story[]>([]);
   const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
   const [myPosts, setMyPosts] = useState<Post[]>([]); // Posts của user hiện tại cho profile
+  const [repostedPosts, setRepostedPosts] = useState<Post[]>([]); // Danh sách repost của user hiện tại
   const [lastPostsFetch, setLastPostsFetch] = useState(0); // Timestamp of last successful fetch for stale-while-revalidate
   const [lastStoriesFetch, setLastStoriesFetch] = useState(0);
 
@@ -440,6 +443,44 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     },
     [refreshPosts],
   );
+  const toggleRepost = useCallback(
+    async (postId: string) => {
+      // 1. Cập nhật isReposted trên feed posts (local)
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id === postId) {
+            const willRepost = !post.isReposted;
+            return {
+              ...post,
+              isReposted: willRepost,
+              repostCount: Math.max(0, (post.repostCount ?? 0) + (willRepost ? 1 : -1)),
+            };
+          }
+          return post;
+        }),
+      );
+
+      // 2. Tìm post trong feed
+      const targetPost = posts.find((p) => p.id === postId);
+      if (!targetPost) return;
+
+      const willRepost = !targetPost.isReposted;
+
+      if (willRepost) {
+        // Thêm vào danh sách repost (local)
+        setRepostedPosts((prev) => {
+          const exists = prev.some((p) => p.id === postId);
+          if (exists) return prev;
+          return [{ ...targetPost, isReposted: true, repostCount: (targetPost.repostCount ?? 0) + 1 }, ...prev];
+        });
+      } else {
+        // Xóa khỏi danh sách repost (local)
+        setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
+      }
+    },
+    [posts],
+  );
+
 
   const addComment = useCallback(
     async (postId: string, text: string, parentCommentId?: string) => {
@@ -1059,6 +1100,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         followSuggestedUser,
         posts,
         myPosts,
+        repostedPosts,
         stories,
         refreshPosts,
         refreshMyPosts,
@@ -1068,6 +1110,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         feedTab,
         setFeedTab,
         toggleLike,
+        toggleRepost,
         toggleBookmark,
         addComment,
         deleteComment,
