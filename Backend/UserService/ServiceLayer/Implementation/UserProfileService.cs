@@ -393,38 +393,62 @@ public class UserProfileService : IUserProfileService
         }
     }
 
-    public async Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string search)
+    public async Task<List<SearchUserProfileDto>> SearchUserProfileAsync(string search, Guid? currentUserId = null)
     {
         if (!string.IsNullOrWhiteSpace(search))
         {
-            // Check cache first
-            var cacheKey = $"search:{search.ToLower().Trim()}";
-            var cached = await _cache.GetStringAsync(cacheKey);
+            // Build cache key: per-user so blocked results are excluded per user
+            var normalizedQuery = search.ToLower().Trim();
+            var cacheKey = currentUserId.HasValue
+                ? $"search:{currentUserId}:{normalizedQuery}"
+                : $"search:{normalizedQuery}";
 
+            var cached = await _cache.GetStringAsync(cacheKey);
             List<SearchUserProfileDto> results;
 
             if (cached != null)
             {
-                // Cache hit → return immediately
                 results = JsonSerializer.Deserialize<List<SearchUserProfileDto>>(cached, _jsonOptions)!;
             }
             else
             {
-                results = await _context.UserProfiles
-                     .Where(p =>
-                         EF.Functions.ILike(p.DisplayName!, $"%{search}%") ||
-                         (p.Bio != null && EF.Functions.ILike(p.Bio!, $"%{search}%")))
-                     .Select(p => new SearchUserProfileDto
-                     {
-                         UserId = p.UserId,
-                         DisplayName = p.DisplayName,
-                         Bio = p.Bio,
-                         AvatarUrl = p.AvatarUrl,
-                         AvatarPublicId = p.AvatarPublicId,
-                         FollowersCount = p.FollowersCount
-                     })
-                     .ToListAsync();
-                // Save to cache (5 min TTL)
+                IQueryable<UserProfile> baseQuery = _context.UserProfiles
+                    .Where(p =>
+                        EF.Functions.ILike(p.DisplayName!, $"%{search}%") ||
+                        (p.Bio != null && EF.Functions.ILike(p.Bio!, $"%{search}%")));
+
+                if (currentUserId.HasValue)
+                {
+                    var uid = currentUserId.Value;
+
+                    // Load all block relationships involving this user in one shot
+                    var allBlockRelations = await _context.Blocks
+                        .Where(b => b.BlockerId == uid || b.BlockedId == uid)
+                        .Select(b => new { b.BlockerId, b.BlockedId })
+                        .ToListAsync();
+
+                    var excludedIds = allBlockRelations
+                        .SelectMany(r => new[] { r.BlockerId, r.BlockedId })
+                        .Where(id => id != uid)
+                        .Distinct()
+                        .ToHashSet();
+
+                    baseQuery = baseQuery.Where(p => !excludedIds.Contains(p.UserId));
+                }
+
+                results = await baseQuery
+                    .Select(p => new SearchUserProfileDto
+                    {
+                        UserId = p.UserId,
+                        DisplayName = p.DisplayName,
+                        Bio = p.Bio,
+                        AvatarUrl = p.AvatarUrl,
+                        AvatarPublicId = p.AvatarPublicId,
+                        FollowersCount = p.FollowersCount
+                    })
+                    .ToListAsync();
+
+                // Cache: include currentUserId in key so each user gets their own result set
                 await _cache.SetStringAsync(cacheKey,
                     JsonSerializer.Serialize(results),
                     new DistributedCacheEntryOptions

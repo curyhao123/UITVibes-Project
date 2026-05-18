@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -11,11 +11,9 @@ import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
-import { SPRING_GENTLE } from '../animations/spring';
-import { useSharedValue, withSpring } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 
 const ACTION_ICON = 24;
-const ACTION_GAP = 14;
 
 interface PostCardProps {
   post: Post;
@@ -116,37 +114,48 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </View>
         </GestureDetector>
 
-        {/* Action buttons — positioned on the right side of image */}
-        <View style={styles.actionsRight}>
-          {/* Heart — uses AnimatedHeartIcon for micro-bounce on tap */}
+        {/* Action buttons — horizontal row below image */}
+        <View style={styles.actionsRow}>
           <TouchableOpacity
             onPress={handleLike}
-            style={styles.actionVertical}
+            style={styles.actionGroup}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
-            <Text style={styles.actionCount}>{formatCount(post.likes)}</Text>
+            <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleCommentPress}
-            style={styles.actionVertical}
+            style={styles.actionGroup}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Feather name="message-circle" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.actionCount}>{post.commentsCount ?? 0}</Text>
+            <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
+            <Text style={styles.actionText}>
+              {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleShare} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <Feather name="send" size={ACTION_ICON} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.actionCount}>{post.shareCount ?? 0}</Text>
+          <TouchableOpacity
+            onPress={handleShare}
+            style={styles.actionGroup}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Feather name="send" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
+            <Text style={styles.actionText}>
+              {post.shareCount ?? 0} {(post.shareCount ?? 0) === 1 ? 'Share' : 'Shares'}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleBookmark} style={styles.actionVertical} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <TouchableOpacity
+            onPress={handleBookmark}
+            style={styles.bookmarkGroup}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Feather
               name="bookmark"
               size={ACTION_ICON}
-              color={post.isBookmarked ? AppColors.primary : '#FFFFFF'}
+              color={post.isBookmarked ? AppColors.primary : AppColors.iconMuted}
               fill={post.isBookmarked ? AppColors.primary : 'transparent'}
               strokeWidth={2}
             />
@@ -226,26 +235,28 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  actionsRight: {
-    position: 'absolute',
-    right: layoutPadding - 2,
-    bottom: 18,
+  actionsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: ACTION_GAP,
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 14,
+    gap: 20,
   },
-  actionVertical: {
+  actionGroup: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minWidth: 36,
+    gap: 5,
   },
-  actionCount: {
+  bookmarkGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  actionText: {
     ...Typography.meta,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 3,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: AppColors.iconMuted,
   },
   captionContainer: {
     paddingHorizontal: layoutPadding,

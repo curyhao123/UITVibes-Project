@@ -160,6 +160,24 @@ export async function getStoryDetail(storyGroupId: string): Promise<Story | null
   }
 }
 
+/** Reads a local file (from gallery) and returns a File or RN-compatible object for FormData. */
+async function uriToFile(uri: string, mimeType: string, name: string): Promise<File | object> {
+  // Native (iOS file://, Android content://) — use object { uri, type, name } like postService
+  if (
+    typeof File === "undefined" ||
+    uri.startsWith("content://") ||
+    uri.startsWith("file://") ||
+    uri.startsWith("ph://")
+  ) {
+    return { uri, type: mimeType, name } as object;
+  }
+
+  // Web (blob://, data://) — fetch + File constructor works
+  const res = await fetch(uri);
+  const blob = await res.blob();
+  return new File([blob], name, { type: mimeType });
+}
+
 /** POST /post/story — create story (multipart: files + optional displayOrders) */
 export async function createStory(
   mediaUris: Array<{ uri: string; type: "image" | "video" }>,
@@ -169,33 +187,19 @@ export async function createStory(
   try {
     const formData = new FormData();
 
-    // Append each file with correct MIME type
     for (const media of mediaUris) {
       const { uri, type } = media;
       const mimeType = type === "video" ? "video/mp4" : "image/jpeg";
       const name = uri.split("/").pop() || (type === "video" ? "video.mp4" : "image.jpg");
 
-      if (typeof File !== "undefined") {
-        // Web / React Native with File constructor support
-        const res = await fetch(uri);
-        const blob = await res.blob();
-        formData.append("Files", new File([blob], name, { type: mimeType }));
-      } else {
-        // React Native (no File constructor) — object shape works when Content-Type is auto-set
-        formData.append("Files", {
-          uri,
-          type: mimeType,
-          name,
-        } as unknown as File);
-      }
+      const file = await uriToFile(uri, mimeType, name);
+      formData.append("Files", file as File);
     }
 
-    // DisplayOrders as individual form fields (not a JSON string)
     for (let i = 0; i < mediaUris.length; i++) {
       formData.append("DisplayOrders", String(i));
     }
 
-    // Let axios auto-set Content-Type with correct boundary by passing FormData directly
     const { data } = await apiClient.post<BE_StoryDetailResponse>(
       "/post/story",
       formData,

@@ -60,7 +60,7 @@ function transformBEConversation(c: BE_ConversationResponse): Conversation {
   };
 }
 
-function transformBEMessage(m: BE_MessageResponse, members: Conversation["members"] = []): Message {
+export function transformBEMessage(m: BE_MessageResponse, members: Conversation["members"] = []): Message {
   const raw = m as unknown as Record<string, any>;
   const senderId = m.senderId ?? raw.SenderId;
   const conversationId = m.conversationId ?? raw.ConversationId;

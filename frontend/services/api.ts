@@ -19,6 +19,7 @@ export * from "./onlineTrackingService";
 export * from "./notificationService";
 export * from "./musicService";
 export { patchCurrentUserLocal } from "./session";
+export * from "./blockService";
 
 // Backwards-compatible alias for previous getCurrentUser export
 export { getCurrentUserProfile as getCurrentUser } from "./userService";

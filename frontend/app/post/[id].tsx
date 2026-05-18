@@ -13,87 +13,22 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { getPostById, toggleCommentLike } from "../../services/postService";
 import { Post, Comment } from "../../data/mockData";
 import { Avatar, CommentItem } from "../../components";
+import { CommentContextMenu, DeleteConfirmModal } from "../../components";
 import { useApp } from "../../context/AppContext";
 import { AppColors } from "../../constants/theme";
-import { SPRING_BOUNCE, SPRING_GENTLE } from "../../animations/spring";
 import { SkeletonShimmer } from "../../components/SkeletonLoader";
-
-// ─── Animated avatar component for current user in comment input ────────────
-const CurrentUserAvatar = () => {
-  const { currentUser } = useApp();
-  return (
-    <View style={styles.inputAvatarWrap}>
-      {currentUser ? (
-        <Avatar user={currentUser} size="tiny" />
-      ) : (
-        <View style={styles.inputAvatarFallback} />
-      )}
-    </View>
-  );
-};
-
-// ─── Animated like button with spring bounce ──────────────────────────────────
-const LikeButton = ({
-  isLiked,
-  onPress,
-}: {
-  isLiked: boolean;
-  onPress: () => void;
-}) => {
-  const scale = useSharedValue(1);
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.8, SPRING_GENTLE);
-  };
-  const handlePressOut = () => {
-    scale.value = withSpring(1.0, SPRING_GENTLE);
-  };
-  const handlePress = () => {
-    scale.value = withSpring(1.3, SPRING_BOUNCE, () => {
-      scale.value = withSpring(1.0, SPRING_BOUNCE);
-    });
-    onPress();
-  };
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <TouchableOpacity
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-      style={styles.actionButton}
-    >
-      <Animated.View style={animatedStyle}>
-        <Feather
-          name="heart"
-          size={26}
-          color={isLiked ? AppColors.primary : AppColors.textMuted}
-          fill={isLiked ? AppColors.primary : "transparent"}
-        />
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
+import { updateComment, deleteComment } from "../../services/postService";
+import { CommentInput } from "../../components/CommentInput";
+import { ScreenHeader } from "../../components/ScreenHeader";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
 const PostDetailSkeleton = () => (
@@ -101,8 +36,10 @@ const PostDetailSkeleton = () => (
     <Stack.Screen options={{ headerShown: false }} />
     {/* Header skeleton */}
     <View style={skelStyles.header}>
-      <SkeletonShimmer width={36} height={36} borderRadius={18} />
+      <SkeletonShimmer width={36} height={36} borderRadius={10} />
       <SkeletonShimmer width={100} height={14} style={{ marginLeft: 10 }} />
+      <View style={{ flex: 1 }} />
+      <SkeletonShimmer width={36} height={36} borderRadius={10} />
     </View>
     {/* Image skeleton */}
     <SkeletonShimmer width="100%" height={320} borderRadius={0} />
@@ -136,11 +73,13 @@ const PostDetailSkeleton = () => (
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams();
   const [post, setPost] = useState<Post | null>(null);
-  const [commentText, setCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
-  const { toggleLike, addComment } = useApp();
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const { toggleLike, addComment, currentUser, toggleFollow } = useApp();
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -150,7 +89,10 @@ export default function PostDetailScreen() {
   const loadPost = async () => {
     setIsLoading(true);
     const data = await getPostById(id as string);
-    setPost(data || null);
+    if (data) {
+      setPost(data);
+      setIsFollowingAuthor(!!data.user.isFollowing);
+    }
     setIsLoading(false);
   };
 
@@ -167,6 +109,12 @@ export default function PostDetailScreen() {
           : null,
       );
     }
+  };
+
+  const handleFollowToggle = async () => {
+    if (!post) return;
+    setIsFollowingAuthor((prev) => !prev);
+    await toggleFollow(post.user.id);
   };
 
   // Recursively finds the comment with matching parentId at any nesting level
@@ -187,13 +135,25 @@ export default function PostDetailScreen() {
     });
   };
 
-  const handleSendComment = async () => {
-    if (!post || !commentText.trim() || isSubmitting) return;
+  // Recursively removes the comment at any nesting level
+  const removeComment = (
+    comments: Comment[],
+    commentId: string,
+  ): Comment[] => {
+    return comments
+      .filter((c) => c.id !== commentId)
+      .map((c) => {
+        if (c.replies && c.replies.length > 0) {
+          return { ...c, replies: removeComment(c.replies, commentId) };
+        }
+        return c;
+      });
+  };
 
-    const text = commentText.trim();
+  const handleSendComment = async (text: string) => {
+    if (!post || !text.trim() || isSubmitting) return;
+
     setIsSubmitting(true);
-
-    setCommentText("");
 
     try {
       const newComment = await addComment(post.id, text, replyTo?.id);
@@ -218,7 +178,6 @@ export default function PostDetailScreen() {
         setReplyTo(null);
       }
     } catch (error) {
-      setCommentText(text);
       console.error("[PostDetail] Failed to submit comment:", error);
     } finally {
       setIsSubmitting(false);
@@ -238,6 +197,81 @@ export default function PostDetailScreen() {
       await toggleCommentLike(commentId);
     } catch (err) {
       console.error("[PostDetail] Failed to toggle comment like:", err);
+    }
+  };
+
+  const handleEditComment = (commentId: string) => {
+    const findComment = (comments: Comment[]): Comment | null => {
+      for (const c of comments) {
+        if (c.id === commentId) return c;
+        if (c.replies?.length) {
+          const found = findComment(c.replies);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const comment = findComment(post.comments);
+    if (comment) {
+      setEditingComment(comment);
+      setReplyTo(null);
+    }
+  };
+
+  const handleSubmitEdit = async (text: string) => {
+    if (!post || !editingComment || isSubmitting) return;
+    const savedText = editingComment.text;
+    setIsSubmitting(true);
+
+    const replaceComment = (comments: Comment[]): Comment[] =>
+      comments.map((c) => {
+        if (c.id === editingComment.id) return { ...c, text };
+        if (c.replies?.length) return { ...c, replies: replaceComment(c.replies) };
+        return c;
+      });
+
+    setPost((prev) =>
+      prev ? { ...prev, comments: replaceComment(prev.comments) } : prev,
+    );
+    setEditingComment(null);
+
+    try {
+      await updateComment(editingComment.id, text);
+    } catch (err) {
+      setPost((prev) =>
+        prev ? { ...prev, comments: replaceComment(prev.comments) } : prev,
+      );
+      console.error('[PostDetail] Failed to update comment:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingComment(null);
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    setDeleteTarget(commentId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!post || !deleteTarget) return;
+    const target = deleteTarget;
+    const prevComments = post.comments;
+    setDeleteTarget(null);
+
+    setPost((prev) =>
+      prev ? { ...prev, comments: removeComment(prev.comments, target) } : prev,
+    );
+
+    try {
+      await deleteComment(target);
+    } catch (err) {
+      setPost((prev) =>
+        prev ? { ...prev, comments: prevComments } : prev,
+      );
+      console.error('[PostDetail] Failed to delete comment:', err);
     }
   };
 
@@ -274,15 +308,7 @@ export default function PostDetailScreen() {
 
   const renderHeader = () => (
     <>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Feather name="arrow-left" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post</Text>
-      </View>
+      <ScreenHeader title="Post" onBack={() => router.back()} />
 
       {/* Post Header: User Info */}
       <View style={styles.postHeader}>
@@ -298,48 +324,47 @@ export default function PostDetailScreen() {
             <Text style={styles.userHandle}>@{post.user.username}</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.followButton}>
-          <Text style={styles.followButtonText}>Follow</Text>
+        <TouchableOpacity
+          style={[styles.followBtn, isFollowingAuthor && styles.followBtnFollowing]}
+          onPress={handleFollowToggle}
+        >
+          <Text style={[styles.followBtnText, isFollowingAuthor && styles.followBtnTextFollowing]}>
+            {isFollowingAuthor ? "Following" : "Follow"}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Post Image */}
       <Image source={{ uri: post.image }} style={styles.postImage} />
 
-      {/* Engagement Actions */}
-      <View style={styles.actions}>
-        <LikeButton isLiked={post.isLiked} onPress={handleLike} />
-        <TouchableOpacity style={styles.actionButton}>
-          <Feather name="message-circle" size={24} color={AppColors.text} />
+      {/* Engagement Actions — single horizontal row */}
+      <View style={styles.actionsRow}>
+        <TouchableOpacity onPress={handleLike} style={styles.actionGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Feather
+            name="heart"
+            size={24}
+            color={post.isLiked ? AppColors.primary : AppColors.iconMuted}
+            fill={post.isLiked ? AppColors.primary : 'transparent'}
+            strokeWidth={2}
+          />
+          <Text style={styles.actionText}>{formatLikes(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Feather name="share-2" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Feather name="bookmark" size={24} color={AppColors.text} />
-        </TouchableOpacity>
-      </View>
 
-      {/* Engagement Metrics */}
-      <View style={styles.engagementMetrics}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricCount}>{formatLikes(post.likes)}</Text>
-          <Text style={styles.metricLabel}>Likes</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={styles.metricCount}>
-            {formatLikes(post.comments?.length || post.commentsCount || 0)}
+        <TouchableOpacity style={styles.actionGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Feather name="message-circle" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+          <Text style={styles.actionText}>
+            {post.comments?.length || post.commentsCount || 0} {(post.comments?.length || post.commentsCount || 0) === 1 ? 'Comment' : 'Comments'}
           </Text>
-          <Text style={styles.metricLabel}>Comments</Text>
-        </View>
-        <View style={styles.metricDivider} />
-        <View style={styles.metricItem}>
-          <Text style={styles.metricCount}>
-            {formatLikes(post.shareCount || 0)}
-          </Text>
-          <Text style={styles.metricLabel}>Shares</Text>
-        </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Feather name="share-2" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+          <Text style={styles.actionText}>{post.shareCount || 0} {(post.shareCount || 0) === 1 ? 'Share' : 'Shares'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.bookmarkGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <Feather name="bookmark" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+        </TouchableOpacity>
       </View>
 
       {/* Caption */}
@@ -365,10 +390,11 @@ export default function PostDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView
+          style={styles.kavContainer}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <FlatList
           data={post.comments}
           keyExtractor={(item) => item.id}
@@ -378,70 +404,34 @@ export default function PostDetailScreen() {
               comment={item}
               onReply={handleReply}
               onLike={handleCommentLike}
+              onEdit={handleEditComment}
+              onDelete={handleDeleteComment}
+              currentUserId={currentUser?.id}
             />
           )}
         />
-        <View style={styles.inputContainer}>
-          {replyTo && (
-            <View style={styles.replyBanner}>
-              <Feather
-                name="corner-down-left"
-                size={12}
-                color={AppColors.textMuted}
-              />
-              <Text style={styles.replyBannerText}>
-                Replying to{" "}
-                <Text style={styles.replyBannerUsername}>
-                  {replyTo.user.fullName || replyTo.user.displayName}
-                </Text>
-              </Text>
-              <TouchableOpacity
-                onPress={handleCancelReply}
-                style={styles.cancelReply}
-              >
-                <Feather name="x" size={14} color={AppColors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={styles.inputRow}>
-            <CurrentUserAvatar />
-            <TextInput
-              style={styles.input}
-              placeholder={
-                replyTo
-                  ? `Reply to ${replyTo.user.fullName || replyTo.user.displayName}...`
-                  : "Add a comment..."
-              }
-              placeholderTextColor={AppColors.iconMuted}
-              value={commentText}
-              onChangeText={setCommentText}
-              onSubmitEditing={handleSendComment}
-              blurOnSubmit={false}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {isSubmitting ? (
-              <View style={styles.sendIconWrap}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={handleSendComment}
-                disabled={!commentText.trim() || isSubmitting}
-                style={styles.sendIconWrap}
-              >
-                <Feather
-                  name="send"
-                  size={20}
-                  color={
-                    commentText.trim() ? AppColors.primary : AppColors.iconMuted
-                  }
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+        <CommentInput
+          editingComment={editingComment}
+          replyTo={replyTo}
+          onSubmit={(text) => {
+            if (editingComment) {
+              handleSubmitEdit(text);
+            } else {
+              handleSendComment(text);
+            }
+          }}
+          onCancelEdit={handleCancelEdit}
+          onCancelReply={handleCancelReply}
+          isSubmitting={isSubmitting}
+        />
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+
+      <DeleteConfirmModal
+        visible={deleteTarget !== null}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </>
   );
 }
@@ -451,25 +441,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surface,
-  },
-  headerTitle: {
+  kavContainer: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: AppColors.text,
-    marginLeft: 16,
-  },
-  backButton: {
-    padding: 4,
   },
   postHeader: {
     flexDirection: "row",
@@ -497,69 +470,48 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     marginTop: 2,
   },
-  followButton: {
+  followBtn: {
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: AppColors.primary,
+    borderRadius: 8,
   },
-  followButtonText: {
-    color: AppColors.background,
+  followBtnFollowing: {
+    backgroundColor: AppColors.border,
+  },
+  followBtnText: {
+    color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 12,
+    fontSize: 13,
+  },
+  followBtnTextFollowing: {
+    color: AppColors.text,
   },
   postImage: {
     width: "100%",
     aspectRatio: 1,
   },
-  actions: {
-    flexDirection: "row",
-    alignItems: "center",
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: 14,
+    gap: 20,
   },
-  actionButton: {
-    padding: 4,
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  engagementMetrics: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+  bookmarkGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 'auto',
   },
-  metricItem: {
-    alignItems: "center",
-    flex: 1,
-  },
-  metricCount: {
-    fontWeight: "700",
-    fontSize: 18,
-    color: AppColors.text,
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: AppColors.textSecondary,
-    marginTop: 2,
-  },
-  metricDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: AppColors.border,
-  },
-  likesContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-  },
-  likes: {
-    fontWeight: "600",
-    fontSize: 14,
-    color: AppColors.text,
+  actionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: AppColors.iconMuted,
   },
   captionContainer: {
     paddingHorizontal: 16,
@@ -586,56 +538,6 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
-  },
-  inputContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.borderLight,
-    backgroundColor: AppColors.surface,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  replyBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    marginBottom: 8,
-    gap: 5,
-  },
-  replyBannerText: {
-    flex: 1,
-    fontSize: 12,
-    color: AppColors.textMuted,
-  },
-  replyBannerUsername: {
-    fontWeight: "600",
-    color: AppColors.text,
-  },
-  cancelReply: {
-    padding: 2,
-  },
-  inputAvatarWrap: {
-    marginRight: 10,
-  },
-  inputAvatarFallback: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: AppColors.borderLight,
-  },
-  input: {
-    flex: 1,
-    height: 36,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: AppColors.text,
-  },
-  sendIconWrap: {
-    padding: 6,
-    marginLeft: 4,
   },
 });
 

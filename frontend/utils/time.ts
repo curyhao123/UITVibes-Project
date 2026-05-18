@@ -1,4 +1,31 @@
 /**
+ * Human-readable relative time for "blocked X ago" text.
+ * Returns null if date is invalid.
+ */
+export function formatRelativeTime(date: Date | string): string | null {
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+
+    if (diffSecs < 60) return 'Blocked recently';
+    if (diffMins < 60) return `Blocked ${diffMins}m ago`;
+    if (diffHours < 24) return `Blocked ${diffHours}h ago`;
+    if (diffDays < 7) return `Blocked ${diffDays}d ago`;
+    if (diffWeeks < 5) return `Blocked ${diffWeeks}w ago`;
+    return null; // older than ~5 weeks — don't show
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Time formatting utilities using native JS Date (no extra dependencies).
  */
 

@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { PostCard, StoryBar, Avatar, Header } from '../../components';
 import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
@@ -23,6 +23,8 @@ export default function HomeScreen() {
     setFeedTab,
     unreadCount,
     isNewUser,
+    lastPostsFetch,
+    lastStoriesFetch,
   } = useApp();
 
   const onRefresh = async () => {
@@ -31,6 +33,38 @@ export default function HomeScreen() {
     await refreshStories();
     setRefreshing(false);
   };
+
+  // Auto-revalidate feed on focus (stale-while-revalidate pattern)
+  // If data is stale (>5 min), fetch fresh data silently in background
+  // If data is fresh, skip unnecessary network call
+  const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+  const [isRevalidating, setIsRevalidating] = React.useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const now = Date.now();
+      const postsStale = now - lastPostsFetch > STALE_THRESHOLD_MS;
+      const storiesStale = now - lastStoriesFetch > STALE_THRESHOLD_MS;
+
+      if (postsStale || storiesStale) {
+        // Silently revalidate without spinner (stale-while-revalidate)
+        setIsRevalidating(true);
+        Promise.all([
+          postsStale ? refreshPosts() : Promise.resolve(),
+          storiesStale ? refreshStories() : Promise.resolve(),
+        ]).finally(() => {
+          setIsRevalidating(false);
+        });
+      }
+    }, [lastPostsFetch, lastStoriesFetch, refreshPosts, refreshStories]),
+  );
+
+  // Update isRevalidating state based on AppContext fetch timestamps
+  React.useEffect(() => {
+    if (lastPostsFetch === 0 && lastStoriesFetch === 0) {
+      setIsRevalidating(false);
+    }
+  }, [lastPostsFetch, lastStoriesFetch]);
 
   // Mở màn hình tạo story
   const handleAddStory = () => {

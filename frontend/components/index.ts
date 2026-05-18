@@ -6,9 +6,14 @@ export { StoryBar } from './StoryBar';
 export { CommentItem } from './CommentItem';
 export { PostGrid, UserListItem, StoryGrid } from './Lists';
 export { Header } from './Header';
+export { ScreenHeader } from './ScreenHeader';
 export { EmptyPostsState } from './EmptyPostsState';
 export { Toast } from './Toast';
 export { default as EditProfileModal } from './EditProfileModal';
+export { PrivacySection } from './privacy/PrivacySection';
+export { HighlightCard } from './privacy/HighlightCard';
+export { CommentContextMenu } from './CommentContextMenu';
+export { DeleteConfirmModal } from './DeleteConfirmModal';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {
