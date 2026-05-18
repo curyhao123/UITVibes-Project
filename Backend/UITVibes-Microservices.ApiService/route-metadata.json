@@ -898,6 +898,52 @@
           }
         }
       ]
+    },
+    {
+      "name": "PostService - Reposts",
+      "description": "Repost creation, undo, and status",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/post/{userId}/reposts",
+          "description": "Get reposts for a specific user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/{postId}/repost",
+          "description": "Create a repost for a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/{postId}/repost",
+          "description": "Undo a repost for a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/{postId}/repost/status",
+          "description": "Get repost status for a post",
+          "requiresAuth": true,
+          "pathParameters": {
+            "postId": "guid"
+          }
+        }
+      ]
     }
   ]
 }

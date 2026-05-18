@@ -27,6 +27,7 @@ builder.Services.AddScoped<IUserProfileRpcClient, UserProfileRpcClient>();
 builder.Services.AddScoped<IUserFollowRpcClient, UserFollowRpcClient>();
 builder.Services.AddScoped<IPostCommentedPublisher, PostCommentedPublisher>();
 builder.Services.AddScoped<IPostLikedPublisher, PostLikedPublisher>();
+builder.Services.AddScoped<IRepostService, RepostService>();
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

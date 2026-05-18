@@ -1,4 +1,4 @@
-namespace PostService.Models;
+﻿namespace PostService.Models;
 
 public class Post
 {
@@ -20,6 +20,7 @@ public class Post
     /// Location/place tagged
 
     public string? Location { get; set; }
+    public PostType PostType { get; set; } = PostType.Original;
 
     /// Engagement counts
 
@@ -36,7 +37,10 @@ public class Post
     /// Soft delete
  
     public bool IsDeleted { get; set; }
-    
+
+    // Thêm: đếm nhanh số lượt repost
+    public int RepostCount { get; set; } = 0;
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     
@@ -52,4 +56,10 @@ public enum PostVisibility
     Public = 0,      // Everyone can see
     Followers = 1,   // Only followers
     Private = 2      // Only mentioned users
+}
+
+public enum PostType
+{
+    Original = 0,
+    Repost = 1    // repost vào feed, giữ nguyên bài gốc
 }

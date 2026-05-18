@@ -42,7 +42,8 @@ public class PostService : IPostService
             Location = request.Location,
             Visibility = (PostVisibility)request.Visibility,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            PostType = PostType.Original
         };
 
         _context.Posts.Add(post);

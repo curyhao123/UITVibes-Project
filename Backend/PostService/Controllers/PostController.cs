@@ -10,14 +10,17 @@ namespace PostService.Controllers;
 public class PostController : ControllerBase
 {
     private readonly IPostService _postService;
+    private readonly IRepostService _repostService;
     private readonly IBookmarkService _bookmarkService;
     private readonly ILogger<PostController> _logger;
 
-    public PostController(IPostService postService, ILogger<PostController> logger, IBookmarkService bookmarkService)
+    public PostController(IPostService postService, ILogger<PostController> logger, 
+        IBookmarkService bookmarkService, IRepostService repostService)
     {
         _postService = postService;
         _logger = logger;
         _bookmarkService = bookmarkService;
+        _repostService = repostService;
     }
 
     /// Create a new post
@@ -362,4 +365,112 @@ public class PostController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while retrieving bookmarks" });
         }
     }
+
+    // GET /api/posts/users/{userId}/reposts?skip=0&take=20
+
+    [HttpGet("{userId}/reposts")]
+    public async Task<IActionResult> GetUserReposts(
+        Guid userId,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var CurrentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            take = Math.Clamp(take, 1, 50);
+
+            var reposts = await _repostService.GetUserRepostsAsync(userId, CurrentUserId, skip, take);
+            return Ok(reposts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting reposts for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
+
+    // POST /api/posts/{postId}/repost
+
+    [HttpPost("{postId}/repost")]
+    public async Task<IActionResult> CreateRepost(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var response = await _repostService.CreateRepostAsync(postId, userId);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating repost for post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while creating repost" });
+        }
+    }
+
+    // DELETE /api/posts/{postId}/repost
+    [HttpDelete("{postId}/repost")]
+    public async Task<IActionResult> UndoRepost(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            await _repostService.UndoRepostAsync(postId, userId);
+            return Ok(new { message = "Repost undone successfully" });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error undoing repost for post {PostId} by user {UserId}", postId, userId);
+            return StatusCode(500, new { message = "An error occurred while undoing repost" });
+        }
+    }
+
+    // GET /api/posts/{postId}/repost/status
+    [HttpGet("{postId:guid}/repost/status")]
+    public async Task<IActionResult> GetRepostStatus(Guid postId)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var CurrentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var hasReposted = await _repostService.HasRepostedAsync(postId, CurrentUserId);
+            return Ok(new { postId, hasReposted });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting repost status for post {PostId}", postId);
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
+
 }

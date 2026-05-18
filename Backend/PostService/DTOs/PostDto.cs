@@ -1,3 +1,5 @@
+using PostService.Models;
+
 namespace PostService.DTOs;
 
 public class PostDto
@@ -9,7 +11,10 @@ public class PostDto
     public string? Location { get; set; }
     
     public List<PostMediaDto> Media { get; set; } = new();
-    
+    public PostType PostType { get; set; }
+    public bool IsRepostedByCurrentUser { get; set; }
+    public int RepostCount { get; set; }
+
     public int LikesCount { get; set; }
     public int CommentsCount { get; set; }
     public int SharesCount { get; set; }
