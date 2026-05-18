@@ -7,6 +7,8 @@ import {
   BE_LikeResponse,
   BE_HashtagDto,
   CreatePostBody,
+  BE_RepostResponse,
+  BE_RepostStatusResponse,
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
 
@@ -167,6 +169,8 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     location: post.location || undefined,
     tags: post.hashtags || [],
     commentsCount: post.commentsCount ?? 0,
+    repostCount: post.repostCount ?? 0,
+    isReposted: post.isRepostedByCurrentUser ?? false,
   };
 }
 
@@ -527,4 +531,60 @@ export async function toggleCommentLike(commentId: string): Promise<boolean> {
     }
     throw err;
   }
+}
+
+// ─── Repost functions ──────────────────────────────────────────────────────────
+
+export async function repostPost(postId: string): Promise<Post> {
+  const { data } = await apiClient.post<BE_RepostResponse>(
+    `/post/${postId}/repost`,
+  );
+  // Reload bài gốc để lấy fresh RepostCount (luôn dùng originalPostId)
+  const post = await getPostById(data.originalPostId);
+  return post!;
+}
+
+export async function undoRepost(postId: string): Promise<Post> {
+  await apiClient.delete(`/post/${postId}/repost`);
+  // Reload post để lấy fresh RepostCount
+  // Nếu postId là original post → reload chính nó
+  // Nếu postId là repost record → reload original post (idempotent)
+  const post = await getPostById(postId);
+  return post!;
+  await apiClient.delete(`/post/${postId}/repost`);
+  // Backend không trả body, nên gọi lại API repost/status để lấy fresh count
+  // Trả về 0 để caller giảm count tạm, rồi reload post để lấy count chuẩn
+  return 0;
+}
+
+export async function getRepostStatus(
+  postId: string,
+): Promise<BE_RepostStatusResponse> {
+  const { data } = await apiClient.get<BE_RepostStatusResponse>(
+    `/post/${postId}/repost/status`,
+  );
+  return data;
+}
+
+export async function getUserReposts(
+  userId: string,
+  skip = 0,
+  take = 20,
+): Promise<Post[]> {
+  const { data } = await apiClient.get<BE_PostResponse[]>(
+    `/post/${userId}/reposts`,
+    { params: { skip, take } },
+  );
+  if (!data || !Array.isArray(data)) return [];
+  const posts = await Promise.all(
+    data.map(async (post) => {
+      try {
+        const author = await fetchUserById(post.userId);
+        return transformBEPost(post, author);
+      } catch {
+        return transformBEPost(post, undefined);
+      }
+    }),
+  );
+  return posts;
 }

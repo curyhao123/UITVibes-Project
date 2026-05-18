@@ -11,10 +11,12 @@ import {
   clearLocalHandle,
   clearPersistedAvatarUrl,
   clearUserCache,
+  clearCurrentUserEmail,
   getCurrentUser,
   mergePersistedAvatarIfMissing,
   setCurrentAccount,
   setCurrentUser,
+  setCurrentUserEmail,
   setCurrentUserId,
   writeLocalHandle,
 } from "./session";
@@ -106,6 +108,7 @@ export async function login(email: string, password: string): Promise<User> {
 
     setCurrentUserId(data.user.id);
     setCurrentUser(user);
+    await setCurrentUserEmail(data.user.email ?? email);
     if (user.username) void writeLocalHandle(user.id, user.username);
     return user;
   } catch (error: any) {
@@ -158,6 +161,7 @@ export async function register(
 
     setCurrentUserId(data.user.id);
     setCurrentUser(user);
+    await setCurrentUserEmail(data.user.email ?? email);
     if (user.username) void writeLocalHandle(user.id, user.username);
     return user;
   } catch (error: any) {
@@ -177,6 +181,7 @@ async function clearLocalAuthState(): Promise<void> {
   clearUserCache();
   await clearTokens();
   await clearLocalHandle();
+  await clearCurrentUserEmail();
   setCurrentUserId("current");
   setCurrentUser(null);
   setCurrentAccount("activeUser");
@@ -304,3 +309,95 @@ export async function verifyEmailAndLogin(
 export async function resendOtp(email: string): Promise<void> {
   await apiClient.post("/auth/auth/send-otp", { email });
 }
+
+// ─── Forgot Password ─────────────────────────────────────────────────────────
+
+export async function forgotPassword(email: string): Promise<void> {
+  if (!email.trim()) {
+    throw new Error("Email is required");
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("Please enter a valid email address");
+  }
+  try {
+    await apiClient.post("/auth/auth/forgot-password", { email });
+  } catch (error: any) {
+    console.error("[Auth] forgotPassword failed", error?.response?.data ?? error);
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to send reset code. Please try again.";
+    throw new Error(message);
+  }
+}
+
+export async function resetPassword(
+  email: string,
+  otpCode: string,
+  newPassword: string,
+): Promise<void> {
+  const trimmedOtp = (otpCode ?? "").trim();
+  const trimmedPwd = (newPassword ?? "").trim();
+  if (!trimmedOtp) {
+    throw new Error("Verification code is required");
+  }
+  if (trimmedOtp.length !== 6) {
+    throw new Error("Verification code must be 6 digits");
+  }
+  if (!trimmedPwd) {
+    throw new Error("New password is required");
+  }
+  if (trimmedPwd.length < 6) {
+    throw new Error("New password must be at least 6 characters");
+  }
+  try {
+    await apiClient.post("/auth/auth/reset-password", {
+      email,
+      otpCode: trimmedOtp,
+      newPassword: trimmedPwd,
+    });
+  } catch (error: any) {
+    console.error("[Auth] resetPassword failed", error?.response?.data ?? error);
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to reset password. Please check your code and try again.";
+    throw new Error(message);
+  }
+}
+
+// ─── Change Password (logged-in) ─────────────────────────────────────────────
+
+export async function sendChangePasswordOtp(
+  oldPassword: string,
+): Promise<void> {
+  const trimmed = (oldPassword ?? "").trim();
+  if (!trimmed) {
+    throw new Error("Current password is required");
+  }
+  if (trimmed.length < 6) {
+    throw new Error("Current password must be at least 6 characters");
+  }
+  try {
+    await apiClient.post("/auth/auth/change-password/send-otp", {
+      oldPassword: trimmed,
+    });
+  } catch (error: any) {
+    console.error(
+      "[Auth] sendChangePasswordOtp failed",
+      error?.response?.data ?? error,
+    );
+    const message =
+      (error?.response?.data &&
+        (error.response.data.message || error.response.data.error)) ||
+      error?.message ||
+      "Failed to send OTP. Please try again.";
+    throw new Error(message);
+  }
+}
+
+
+

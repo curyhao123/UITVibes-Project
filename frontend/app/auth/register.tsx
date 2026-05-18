@@ -30,6 +30,18 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // ── Password strength indicator ──────────────────────────────────────────
+  const getPasswordStrength = (pwd: string): { label: string; color: string; width: string } => {
+    const len = pwd.length;
+    if (len === 0) return { label: "", color: "transparent", width: "0%" };
+    if (len < 6) return { label: "Too short", color: AppColors.error, width: "20%" };
+    if (len < 8) return { label: "Weak", color: "#F59E0B", width: "40%" };
+    if (len < 12) return { label: "Good", color: "#3B82F6", width: "70%" };
+    return { label: "Strong", color: AppColors.success, width: "95%" };
+  };
+
+  const strength = getPasswordStrength(password);
+
   const isFormFilled =
     email.trim().length > 0 &&
     password.length > 0 &&
@@ -162,6 +174,22 @@ export default function RegisterScreen() {
               }
             />
 
+            <View style={styles.strengthWrap}>
+              {password.length > 0 && (
+                <View style={styles.strengthBarWrap}>
+                  <View
+                    style={[
+                      styles.strengthBar,
+                      { width: strength.width, backgroundColor: strength.color },
+                    ]}
+                  />
+                  <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                    {strength.label}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             <FormInput
               label="Confirm Password"
               placeholder="Confirm your password"
@@ -277,6 +305,26 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 13,
     color: "#D64545",
+  },
+  strengthWrap: {
+    width: "100%",
+    paddingHorizontal: 1,
+  },
+  strengthBarWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  strengthBar: {
+    height: 3,
+    borderRadius: 2,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
   footer: {
     paddingHorizontal: 28,

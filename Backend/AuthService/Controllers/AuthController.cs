@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using AuthService.DTOs;
 using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;
@@ -181,5 +181,29 @@ namespace AuthService.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // ==================== CHANGE PASSWORD (send OTP) ====================
+        [HttpPost("change-password/send-otp")]
+        public async Task<IActionResult> SendChangePasswordOtp([FromBody] ChangePasswordOtpRequest request)
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+            {
+                return Unauthorized(new { message = "User ID not found in request headers" });
+            }
+
+            try
+            {
+                await _authService.SendChangePasswordOtpAsync(userId, request.OldPassword);
+                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending change password OTP for user {UserId}", userId);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
     }
 }

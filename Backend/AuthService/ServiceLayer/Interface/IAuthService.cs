@@ -15,5 +15,7 @@ namespace AuthService.ServiceLayer.Interface
         Task VerifyOtpAsync(string email, string inputOtp);
         Task SendForgotPasswordOtpAsync(string email);
         Task VerifyForgotPasswordOtpAsync(string email, string inputOtp, string newPassword);
+        Task SendChangePasswordOtpAsync(Guid userId, string oldPassword);
+        Task VerifyChangePasswordOtpAsync(Guid userId, string email, string inputOtp, string newPassword);
     }
 }

@@ -19,6 +19,8 @@ import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import defaultAvatar from '../../assets/images/default-avatar.png';
 import * as api from '../../services/api';
+import { getUserReposts } from '../../services/postService';
+import { Post } from '../../data/mockData';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -34,8 +36,12 @@ export default function ProfileScreen() {
   const [profileStories, setProfileStories] = useState<api.Story[]>([]);
   const [isLoadingStories, setIsLoadingStories] = useState(false);
 
-  // Profile tab state (posts | stories)
-  const [profileTab, setProfileTab] = useState<'posts' | 'stories'>('posts');
+  // Profile tab state (posts | stories | reposts)
+  const [profileTab, setProfileTab] = useState<'posts' | 'stories' | 'reposts'>('posts');
+
+  // Reposts state
+  const [reposts, setReposts] = useState<Post[]>([]);
+  const [isLoadingReposts, setIsLoadingReposts] = useState(false);
 
   // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
@@ -83,6 +89,18 @@ export default function ProfileScreen() {
         .finally(() => {
           setIsLoadingStories(false);
         });
+    }, [currentUser?.id, profileTab]),
+  );
+
+  // Load reposts when reposts tab is active
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentUser?.id || profileTab !== 'reposts') return;
+      setIsLoadingReposts(true);
+      getUserReposts(currentUser.id)
+        .then((data) => setReposts(data))
+        .catch(() => setReposts([]))
+        .finally(() => setIsLoadingReposts(false));
     }, [currentUser?.id, profileTab]),
   );
 
@@ -229,6 +247,12 @@ export default function ProfileScreen() {
             <Feather name="grid" size={22} color={profileTab === 'posts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
           <TouchableOpacity
+            style={[styles.tab, profileTab === 'reposts' && styles.activeTab]}
+            onPress={() => setProfileTab('reposts')}
+          >
+            <Feather name="refresh-cw" size={22} color={profileTab === 'reposts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
             onPress={() => setProfileTab('stories')}
           >
@@ -245,6 +269,19 @@ export default function ProfileScreen() {
             <EmptyPostsState isNewUser={isNewUser ?? false} />
           ) : (
             <PostGrid posts={userPosts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
+          )
+        ) : profileTab === 'reposts' ? (
+          isLoadingReposts ? (
+            <View style={styles.loadingPosts}>
+              <ActivityIndicator size="small" color={AppColors.primary} />
+            </View>
+          ) : reposts.length === 0 ? (
+            <View style={styles.emptyStories}>
+              <Feather name="refresh-cw" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
+              <Text style={styles.emptyStoriesText}>No reposts yet</Text>
+            </View>
+          ) : (
+            <PostGrid posts={reposts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
           )
         ) : (
           isLoadingStories ? (

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { getUserById, getUserPosts, getUserStories, toggleFollow, type Story } from '../../services/api';
+import { getUserReposts } from '../../services/postService';
 import { getCurrentUserId } from '../../services/session';
 import { User, Post } from '../../data/mockData';
 import { Avatar, PostGrid, StoryGrid } from '../../components';
@@ -21,14 +22,29 @@ export default function UserProfileScreen() {
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [blockStatus, setBlockStatus] = useState<BlockStatusDto | null>(null);
-  const [profileTab, setProfileTab] = useState<'posts' | 'stories'>('posts');
+  const [profileTab, setProfileTab] = useState<'posts' | 'stories' | 'reposts'>('posts');
+  const [reposts, setReposts] = useState<Post[]>([]);
+  const [isLoadingReposts, setIsLoadingReposts] = useState(false);
   const [actionsSheetVisible, setActionsSheetVisible] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setProfileTab('posts');
+    setReposts([]);
     loadUserData();
   }, [id]);
+
+  // Load reposts when reposts tab is active
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || profileTab !== 'reposts') return;
+      setIsLoadingReposts(true);
+      getUserReposts(id as string)
+        .then((data) => setReposts(data))
+        .catch(() => setReposts([]))
+        .finally(() => setIsLoadingReposts(false));
+    }, [id, profileTab]),
+  );
 
   const loadUserData = async () => {
     setIsLoading(true);
@@ -247,6 +263,12 @@ export default function UserProfileScreen() {
               <Feather name="grid" size={24} color={profileTab === 'posts' ? AppColors.primary : AppColors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity
+              style={[styles.tab, profileTab === 'reposts' && styles.activeTab]}
+              onPress={() => setProfileTab('reposts')}
+            >
+              <Feather name="refresh-cw" size={24} color={profileTab === 'reposts' ? AppColors.primary : AppColors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
               onPress={() => setProfileTab('stories')}
             >
@@ -256,6 +278,19 @@ export default function UserProfileScreen() {
 
           {profileTab === 'posts' ? (
             <PostGrid posts={posts} />
+          ) : profileTab === 'reposts' ? (
+            isLoadingReposts ? (
+              <View style={styles.emptyStories}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              </View>
+            ) : reposts.length === 0 ? (
+              <View style={styles.emptyStories}>
+                <Feather name="refresh-cw" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
+                <Text style={styles.emptyStoriesText}>No reposts yet</Text>
+              </View>
+            ) : (
+              <PostGrid posts={reposts} />
+            )
           ) : stories.length === 0 ? (
             <View style={styles.emptyStories}>
               <Feather name="layers" size={48} color={AppColors.textMuted} strokeWidth={1.5} />

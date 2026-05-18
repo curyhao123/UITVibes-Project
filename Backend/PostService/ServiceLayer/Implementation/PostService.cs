@@ -16,18 +16,23 @@ public class PostService : IPostService
     private readonly ILogger<PostService> _logger;
     private readonly IPostLikedPublisher _postLikedPublisher;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
+    private readonly IRepostService _repostService;
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
         IUserFollowRpcClient userFollowRpcClient,
         ILogger<PostService> logger,
         IPostLikedPublisher postLikedPublisher,
-        IUserProfileRpcClient userProfileRpcClient)
+        IUserProfileRpcClient userProfileRpcClient,
+        IRepostService repostService)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
         _userFollowRpcClient = userFollowRpcClient;
         _logger = logger;
+        _postLikedPublisher = postLikedPublisher;
+        _userProfileRpcClient = userProfileRpcClient;
+        _repostService = repostService;
         _userProfileRpcClient = userProfileRpcClient;
         _postLikedPublisher = postLikedPublisher;
     }
@@ -106,7 +111,7 @@ public class PostService : IPostService
     public async Task<List<PostDto>> GetUserPostsAsync(Guid userId, Guid? currentUserId = null, int skip = 0, int take = 20)
     {
         var posts = await _context.Posts
-            .Where(p => p.UserId == userId && !p.IsDeleted)
+            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original)
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -133,7 +138,9 @@ public class PostService : IPostService
         followingIds.Add(userId);
 
         var posts = await _context.Posts
-            .Where(p => !p.IsDeleted && followingIds.Contains(p.UserId))
+            .Where(p => !p.IsDeleted
+                     && p.PostType == PostType.Original
+                     && followingIds.Contains(p.UserId))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -330,12 +337,14 @@ public class PostService : IPostService
             Id = post.Id,
             UserId = post.UserId,
             Content = post.Content,
+            PostType = post.PostType,
             Visibility = (PostVisibilityDto)post.Visibility,
             Location = post.Location,
             LikesCount = post.LikesCount,
             CommentsCount = post.CommentsCount,
             SharesCount = post.SharesCount,
             ViewsCount = post.ViewsCount,
+            RepostCount = post.RepostCount,
             OriginalPostId = post.OriginalPostId,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
@@ -358,9 +367,12 @@ public class PostService : IPostService
         {
             dto.IsLikedByCurrentUser = await _context.Likes
                 .AnyAsync(l => l.PostId == post.Id && l.UserId == currentUserId.Value);
-            
+
             dto.IsBookmarkedByCurrentUser = await _context.Bookmarks
                 .AnyAsync(b => b.PostId == post.Id && b.UserId == currentUserId.Value);
+
+            // ✅ Check repost status: user đã repost bài này chưa?
+            dto.IsRepostedByCurrentUser = await _repostService.HasRepostedAsync(post.Id, currentUserId.Value);
         }
 
         if (post.OriginalPost != null)

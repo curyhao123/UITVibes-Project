@@ -246,7 +246,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="lock"
             label="Change Password"
-            onPress={() => {}}
+            onPress={() => settingsRouter.push('/change-password' as any)}
             isFirst
           />
           <SettingsRow

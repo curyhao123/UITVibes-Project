@@ -6,10 +6,12 @@ export type AccountType = "newUser" | "activeUser";
 let currentAccount: AccountType = "activeUser";
 let currentUserId: string = "current";
 let currentUser: User | null = null;
+let currentUserEmail: string | null = null;
 const userCache: Map<string, User> = new Map();
 const followedUserIds: Set<string> = new Set();
 
 const LOCAL_HANDLE_KEY = "@uitvibes_local_username_handle";
+const CURRENT_EMAIL_KEY = "@uitvibes_current_user_email";
 /** URL avatar đã xác nhận từ BE — dùng khi login/refresh tạm thời không trả avatarUrl */
 const AVATAR_URL_PREFIX = "@uitvibes_avatar_url_";
 
@@ -135,6 +137,40 @@ export function setCurrentUser(user: User | null): void {
   currentUser = user;
   if (user?.id && user.avatar?.trim()) {
     void persistUserAvatarUrl(user.id, user.avatar);
+  }
+}
+
+export async function getCurrentUserEmail(): Promise<string | null> {
+  if (currentUserEmail?.trim()) return currentUserEmail.trim();
+  try {
+    const stored = await AsyncStorage.getItem(CURRENT_EMAIL_KEY);
+    currentUserEmail = stored?.trim() || null;
+    return currentUserEmail;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCurrentUserEmail(email: string | null): Promise<void> {
+  const trimmed = email?.trim() || "";
+  currentUserEmail = trimmed || null;
+  try {
+    if (trimmed) {
+      await AsyncStorage.setItem(CURRENT_EMAIL_KEY, trimmed);
+    } else {
+      await AsyncStorage.removeItem(CURRENT_EMAIL_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function clearCurrentUserEmail(): Promise<void> {
+  currentUserEmail = null;
+  try {
+    await AsyncStorage.removeItem(CURRENT_EMAIL_KEY);
+  } catch {
+    /* ignore */
   }
 }
 

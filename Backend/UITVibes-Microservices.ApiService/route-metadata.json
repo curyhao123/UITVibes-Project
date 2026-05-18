@@ -99,6 +99,16 @@
             "otpCode": "123456",
             "newPassword": "NewPassword123!"
           }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/change-password/send-otp",
+          "description": "Gửi mã OTP để đổi mật khẩu (đã đăng nhập)",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "oldPassword": "CurrentPassword123!"
+          }
         }
       ]
     },

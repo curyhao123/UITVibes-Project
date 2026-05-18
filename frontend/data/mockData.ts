@@ -49,6 +49,12 @@ export interface Post {
   location?: string;
   tags?: string[];
   commentsCount?: number;
+  // ── Repost fields ──
+  repostCount?: number;
+  isReposted?: boolean;
+  postType?: number;          // 0 = Original, 1 = Repost
+  originalPostId?: string;
+  originalPost?: Post;        // nested bài gốc (khi là repost)
 }
 
 export interface Conversation {
