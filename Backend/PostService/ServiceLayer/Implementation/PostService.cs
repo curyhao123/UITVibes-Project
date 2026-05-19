@@ -498,4 +498,95 @@ public class PostService : IPostService
 
         return likes;
     }
+
+    public async Task<List<PostReportDto>> GetPostReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null)
+    {
+        var query = _context.PostReports
+            .Include(r => r.Post)
+            .AsQueryable();
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == (Models.ReportStatus)status.Value);
+        }
+
+
+        var reportEntities = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        var reporterIds = reportEntities
+        .Select(r => r.ReporterId)
+        .Distinct()
+        .ToList();
+
+        var profileResults = await Task.WhenAll(
+            reporterIds.Select(id => _userProfileRpcClient.GetProfileAsync(id)));
+
+        var profileLookup = reporterIds
+           .Zip(profileResults, (id, profile) => new { id, profile })
+           .ToDictionary(x => x.id, x => x.profile);
+
+        return reportEntities
+            .Select(r =>
+            {
+                profileLookup.TryGetValue(r.ReporterId, out var profile);
+                var displayName = profile?.Found == true ? profile.DisplayName : "Someone";
+
+                return new PostReportDto
+                {
+                    Id = r.Id,
+                    PostId = r.PostId,
+                    ReporterId = r.ReporterId,
+                    ReporterDisplayName = displayName,
+                    ReporterProfile = profile?.Found == true ? profile : null,
+                    Reason = r.Reason,
+                    Status = r.Status,
+                    AdminNote = r.AdminNote,
+                    CreatedAt = r.CreatedAt,
+                    ResolvedAt = r.ResolvedAt
+                };
+            })
+            .ToList();
+    }
+    public async Task<PostReportDto> CreatePostReportAsync(Guid userId, ReportPostRequest request)
+    {
+        // Check if post exists
+        var postExists = await _context.Posts.AnyAsync(p => p.Id == request.PostId && !p.IsDeleted);
+        if (!postExists)
+            throw new KeyNotFoundException("Post not found");
+        
+        var existingReport = await _context.PostReports
+            .FirstOrDefaultAsync(r => r.PostId == request.PostId && r.ReporterId == userId && r.Status == Models.ReportStatus.Pending);
+        if (existingReport != null)
+            throw new InvalidOperationException("You have already reported this post and it's still pending review");
+
+        var report = new PostReport
+        {
+            Id = Guid.NewGuid(),
+            PostId = request.PostId,
+            ReporterId = userId,
+            Reason = request.Reason,
+            Status = ReportStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.PostReports.Add(report);
+        await _context.SaveChangesAsync();
+
+        var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(userId);
+        var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+        return new PostReportDto
+        {
+            Id = report.Id,
+            PostId = report.PostId,
+            ReporterId = report.ReporterId,
+            ReporterDisplayName = reporterDisplayName,
+            ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
+            Reason = report.Reason,
+            Status = report.Status,
+            CreatedAt = report.CreatedAt
+        };
+    }
 }

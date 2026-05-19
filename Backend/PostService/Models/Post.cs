@@ -49,13 +49,16 @@ public class Post
     public ICollection<Like> Likes { get; set; } = new List<Like>();
     public ICollection<PostHashtag> Hashtags { get; set; } = new List<PostHashtag>();
     public ICollection<PostMention> Mentions { get; set; } = new List<PostMention>();
+
+    public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();  // ← thêm mới
 }
 
 public enum PostVisibility
 {
     Public = 0,      // Everyone can see
     Followers = 1,   // Only followers
-    Private = 2      // Only mentioned users
+    Private = 2,      // Only mentioned users
+    Hidden = 3      // Hidden from everyone (used for soft delete or content violation)
 }
 
 public enum PostType

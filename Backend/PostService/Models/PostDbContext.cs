@@ -23,6 +23,8 @@ public class PostDbContext : DbContext
     public DbSet<StoryItem> StoryItems { get; set; }
     public DbSet<StoryView> StoryViews { get; set; }
 
+    public DbSet<PostReport> PostReports { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -237,5 +239,11 @@ public class PostDbContext : DbContext
             entity.HasIndex(e => new { e.StoryItemId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.UserId);
         });
+
+        modelBuilder.Entity<PostReport>()
+            .HasOne(r => r.Post)
+            .WithMany(p => p.Reports)
+            .HasForeignKey(r => r.PostId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

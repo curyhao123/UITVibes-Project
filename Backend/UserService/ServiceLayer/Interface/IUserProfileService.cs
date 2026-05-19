@@ -1,4 +1,5 @@
 using UserService.DTOs;
+using UserService.Models;
 
 namespace UserService.ServiceLayer.Interface;
 
@@ -19,4 +20,8 @@ public interface IUserProfileService
     Task RemoveRecentSearchAsync(Guid currentUserId, Guid targetUserId);
     Task<SetDisplayNameDto> UpdateDisplayNameAsync(Guid currentUserId,string displayName);
     Task<bool> IsDisplayNameAvailableAsync(string displayName);
+
+    Task<List<UserProfileDto>> GetAllUserProfilesAsync(int skip = 0, int take = 20);
+    Task<List<UserReportDto>> GetUserReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null);
+    Task<UserReportDto> CreateUserReportAsync(Guid userId, ReportUserRequest request);
 }

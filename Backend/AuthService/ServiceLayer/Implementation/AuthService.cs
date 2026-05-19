@@ -143,7 +143,8 @@ namespace AuthService.ServiceLayer.Implementation
                     Id = user.Id,
                     Email = user.Email,
                     Username = user.Username,
-                    IsVerified = user.IsVerified ? "True" : "False"
+                    IsVerified = user.IsVerified ? "True" : "False",
+                    Role = user.Role.ToString()
                 }
             };
         }
@@ -189,7 +190,8 @@ namespace AuthService.ServiceLayer.Implementation
                 {
                     Id = token.User.Id,
                     Email = token.User.Email,
-                    Username = token.User.Username
+                    Username = token.User.Username,
+                    Role = token.User.Role.ToString()
                 }
             };
         }

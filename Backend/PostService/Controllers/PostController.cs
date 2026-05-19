@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PostService.DTOs;
+using PostService.Models;
 using PostService.ServiceLayer.Interface;
 using RabbitMQ.Client;
 
@@ -14,7 +15,7 @@ public class PostController : ControllerBase
     private readonly IBookmarkService _bookmarkService;
     private readonly ILogger<PostController> _logger;
 
-    public PostController(IPostService postService, ILogger<PostController> logger, 
+    public PostController(IPostService postService, ILogger<PostController> logger,
         IBookmarkService bookmarkService, IRepostService repostService)
     {
         _postService = postService;
@@ -356,7 +357,7 @@ public class PostController : ControllerBase
         }
         try
         {
-            var bookmarks = await _bookmarkService.GetBookmarksByUserAsync(userId,collection,skip,take);
+            var bookmarks = await _bookmarkService.GetBookmarksByUserAsync(userId, collection, skip, take);
             return Ok(bookmarks);
         }
         catch (Exception ex)
@@ -473,4 +474,51 @@ public class PostController : ControllerBase
         }
     }
 
+    [HttpGet("post-report")]
+    public async Task<ActionResult<List<PostReportDto>>> GetPostReports(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20,
+        [FromQuery] ReportStatus? status = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        try
+        {
+            var reports = await _postService.GetPostReportsAsync(skip, take, status);
+            return Ok(reports);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving post reports)");
+            return StatusCode(500, new { message = "An error occurred while retrieving post reports" });
+        }
+    }
+
+    [HttpPost("post-report")]
+    public async Task<ActionResult<PostReportDto>> CreatePostReport([FromBody] ReportPostRequest request)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var report = await _postService.CreatePostReportAsync(userId, request);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating post report for post {PostId} by user {UserId}", request.PostId, userId);
+            return StatusCode(500, new { message = "An error occurred while creating post report" });
+        }
+
+    }
 }

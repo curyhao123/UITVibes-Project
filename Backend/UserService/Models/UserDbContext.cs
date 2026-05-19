@@ -13,6 +13,7 @@ public class UserDbContext : DbContext
     public DbSet<Follow> Follows { get; set; }
 
     public DbSet<Block> Blocks { get; set; }
+    public DbSet<UserReport> UserReports { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +22,7 @@ public class UserDbContext : DbContext
         modelBuilder.Entity<UserProfile>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => e.UserId);
             entity.HasIndex(e => e.UserId).IsUnique();
             entity.HasIndex(e => e.DisplayName).IsUnique();
             entity.Property(e => e.DisplayName).HasMaxLength(100);
@@ -71,6 +73,23 @@ public class UserDbContext : DbContext
             entity.HasIndex(e => e.BlockerId);
             entity.HasIndex(e => e.BlockedId);
 
+        });
+
+        modelBuilder.Entity<UserReport>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            // Composite index chống report trùng
+            entity.HasIndex(e => new { e.ReporterId, e.TargetUserId });
+
+            // Index cho query
+            entity.HasIndex(e => e.TargetUserId);
+            entity.HasIndex(e => e.ReporterId);
+            entity.HasIndex(e => e.Status);
+
+            // Không có FK constraint
+            // ReporterId và TargetUserId tham chiếu UserId từ AuthService
+            // Referential integrity xử lý ở application logic
         });
     }
 }

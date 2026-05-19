@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using UserService.DTOs;
+using UserService.Models;
 using UserService.ServiceLayer.Interface;
 
 namespace UserService.Controllers;
@@ -370,5 +371,56 @@ public class UserProfileController : ControllerBase
         return Ok();
     }
 
-    
+    [HttpGet]
+    public async Task<ActionResult<List<UserProfileDto>>> GetAllProfiles([FromQuery] int skip = 0, [FromQuery] int take = 20)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        Console.WriteLine(userRoleHeader);
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        var profiles = await _userProfileService.GetAllUserProfilesAsync(skip, take);
+        return Ok(profiles);
+    }
+
+    [HttpGet("reports")]
+    public async Task<ActionResult<List<UserReportDto>>> GetUserReports([FromQuery] int skip = 0, [FromQuery] int take = 20, [FromQuery] ReportStatus? status = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        var reports = await _userProfileService.GetUserReportsAsync(skip, take, status);
+        return Ok(reports);
+    }
+
+    [HttpPost("reports")]
+    public async Task<ActionResult<UserReportDto>> CreateUserReport([FromBody] ReportUserRequest request)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var report = await _userProfileService.CreateUserReportAsync(userId, request);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Reported user not found" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating user report by user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while creating user report" });
+        }
+    }
 }

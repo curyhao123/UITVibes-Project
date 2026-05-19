@@ -522,56 +522,177 @@ public class UserProfileService : IUserProfileService
     }
 
     public async Task<SetDisplayNameDto> UpdateDisplayNameAsync(Guid currentUserId, string displayName)
-{
-    var profile = await _context.UserProfiles
-        .Include(p => p.SocialLinks)
-        .FirstOrDefaultAsync(p => p.UserId == currentUserId);
-
-    if (profile == null)
     {
-        throw new KeyNotFoundException("Profile not found");
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.UserId == currentUserId);
+
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("Profile not found");
+        }
+
+        var exist = await _context.UserProfiles.AnyAsync(p => p.DisplayName == displayName && p.UserId != currentUserId);
+        if (exist)
+        {
+            throw new ArgumentException("Display name is already taken");
+        }
+
+        var trimmedDisplayName = displayName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedDisplayName))
+        {
+            throw new ArgumentException("Display name cannot be empty");
+        }
+
+        if (trimmedDisplayName.Length > 100)
+        {
+            throw new ArgumentException("Display name cannot exceed 100 characters");
+        }
+
+        profile.DisplayName = trimmedDisplayName;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Updated display name for user {UserId}", currentUserId);
+
+        return new SetDisplayNameDto
+        {
+            DisplayName = profile.DisplayName!
+        };
     }
 
-    var exist = await _context.UserProfiles.AnyAsync(p => p.DisplayName == displayName && p.UserId != currentUserId);
-    if (exist)
+    public async Task<bool> IsDisplayNameAvailableAsync(string displayName)
     {
-        throw new ArgumentException("Display name is already taken");
+        var trimmed = displayName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return false;
+        }
+
+        return !await _context.UserProfiles
+            .AnyAsync(p => p.DisplayName != null &&
+                           EF.Functions.ILike(p.DisplayName, trimmed));
     }
 
-    var trimmedDisplayName = displayName?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedDisplayName))
+    public async Task<List<UserProfileDto>> GetAllUserProfilesAsync(int skip = 0, int take = 20)
     {
-        throw new ArgumentException("Display name cannot be empty");
+        return await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .Skip(skip)
+            .Take(take)
+            .Select(p => MapToDto(p))
+            .ToListAsync();
+    }
+    public async Task<List<UserReportDto>> GetUserReportsAsync(
+        int skip = 0, 
+        int take = 20,
+        ReportStatus? status = null)
+    {
+
+        var query = _context.UserReports
+        .AsQueryable();
+
+        // Filter theo status nếu có
+        if (status.HasValue)
+            query = query.Where(r => r.Status == status.Value);
+
+        var reports = await query
+           .OrderByDescending(r => r.CreatedAt)
+           .Skip(skip)
+           .Take(take)
+           .ToListAsync();
+
+
+        // Lấy tất cả UserId liên quan
+        var userIds = reports
+            .SelectMany(r => new[] { r.ReporterId, r.TargetUserId })
+            .Distinct()
+            .ToList();
+
+        // Query UserProfile một lần duy nhất
+        var profiles = await _context.UserProfiles
+            .Where(p => userIds.Contains(p.UserId))
+            .ToDictionaryAsync(p => p.UserId, p => p.DisplayName ?? "Someone");
+
+        return reports.Select(r => new UserReportDto
+        {
+            Id = r.Id,
+            ReporterUserId = r.ReporterId,
+            ReportedUserId = r.TargetUserId,
+            ReporterDisplayName = profiles.GetValueOrDefault(r.ReporterId, "Someone"),
+            ReportedDisplayName = profiles.GetValueOrDefault(r.TargetUserId, "Someone"),
+            Reason = r.Reason,
+            CreatedAt = r.CreatedAt,
+            Status = r.Status,
+            AdminNote = r.AdminNote,
+            ResolvedAt = r.ResolvedAt
+        }).ToList();
     }
 
-    if (trimmedDisplayName.Length > 100)
+    public async Task<UserReportDto> CreateUserReportAsync(Guid userId, ReportUserRequest request)
     {
-        throw new ArgumentException("Display name cannot exceed 100 characters");
+        if (userId == request.TargetUserId)
+        {
+            throw new ArgumentException("You cannot report yourself");
+        }
+
+        var reporter = await _context.UserProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        if (reporter == null)
+        {
+            throw new KeyNotFoundException("Reporter profile not found");
+        }
+
+        var targetProfile = await _context.UserProfiles
+            .FirstOrDefaultAsync(p => p.UserId == request.TargetUserId);
+        if (targetProfile == null)
+        {
+            throw new KeyNotFoundException("Target user not found");
+        }
+        var existingReport = await _context.UserReports
+            .FirstOrDefaultAsync(r =>
+                r.ReporterId == userId &&
+                r.TargetUserId == request.TargetUserId &&
+                r.Status == ReportStatus.Pending);
+
+        if (existingReport != null)
+        {
+            throw new InvalidOperationException("You have already reported this user");
+        }
+
+
+        // Lấy thông tin reporter
+        var reporterProfile = await _context.UserProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        var report = new UserReport
+        {
+            Id = Guid.NewGuid(),
+            ReporterId = userId,
+            TargetUserId = request.TargetUserId,
+            Reason = request.Reason,
+            Status = ReportStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.UserReports.Add(report);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "User {ReporterId} reported user {TargetUserId} for reason: {Reason}",
+            userId, request.TargetUserId, request.Reason);
+
+        return new UserReportDto
+        {
+            Id = report.Id,
+            ReporterUserId = report.ReporterId,
+            ReportedUserId = report.TargetUserId,
+            ReporterDisplayName = reporterProfile?.DisplayName ?? "Someone",
+            ReportedDisplayName = targetProfile.DisplayName ?? "Someone",
+            Reason = report.Reason,
+            CreatedAt = report.CreatedAt,
+            Status = report.Status
+        };
     }
-
-    profile.DisplayName = trimmedDisplayName;
-    profile.UpdatedAt = DateTime.UtcNow;
-
-    await _context.SaveChangesAsync();
-
-    _logger.LogInformation("Updated display name for user {UserId}", currentUserId);
-
-    return new SetDisplayNameDto
-    {
-        DisplayName = profile.DisplayName!
-    };
-}
-
-public async Task<bool> IsDisplayNameAvailableAsync(string displayName)
-{
-    var trimmed = displayName?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmed))
-    {
-        return false;
-    }
-
-    return !await _context.UserProfiles
-        .AnyAsync(p => p.DisplayName != null &&
-                       EF.Functions.ILike(p.DisplayName, trimmed));
-}
 }

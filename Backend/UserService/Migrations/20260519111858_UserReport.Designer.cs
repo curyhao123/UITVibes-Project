@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UserService.Models;
@@ -11,9 +12,11 @@ using UserService.Models;
 namespace UserService.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260519111858_UserReport")]
+    partial class UserReport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -170,8 +173,6 @@ namespace UserService.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("UserId");
-
                     b.HasIndex("DisplayName")
                         .IsUnique();
 
@@ -213,11 +214,7 @@ namespace UserService.Migrations
 
                     b.HasIndex("ReporterId");
 
-                    b.HasIndex("Status");
-
                     b.HasIndex("TargetUserId");
-
-                    b.HasIndex("ReporterId", "TargetUserId");
 
                     b.ToTable("UserReports");
                 });
@@ -231,6 +228,25 @@ namespace UserService.Migrations
                         .IsRequired();
 
                     b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("UserService.Models.UserReport", b =>
+                {
+                    b.HasOne("UserService.Models.UserProfile", "Reporter")
+                        .WithMany()
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UserService.Models.UserProfile", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("TargetUser");
                 });
 
             modelBuilder.Entity("UserService.Models.UserProfile", b =>

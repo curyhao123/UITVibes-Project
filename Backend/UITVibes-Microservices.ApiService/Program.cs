@@ -124,6 +124,7 @@ builder.Services.AddReverseProxy()
             {
                 var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var email = httpContext.User.FindFirst(ClaimTypes.Email)?.Value;
+                var role = httpContext.User.FindFirst(ClaimTypes.Role)?.Value;
 
                 if (userId != null)
                     transformContext.ProxyRequest.Headers
@@ -131,6 +132,9 @@ builder.Services.AddReverseProxy()
                 if (email != null)
                     transformContext.ProxyRequest.Headers
                         .TryAddWithoutValidation("X-User-Email", email);
+                if (role != null)
+                    transformContext.ProxyRequest.Headers
+                        .TryAddWithoutValidation("X-User-Role", role);
             }
             // Case 2 — WebSocket/SignalR, token nằm trong query string
             // vì lúc này User chưa được set do OnMessageReceived chạy sau transform

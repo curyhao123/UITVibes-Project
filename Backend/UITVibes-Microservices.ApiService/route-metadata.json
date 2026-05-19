@@ -221,6 +221,38 @@
           "pathParameters": {
             "targetUserId": "guid"
           }
+        },
+        {
+          "method": "GET",
+          "path": "/user/userprofile",
+          "description": "Get all user profiles (Admin only)",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/user/userprofile/reports",
+          "description": "Get user reports (Admin only)",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20,
+            "status": "Pending"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/user/userprofile/reports",
+          "description": "Create user report",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "targetUserId": "guid",
+            "reason": "Spam/Abuse"
+          }
         }
       ]
     },
@@ -425,6 +457,28 @@
           "contentType": "multipart/form-data",
           "requestBody": {
             "file": "[Binary file data - max 10MB for images, 100MB for videos]"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/post-report",
+          "description": "Get post reports (Admin only)",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 20,
+            "status": "Pending"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/post-report",
+          "description": "Create post report",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "postId": "guid",
+            "reason": "Spam/Abuse"
           }
         }
       ]

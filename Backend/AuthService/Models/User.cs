@@ -1,4 +1,6 @@
-﻿namespace AuthService.Models
+﻿using StackExchange.Redis;
+
+namespace AuthService.Models
 {
     public class User
     {
@@ -11,6 +13,8 @@
         public bool IsActive { get; set; } = true;
         public bool IsVerified { get; set; } = false;
 
+        public Role Role { get; set; } = Role.User;
+
         public string? OtpCode { get; set; }
         public DateTime? OtpExpiry { get; set; }
         public int OtpResendCount { get; set; } = 0;      // chống spam gửi lại
@@ -18,4 +22,10 @@
 
         public List<RefreshToken> RefreshTokens { get; set; } = new();
     }
+}
+
+public enum Role
+{
+    User = 0,
+    Admin = 1
 }
