@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NotificationService.Models;
 using NotificationService.ServiceLayer.Interface;
 
@@ -29,8 +29,11 @@ namespace NotificationService.ServiceLayer.Implementation
                     return;
                 }
 
-                // Token thuộc user cũ (đổi thiết bị) → deactivate rồi tạo mới
-                existing.Deactivate();
+                // Token thuộc user cũ (đổi thiết bị) → update sang user mới thay vì tạo dòng mới để tránh lỗi UNIQUE constraint
+                existing.UpdateUser(userId);
+                existing.Refresh(token);
+                await _db.SaveChangesAsync(ct);
+                return;
             }
 
             _db.DeviceTokens.Add(DeviceToken.Create(userId, token, platform));

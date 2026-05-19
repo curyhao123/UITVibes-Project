@@ -1,10 +1,10 @@
-﻿namespace NotificationService.Models
+namespace NotificationService.Models
 {
     public class DeviceToken
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
 
-        public Guid UserId { get; init; }
+        public Guid UserId { get; private set; }
         public string Token { get; private set; } = string.Empty;
         public DevicePlatform Platform { get; init; }
 
@@ -23,6 +23,11 @@
         }
 
         public void Deactivate() => IsActive = false;
+
+        public void UpdateUser(Guid newUserId)
+        {
+            UserId = newUserId;
+        }
     }
 
     public enum DevicePlatform { Android, iOS }

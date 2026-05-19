@@ -21,6 +21,7 @@ import {
   removeLocalRecentSearch,
   clearLocalRecentSearches,
 } from "./session";
+import { getAccessToken, API_BASE_URL } from "./httpClient";
 import {
   BE_UserProfile,
   BE_FollowStats,
@@ -618,10 +619,14 @@ export async function updateAvatar(avatarUri: string): Promise<User> {
   // Web thường là blob: — bắt buộc multipart lên BE (Cloudinary), không PUT JSON
   if (needsMultipartImageUpload(avatarUri)) {
     const formData = await buildMultipartFileField(avatarUri, "avatar.jpg");
-    const { data } = await apiClient.post<BE_UserProfile>(
-      "/user/userprofile/me/avatar",
-      formData,
-    );
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE_URL}/user/userprofile/me/avatar`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData as any,
+    });
+    if (!res.ok) throw new Error(`Avatar upload failed: ${res.status}`);
+    const data = await res.json();
     const statsRes = await apiClient.get<BE_FollowStats>(
       `/user/follow/${data.userId}/stats`,
     );
@@ -694,10 +699,14 @@ export async function updateCover(coverUri: string): Promise<User> {
 
   if (needsMultipartImageUpload(coverUri)) {
     const formData = await buildMultipartFileField(coverUri, "cover.jpg");
-    const { data } = await apiClient.post<BE_UserProfile>(
-      "/user/userprofile/me/cover",
-      formData,
-    );
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE_URL}/user/userprofile/me/cover`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData as any,
+    });
+    if (!res.ok) throw new Error(`Cover upload failed: ${res.status}`);
+    const data = await res.json();
     const statsRes = await apiClient.get<BE_FollowStats>(
       `/user/follow/${data.userId}/stats`,
     );
