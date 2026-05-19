@@ -4,3 +4,5 @@
 
 /Backend/UITVibes-Microservices.AppHost/appsettings.json
 /.vs
+/google-services.json
+/GoogleService-Info.plist
