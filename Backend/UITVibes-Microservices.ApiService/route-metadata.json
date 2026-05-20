@@ -1008,6 +1008,23 @@
           }
         }
       ]
+    },
+    {
+      "name": "PostService - Visibility",
+      "description": "Change post visibility",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/post/{postId}/visibility",
+          "description": "Change post visibility (owner only)",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "postId": "guid"
+          },
+          "requestBody": 0
+        }
+      ]
     }
   ]
 }
