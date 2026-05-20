@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
-using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -17,6 +16,7 @@ public class PostService : IPostService
     private readonly IPostLikedPublisher _postLikedPublisher;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly IRepostService _repostService;
+    private readonly IPostMentionedPublisher _postMentionedPublisher;
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
@@ -24,7 +24,8 @@ public class PostService : IPostService
         ILogger<PostService> logger,
         IPostLikedPublisher postLikedPublisher,
         IUserProfileRpcClient userProfileRpcClient,
-        IRepostService repostService)
+        IRepostService repostService,
+        IPostMentionedPublisher postMentionedPublisher)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
@@ -35,6 +36,7 @@ public class PostService : IPostService
         _repostService = repostService;
         _userProfileRpcClient = userProfileRpcClient;
         _postLikedPublisher = postLikedPublisher;
+        _postMentionedPublisher = postMentionedPublisher;
     }
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
@@ -87,7 +89,7 @@ public class PostService : IPostService
 
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}", 
+        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}",
             post.Id, post.Media.Count, userId);
 
         return await GetPostByIdAsync(post.Id, userId);
@@ -235,7 +237,7 @@ public class PostService : IPostService
         if (isVideo)
         {
             var (url, thumbnailUrl, publicId, duration) = await _cloudinaryService.UploadVideoAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -248,7 +250,7 @@ public class PostService : IPostService
         else
         {
             var (url, publicId, width, height) = await _cloudinaryService.UploadImageAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -312,23 +314,49 @@ public class PostService : IPostService
 
     private async Task ProcessMentionsAsync(Post post, List<string> usernames)
     {
+        if (usernames.Count == 0)
+        {
+            return;
+        }
+
+        var mentionerProfile = await _userProfileRpcClient.GetProfileAsync(post.UserId);
+        var mentionerName = mentionerProfile?.Found == true ? mentionerProfile.DisplayName : "Someone";
+
+
         foreach (var username in usernames)
         {
+            var mentionedUserResult = await _userProfileRpcClient.GetProfileAsync(username);
+            if (mentionedUserResult?.Found != true || mentionedUserResult.UserId == Guid.Empty)
+            {
+                continue;
+            }
+
+            if (mentionedUserResult.UserId == post.UserId)
+            {
+                continue;
+            }
+
             var mention = new PostMention
             {
                 Id = Guid.NewGuid(),
                 PostId = post.Id,
-                MentionedUserId = Guid.Empty, // TODO: Resolve from UserService
+                MentionedUserId = mentionedUserResult.UserId,
                 StartPosition = 0,
                 Length = username.Length,
                 CreatedAt = DateTime.UtcNow
             };
+
             post.Mentions.Add(mention);
+
+            await _postMentionedPublisher.PublishAsync(new PostMentionedEvent(
+                mentionedUserResult.UserId,
+                post.UserId,
+                mentionerName,
+                post.Id));
         }
-        
+
         await Task.CompletedTask;
     }
-
 
     private async Task<PostDto> MapToDto(Post post, Guid? currentUserId)
     {
@@ -432,8 +460,6 @@ public class PostService : IPostService
             _logger.LogError(ex, "Failed to publish PostLikedevent for post {PostId}", postId);
         }
 
-
-
         return new LikeResponse
         {
             LikeId = like.Id,
@@ -509,7 +535,6 @@ public class PostService : IPostService
             query = query.Where(r => r.Status == (Models.ReportStatus)status.Value);
         }
 
-
         var reportEntities = await query
             .OrderByDescending(r => r.CreatedAt)
             .Skip(skip)
@@ -556,7 +581,7 @@ public class PostService : IPostService
         var postExists = await _context.Posts.AnyAsync(p => p.Id == request.PostId && !p.IsDeleted);
         if (!postExists)
             throw new KeyNotFoundException("Post not found");
-        
+
         var existingReport = await _context.PostReports
             .FirstOrDefaultAsync(r => r.PostId == request.PostId && r.ReporterId == userId && r.Status == Models.ReportStatus.Pending);
         if (existingReport != null)
@@ -588,5 +613,21 @@ public class PostService : IPostService
             Status = report.Status,
             CreatedAt = report.CreatedAt
         };
+    }
+
+    public async Task<PostDto> ChangePostVisibilityAsync(Guid postId, Guid userId, PostVisibility postVisibility)
+    {
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+        if (post == null)
+            throw new KeyNotFoundException("Post not found");
+
+        if (post.UserId != userId && postVisibility != PostVisibility.Hidden)
+            throw new UnauthorizedAccessException("You can only change visibility of your own posts");
+
+        post.Visibility = postVisibility;
+        post.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Changed visibility of post {PostId} to {Visibility}", postId, postVisibility);
+        return await GetPostByIdAsync(postId, userId);
     }
 }

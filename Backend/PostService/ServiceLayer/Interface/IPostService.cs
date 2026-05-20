@@ -19,4 +19,6 @@ public interface IPostService
     Task<List<LikeDto>> GetPostLikesAsync(Guid postId, int skip = 0, int take = 50);
     Task<List<PostReportDto>> GetPostReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null);
     Task<PostReportDto> CreatePostReportAsync(Guid userId, ReportPostRequest request);
+
+    Task<PostDto> ChangePostVisibilityAsync(Guid postId, Guid userId, PostVisibility postVisibility);
 }

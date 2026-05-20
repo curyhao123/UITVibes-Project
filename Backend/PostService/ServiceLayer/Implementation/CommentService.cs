@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
+using System.Text.RegularExpressions;
 
 namespace PostService.ServiceLayer.Implementation;
 
@@ -12,14 +14,29 @@ public class CommentService : ICommentService
     private readonly ILogger<CommentService> _logger;
     private readonly IPostCommentedPublisher _postCommentedPublisher;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
+    private readonly ICommentMentionedPublisher _commentMentionedPublisher;
 
-
-    public CommentService(PostDbContext context, ILogger<CommentService> logger, IPostCommentedPublisher postCommentedPublisher, IUserProfileRpcClient userProfileRpcClient)
+    public CommentService(PostDbContext context, ILogger<CommentService> logger, 
+        IPostCommentedPublisher postCommentedPublisher, 
+        IUserProfileRpcClient userProfileRpcClient,
+        ICommentMentionedPublisher commentMentionedPublisher)
     {
         _context = context;
         _logger = logger;
         _postCommentedPublisher = postCommentedPublisher;
         _userProfileRpcClient = userProfileRpcClient;
+        _commentMentionedPublisher = commentMentionedPublisher;
+    }
+
+    private List<string> ExtractMentions(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return [];
+        }
+        var regex = new Regex(@"@(\w+)", RegexOptions.IgnoreCase);
+        var matches = regex.Matches(content);
+        return matches.Select(m => m.Groups[1].Value.ToLower()).Distinct().ToList();
     }
 
     public async Task<CommentDto> CreateCommentAsync(Guid postId, Guid userId, CreateCommentRequest request)
@@ -73,7 +90,11 @@ public class CommentService : ICommentService
         post.CommentsCount++;
         post.UpdatedAt = DateTime.UtcNow;
 
+
         await _context.SaveChangesAsync();
+
+        var mentionedUsernames = ExtractMentions(comment.Content);
+        await ProcessMentionsAsync(post, comment, mentionedUsernames);
 
         _logger.LogInformation("User {UserId} commented on post {PostId}", userId, postId);
 
@@ -100,6 +121,48 @@ public class CommentService : ICommentService
 
         return MapToDto(comment, userId);
     }
+
+    private async Task ProcessMentionsAsync(Post post, Comment comment, List<string> usernames)
+    {
+        if (usernames.Count == 0)
+            return;
+        var mentionerProfile = await _userProfileRpcClient.GetProfileAsync(comment.UserId);
+        var mentionerName = mentionerProfile?.Found == true ? mentionerProfile.DisplayName : "Someone";
+        var commentPreview = comment.Content.Length <= 100
+            ? comment.Content
+            : comment.Content[..100];
+
+
+        foreach (var username in usernames)
+        {
+            var mentionedUserResult = await _userProfileRpcClient.GetProfileAsync(username);
+            if (mentionedUserResult?.Found != true || mentionedUserResult.UserId == Guid.Empty)
+            {
+                continue;
+            }
+
+            if (mentionedUserResult.UserId == comment.UserId)
+            {
+                continue;
+            }
+
+            try
+            {
+                await _commentMentionedPublisher.PublishAsync(new CommentMentionedEvent(
+                    mentionedUserResult.UserId,
+                    comment.UserId,
+                    mentionerName,
+                    post.Id,
+                    comment.Id,
+                    commentPreview));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish CommentMentioned event for comment {CommentId}", comment.Id);
+            }
+        }
+    }
+
 
     public async Task<List<CommentDto>> GetPostCommentsAsync(Guid postId, Guid? currentUserId, int skip = 0, int take = 50)
     {

@@ -55,7 +55,17 @@ namespace UserService.Messaging
                     {
                         using var serviceScope = _serviceProvider.CreateScope();
                         var userProfileService = serviceScope.ServiceProvider.GetRequiredService<IUserProfileService>();
-                        var profile = await userProfileService.GetProfileByUserIdAsync(request.UserId, request.UserId);
+
+                        UserProfileDto? profile = null;
+
+                        if (!string.IsNullOrWhiteSpace(request.DisplayName))
+                        {
+                            profile = await userProfileService.GetProfileByDisplayNameAsync(request.DisplayName);
+                        }
+                        else if (request.UserId != Guid.Empty)
+                        {
+                            profile = await userProfileService.GetProfileByUserIdAsync(request.UserId, request.UserId);
+                        }
 
                         if (profile != null)
                         {

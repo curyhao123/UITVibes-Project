@@ -695,4 +695,25 @@ public class UserProfileService : IUserProfileService
             Status = report.Status
         };
     }
+
+    public async Task<UserProfileDto?> GetProfileByDisplayNameAsync(string displayName)
+    {
+        var trimmed = displayName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            throw new ArgumentException("Display name is required");
+        }
+
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.DisplayName != null &&
+                                     EF.Functions.ILike(p.DisplayName, trimmed));
+
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("User profile not found");
+        }
+
+        return MapToDto(profile);
+    }
 }

@@ -521,4 +521,26 @@ public class PostController : ControllerBase
         }
 
     }
+    [HttpPost("{postId}/visibility")]
+    public async Task<ActionResult<PostDto>> ChangePostVisibility(Guid postId, [FromBody] PostVisibility postVisibility)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var post = await _postService.ChangePostVisibilityAsync(postId, userId, postVisibility);
+            return Ok(post);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Post not found" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
 }
