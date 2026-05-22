@@ -14,6 +14,16 @@ export {
   type Story,
   type StoryItem,
 } from "./storyService";
+export {
+  getUserHighlights,
+  getHighlightDetail,
+  createHighlightGroup,
+  addStoryItemToHighlight,
+  deleteHighlightGroup,
+  removeHighlightItem,
+  type HighlightGroup,
+  type HighlightItem,
+} from "./highlightService";
 export * from "./messageService";
 export * from "./onlineTrackingService";
 export * from "./notificationService";

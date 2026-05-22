@@ -313,11 +313,13 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
   const posts = await Promise.all(
     data.map(async (post) => {
       const author = await fetchUserById(post.userId);
+      const allImages = post.media?.map((m) => m.url) ?? [];
       return {
         id: post.id,
         userId: post.userId,
         user: author,
-        image: post.media?.[0]?.url || "",
+        image: allImages[0] ?? "",
+        images: allImages,
         caption: post.content,
         likes: post.likesCount,
         comments: [],

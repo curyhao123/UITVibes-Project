@@ -1,4 +1,4 @@
-﻿namespace PostService.DTOs
+namespace PostService.DTOs
 {
     public class UserProfileRpcResponse
     {

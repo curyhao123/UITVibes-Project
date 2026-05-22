@@ -513,16 +513,32 @@ public class PostService : IPostService
             .OrderByDescending(l => l.CreatedAt)
             .Skip(skip)
             .Take(take)
-            .Select(l => new LikeDto
+            .ToListAsync();
+
+        var userIds = likes.Select(l => l.UserId).Distinct().ToList();
+
+        var profileResults = await Task.WhenAll(
+            userIds.Select(id => _userProfileRpcClient.GetProfileAsync(id)));
+
+        var profileLookup = userIds
+            .Zip(profileResults, (id, profile) => new { id, profile })
+            .ToDictionary(x => x.id, x => x.profile);
+
+        return likes.Select(l =>
+        {
+            profileLookup.TryGetValue(l.UserId, out var profile);
+            var displayName = profile?.Found == true ? profile.DisplayName : "Someone";
+
+            return new LikeDto
             {
                 LikeId = l.Id,
                 PostId = l.PostId,
                 UserId = l.UserId,
+                DisplayName = displayName,
+                AvatarUrl = profile?.Found == true ? profile.AvatarUrl ?? "" : "",
                 CreatedAt = l.CreatedAt
-            })
-            .ToListAsync();
-
-        return likes;
+            };
+        }).ToList();
     }
 
     public async Task<List<PostReportDto>> GetPostReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null)

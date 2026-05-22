@@ -30,6 +30,8 @@ builder.Services.AddScoped<IPostLikedPublisher, PostLikedPublisher>();
 builder.Services.AddScoped<IRepostService, RepostService>();
 builder.Services.AddScoped<IPostMentionedPublisher, PostMentionedPublisher>();
 builder.Services.AddScoped<ICommentMentionedPublisher, CommentMentionedPublisher>();
+builder.Services.AddScoped<IHighlightService, HighlightService>();
+builder.Services.AddScoped<IReelService, ReelService>();
 
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()

@@ -1025,6 +1025,181 @@
           "requestBody": 0
         }
       ]
+    },
+    {
+      "name": "PostService - Reels",
+      "description": "Reel creation, engagement, and comments",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/post/reel",
+          "description": "Get reels feed",
+          "requiresAuth": true,
+          "queryParameters": {
+            "skip": 0,
+            "take": 10
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/reel/{reelId}",
+          "description": "Get reel by ID",
+          "requiresAuth": true,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/reel/user/{userId}",
+          "description": "Get reels by user",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 10
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel",
+          "description": "Create a reel",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "videoUrl": "https://res.cloudinary.com/.../video.mp4",
+            "videoPublicId": "reels/abc123",
+            "thumbnailUrl": "https://res.cloudinary.com/.../thumb.jpg",
+            "thumbnailPublicId": "reels/thumb_abc123",
+            "caption": "My reel caption",
+            "duration": 15
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/uploadvideo",
+          "description": "Upload reel video",
+          "requiresAuth": false,
+          "contentType": "multipart/form-data",
+          "requestBody": {
+            "file": "[Binary file data - video]"
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/reel/{reelId}",
+          "description": "Delete reel (owner only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/{reelId}/like",
+          "description": "Like a reel",
+          "requiresAuth": true,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/{reelId}/unlike",
+          "description": "Unlike a reel",
+          "requiresAuth": true,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/{reelId}/view",
+          "description": "Increment reel view count",
+          "requiresAuth": false,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/{reelId}/share",
+          "description": "Share a reel",
+          "requiresAuth": true,
+          "pathParameters": {
+            "reelId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/{reelId}/comment",
+          "description": "Add a comment to a reel",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "pathParameters": {
+            "reelId": "guid"
+          },
+          "requestBody": {
+            "content": "Nice reel!",
+            "parentCommentId": null
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/reel/{reelId}/comments",
+          "description": "Get reel comments",
+          "requiresAuth": false,
+          "pathParameters": {
+            "reelId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 10
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/post/reel/comment/{commentId}/replies",
+          "description": "Get replies for a reel comment",
+          "requiresAuth": false,
+          "pathParameters": {
+            "commentId": "guid"
+          },
+          "queryParameters": {
+            "skip": 0,
+            "take": 10
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/post/reel/comment/{commentId}",
+          "description": "Delete a reel comment (owner only)",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/comment/{commentId}/like",
+          "description": "Like a reel comment",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/post/reel/comment/{commentId}/unlike",
+          "description": "Unlike a reel comment",
+          "requiresAuth": true,
+          "pathParameters": {
+            "commentId": "guid"
+          }
+        }
+      ]
     }
   ]
 }

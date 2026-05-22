@@ -72,7 +72,7 @@ function OptionRow({
 
 export default function CreateScreen() {
   const [createType, setCreateType] = React.useState<CreateType>('post');
-  const [selectedMedia, setSelectedMedia] = React.useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = React.useState<string[]>([]);
   const [caption, setCaption] = React.useState('');
   const [isPosting, setIsPosting] = React.useState(false);
   const [toastVisible, setToastVisible] = React.useState(false);
@@ -115,12 +115,18 @@ export default function CreateScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
       aspect: createType === 'reels' ? [9, 16] : [1, 1],
       quality: 0.85,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setSelectedMedia(result.assets[0].uri);
+    if (!result.canceled && result.assets.length > 0) {
+      const newUris = result.assets.map((a) => a.uri);
+      setSelectedMedia((prev) => {
+        const combined = [...prev, ...newUris].slice(0, 10);
+        return combined;
+      });
     }
   };
 
@@ -136,7 +142,7 @@ export default function CreateScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setSelectedMedia(result.assets[0].uri);
+      setSelectedMedia((prev) => [result.assets[0].uri]);
     }
   };
 
@@ -148,8 +154,12 @@ export default function CreateScreen() {
     }
   };
 
+  const handleRemoveMedia = (index: number) => {
+    setSelectedMedia((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handlePost = async () => {
-    if (!selectedMedia) {
+    if (selectedMedia.length === 0) {
       setToastType('error');
       setToastMessage('Please select a photo or video before sharing.');
       setToastVisible(true);
@@ -173,7 +183,7 @@ export default function CreateScreen() {
           : 'Your post has been published!'
       );
       setToastVisible(true);
-      setSelectedMedia(null);
+      setSelectedMedia([]);
       setCaption('');
       setTimeout(() => {
         router.push('/(tabs)/home');
@@ -193,13 +203,13 @@ export default function CreateScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       setCreateType(t);
-      setSelectedMedia(null);
+      setSelectedMedia([]);
     }
   };
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
-  const shareReady = !!selectedMedia && !!caption.trim() && !isPosting;
-  const optionsDisabled = !selectedMedia;
+  const shareReady = selectedMedia.length > 0 && !!caption.trim() && !isPosting;
+  const optionsDisabled = selectedMedia.length === 0;
 
   const mockOption = (title: string) => () =>
     Alert.alert(title, 'This option will be available in a future update.');
@@ -292,8 +302,8 @@ export default function CreateScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Media: empty state or preview */}
-        {!selectedMedia ? (
+        {/* Media: empty state, single preview (reels/video), or multi-image grid */}
+        {!selectedMedia.length ? (
           <Animated.View
             key={`empty-${createType}`}
             entering={FadeIn.duration(260)}
@@ -324,7 +334,7 @@ export default function CreateScreen() {
                   />
                 </View>
                 <Text style={styles.mediaPrimaryLabel}>
-                  {createType === 'reels' ? 'Select video' : 'Select image'}
+                  {createType === 'reels' ? 'Select video' : 'Select images'}
                 </Text>
                 <Text style={styles.mediaInstruction}>
                   Take a photo, record, or choose from your gallery
@@ -332,28 +342,23 @@ export default function CreateScreen() {
                 {createType === 'reels' && (
                   <Text style={styles.mediaHint}>Vertical 9:16 works best for Reels</Text>
                 )}
+                {createType === 'post' && (
+                  <Text style={styles.mediaHint}>Select up to 10 photos</Text>
+                )}
               </View>
             </TouchableOpacity>
           </Animated.View>
-        ) : (
+        ) : createType === 'reels' ? (
           <Animated.View
-            key="preview-media"
+            key="preview-media-reels"
             entering={FadeIn.duration(280)}
             exiting={FadeOut.duration(180)}
             style={styles.mediaAnimWrap}
           >
-            <View
-              style={[
-                styles.previewShell,
-                createType === 'reels' ? styles.previewShellReels : styles.previewShellPost,
-              ]}
-            >
+            <View style={[styles.previewShell, styles.previewShellReels]}>
               <Image
-                source={{ uri: selectedMedia }}
-                style={[
-                  styles.previewImage,
-                  createType === 'reels' ? styles.previewImageReels : styles.previewImagePost,
-                ]}
+                source={{ uri: selectedMedia[0] }}
+                style={styles.previewImageReels}
                 contentFit="cover"
               />
               <LinearGradient
@@ -363,11 +368,72 @@ export default function CreateScreen() {
               <TouchableOpacity style={styles.changeMediaFab} onPress={handleMediaPick} activeOpacity={0.9}>
                 <Feather name="edit-2" size={18} color="#FFFFFF" strokeWidth={2} />
               </TouchableOpacity>
-              {createType === 'reels' && (
-                <View style={styles.reelsPill}>
-                  <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
-                  <Text style={styles.reelsPillText}>Reels</Text>
-                </View>
+              <View style={styles.reelsPill}>
+                <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.reelsPillText}>Reels</Text>
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <Animated.View
+            key="preview-grid"
+            entering={FadeIn.duration(280)}
+            exiting={FadeOut.duration(180)}
+            style={styles.mediaAnimWrap}
+          >
+            <View style={styles.mediaGridContainer}>
+              <View style={styles.mediaGrid}>
+                {selectedMedia.map((uri, index) => (
+                  <View key={`${uri}-${index}`} style={styles.mediaGridItem}>
+                    <Image
+                      source={{ uri }}
+                      style={[
+                        styles.mediaGridImage,
+                        selectedMedia.length === 1 && styles.mediaGridImageSingle,
+                      ]}
+                      contentFit="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeMediaBtn}
+                      onPress={() => handleRemoveMedia(index)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Feather name="x" size={14} color="#FFFFFF" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    {selectedMedia.length > 1 && (
+                      <View style={styles.mediaIndexBadge}>
+                        <Text style={styles.mediaIndexText}>{index + 1}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+                {selectedMedia.length < 10 && (
+                  <TouchableOpacity
+                    style={[
+                      styles.mediaGridItem,
+                      styles.addMoreMediaBtn,
+                      selectedMedia.length === 0 && styles.mediaGridImageSingle,
+                    ]}
+                    onPress={handleMediaPick}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.addMoreMediaInner}>
+                      <Feather name="plus" size={28} color={AppColors.iconMuted} strokeWidth={1.5} />
+                      <Text style={styles.addMoreMediaText}>Add more</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {selectedMedia.length > 1 && (
+                <TouchableOpacity
+                  style={styles.changeMediaLink}
+                  onPress={handleMediaPick}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.changeMediaLinkText}>
+                    {selectedMedia.length} photo{selectedMedia.length > 1 ? 's' : ''} selected — tap to change
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
           </Animated.View>
@@ -657,6 +723,86 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  mediaGridContainer: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: AppColors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: AppColors.border,
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  mediaGridItem: {
+    width: '50%',
+    aspectRatio: 1,
+    padding: 1,
+    position: 'relative',
+  },
+  mediaGridImage: {
+    flex: 1,
+    borderRadius: 4,
+  },
+  mediaGridImageSingle: {
+    borderRadius: borderRadius.lg - 2,
+  },
+  removeMediaBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaIndexBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaIndexText: {
+    ...Typography.meta,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  addMoreMediaBtn: {
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  },
+  addMoreMediaInner: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  addMoreMediaText: {
+    ...Typography.meta,
+    fontSize: 11,
+    color: AppColors.iconMuted,
+  },
+  changeMediaLink: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: AppColors.borderLight,
+  },
+  changeMediaLinkText: {
+    ...Typography.meta,
+    fontSize: 12,
+    color: AppColors.primary,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   captionSection: {
     marginTop: 20,

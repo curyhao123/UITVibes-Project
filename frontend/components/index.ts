@@ -4,7 +4,7 @@ export { OnlineIndicator } from './OnlineIndicator';
 export { PostCard } from './PostCard';
 export { StoryBar } from './StoryBar';
 export { CommentItem } from './CommentItem';
-export { PostGrid, UserListItem, StoryGrid } from './Lists';
+export { PostGrid, UserListItem } from './Lists';
 export { Header } from './Header';
 export { ScreenHeader } from './ScreenHeader';
 export { EmptyPostsState } from './EmptyPostsState';
@@ -27,3 +27,4 @@ export {
   SkeletonListItem,
   UserListSkeleton,
 } from './SkeletonLoader';
+export { ImageCarousel } from './ImageCarousel';

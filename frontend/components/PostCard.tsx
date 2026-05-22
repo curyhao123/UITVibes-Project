@@ -13,6 +13,7 @@ import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
 import { useSharedValue } from 'react-native-reanimated';
 import { repostPost, undoRepost } from '../services/postService';
+import { ImageCarousel } from './ImageCarousel';
 
 const ACTION_ICON = 24;
 
@@ -24,6 +25,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const { toggleLike, toggleBookmark } = useApp();
   const router = useRouter();
 
+  // ── Multi-image source ────────────────────────────────────────────────
+  const images = post.images && post.images.length > 0
+    ? post.images
+    : post.image ? [post.image] : [];
+  const hasMultipleImages = images.length > 1;
+
   // ── Heart animation state ──────────────────────────────────────────────
   const { scale: heartScale, opacity: heartOpacity, play: playHeart } = useAnimatedHeart();
   const likeIconScale = useSharedValue(1);
@@ -31,31 +38,39 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [localReposted, setLocalReposted] = React.useState(post.isReposted ?? false);
   const [localRepostCount, setLocalRepostCount] = React.useState(post.repostCount ?? 0);
 
-  // ── Double-tap gesture on image — runs entirely on the UI thread ─────────────────
+  // ── Double-tap to like ────────────────────────────────────────────────
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
-      await toggleLike(post.id);
+      await toggleLike(post.id, false);
     }
     playHeart();
   }, [localLiked, post.id, playHeart, toggleLike]);
 
-  const handleImageSingleTap = useCallback(() => {
+  const handleOpenPost = useCallback(() => {
     router.push(`/post/${post.id}` as any);
   }, [post.id, router]);
 
   const { tapGesture } = useDoubleTap({
     onDoubleTap: handleDoubleTap,
-    onSingleTap: handleImageSingleTap,
+    onSingleTap: handleOpenPost,
     delay: 260,
   });
 
   // ── Button handlers ────────────────────────────────────────────────────
   const handleLike = async () => {
-    const newState = !localLiked;
-    setLocalLiked(newState);
-    await toggleLike(post.id);
-    // Micro-bounce driven by the animated icon component
+    const wasLiked = localLiked;
+    setLocalLiked(!wasLiked);
+    try {
+      await toggleLike(post.id, wasLiked);
+    } catch {
+      // Revert on error
+      setLocalLiked(wasLiked);
+    }
+  };
+
+  const handleLikeLongPress = () => {
+    router.push(`/post/likes?postId=${post.id}`);
   };
 
   const handleBookmark = async () => {
@@ -113,24 +128,21 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     <View style={styles.container}>
       {/* Image + Actions wrapper — enables absolute positioning */}
       <View style={styles.imageContainer}>
-        {/* Image Area — single tap opens post, double tap likes */}
+        {/* Image Area — double tap likes, single tap opens post detail */}
         <GestureDetector gesture={tapGesture}>
-          <View style={styles.imageWrap}>
-            <Image
-              source={{ uri: post.image }}
-              style={styles.postImage}
-              contentFit="cover"
-            />
-            {/* Large bouncing heart overlay — centered on image */}
-            <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
+          <View>
+            {/* Instagram-style carousel: swipe, dots, carousel icon */}
+            <View style={styles.carouselWrapper}>
+              <ImageCarousel
+                images={images}
+                height={300}
+                onPress={handleOpenPost}
+              />
+            </View>
 
-            <View style={styles.overlayBottomLeft}>
-              <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
-                <Avatar user={post.user} size="small" />
-                <Text style={styles.overlayName} numberOfLines={1}>
-                  @{post.user.displayName || post.user.username}
-                </Text>
-              </TouchableOpacity>
+            {/* Heart overlay — positioned on the carousel */}
+            <View style={styles.heartOverlay}>
+              <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
             </View>
           </View>
         </GestureDetector>
@@ -139,6 +151,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             onPress={handleLike}
+            onLongPress={handleLikeLongPress}
+            delayLongPress={400}
             style={styles.actionGroup}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
@@ -232,9 +246,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
   },
-  imageWrap: {
-    position: 'relative',
+  carouselWrapper: {
     width: '100%',
+    height: 332, // carousel height (300) + dots area (32)
   },
   postImage: {
     width: '100%',
@@ -242,24 +256,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
   },
-  overlayBottomLeft: {
+  heartOverlay: {
     position: 'absolute',
-    bottom: 14,
-    left: layoutPadding,
-    right: 56,
-  },
-  overlayUser: {
-    flexDirection: 'row',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
     alignItems: 'center',
-    gap: 8,
-  },
-  overlayName: {
-    ...Typography.captionSemibold,
-    fontSize: 14,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    justifyContent: 'center',
   },
   actionsRow: {
     flexDirection: 'row',
