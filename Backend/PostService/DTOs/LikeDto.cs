@@ -5,5 +5,7 @@ public class LikeDto
     public Guid LikeId { get; set; }
     public Guid PostId { get; set; }
     public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = "";
+    public string AvatarUrl { get; set; } = "";
     public DateTime CreatedAt { get; set; }
 }

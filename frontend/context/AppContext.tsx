@@ -74,7 +74,7 @@ interface AppContextType {
   addComment: (postId: string, text: string, parentCommentId?: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
-    image: string,
+    images: string[],
     caption: string,
     location?: string,
   ) => Promise<Post | null>;
@@ -399,22 +399,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, []);
 
   const toggleLike = useCallback(
-    async (postId: string) => {
+    async (postId: string, isCurrentlyLiked: boolean) => {
       // Optimistic update
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id === postId) {
             return {
               ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked ? post.likes - 1 : post.likes + 1,
             };
           }
           return post;
         }),
       );
       try {
-        await api.toggleLike(postId);
+        const newLikedState = await api.toggleLike(postId, isCurrentlyLiked);
+        // Sync with server-returned state
+        setPosts((prev) =>
+          prev.map((post) => {
+            if (post.id === postId) {
+              return { ...post, isLiked: newLikedState };
+            }
+            return post;
+          }),
+        );
       } catch (error) {
         // Revert on failure
         await refreshPosts();
@@ -534,19 +543,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const createPost = useCallback(
     async (
-      image: string,
+      images: string[],
       caption: string,
       location?: string,
     ): Promise<Post | null> => {
       try {
-        const newPost = await api.createPost(image, caption, location);
+        const newPost = await api.createPost(images, caption, location);
         setPosts((prev) => [newPost, ...prev]);
-        setMyPosts((prev) => [newPost, ...prev]); // Thêm vào myPosts cho profile
-        // Refresh myPosts từ server để đảm bảo đồng bộ
+        setMyPosts((prev) => [newPost, ...prev]);
         await refreshMyPosts();
-        // Cập nhật số posts trên profile ngay lập tức
         setCurrentUser((prev) => (prev ? { ...prev, posts: prev.posts + 1 } : prev));
-        setIsNewUser(false); // Đã có bài viết → không còn là new user
+        setIsNewUser(false);
         return newPost;
       } catch (error) {
         console.error("Failed to create post:", error);

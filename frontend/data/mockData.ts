@@ -37,7 +37,8 @@ export interface Post {
   id: string;
   userId: string;
   user: User;
-  image: string;
+  image: string;         // first image (backwards-compatible)
+  images?: string[];     // all images for multi-image posts
   caption: string;
   likes: number;
   comments: Comment[];

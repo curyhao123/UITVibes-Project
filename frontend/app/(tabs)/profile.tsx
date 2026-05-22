@@ -7,19 +7,18 @@ import {
   ScrollView,
   Share,
   ActivityIndicator,
-  Image,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useApp } from '../../context/AppContext';
-import { Avatar, PostGrid, StoryGrid, Header, EmptyPostsState, EditProfileModal } from '../../components';
+import { Avatar, PostGrid, Header, EmptyPostsState, EditProfileModal } from '../../components';
+import { HighlightBar } from '../../components/highlight';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import defaultAvatar from '../../assets/images/default-avatar.png';
-import * as api from '../../services/api';
 import { getUserReposts } from '../../services/postService';
+import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
 import { Post } from '../../data/mockData';
 
 export default function ProfileScreen() {
@@ -32,16 +31,15 @@ export default function ProfileScreen() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Stories state
-  const [profileStories, setProfileStories] = useState<api.Story[]>([]);
-  const [isLoadingStories, setIsLoadingStories] = useState(false);
-
-  // Profile tab state (posts | stories | reposts)
-  const [profileTab, setProfileTab] = useState<'posts' | 'stories' | 'reposts'>('posts');
+  // Profile tab state (posts | reposts)
+  const [profileTab, setProfileTab] = useState<'posts' | 'reposts'>('posts');
 
   // Reposts state
   const [reposts, setReposts] = useState<Post[]>([]);
   const [isLoadingReposts, setIsLoadingReposts] = useState(false);
+
+  // Highlights state
+  const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
 
   // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
@@ -60,37 +58,29 @@ export default function ProfileScreen() {
     }, []), // Empty deps - chỉ chạy khi mount/unmount
   );
 
+  const refreshHighlights = useCallback(async () => {
+    if (!currentUser?.id) return;
+    const data = await getUserHighlights(currentUser.id);
+    setHighlights(data);
+  }, [currentUser?.id]);
+
+  // Load highlights when profile is focused
+  useFocusEffect(
+    useCallback(() => {
+      void refreshHighlights();
+    }, [refreshHighlights]),
+  );
+
   // Pull-to-Refresh handler
   const handleRefresh = useCallback(async () => {
     if (!currentUser?.id) return;
     setIsRefreshing(true);
     try {
-      await Promise.all([
-        refreshMyPosts(),
-        api.getUserStories(currentUser.id).then((stories) => setProfileStories(stories)),
-      ]);
+      await Promise.all([refreshMyPosts(), refreshHighlights()]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshMyPosts, currentUser?.id]);
-
-  // Refresh stories khi profileStories tab được active hoặc mỗi khi focus
-  useFocusEffect(
-    useCallback(() => {
-      if (!currentUser?.id) return;
-      setIsLoadingStories(true);
-      api.getUserStories(currentUser.id)
-        .then((stories) => {
-          setProfileStories(stories);
-        })
-        .catch(() => {
-          setProfileStories([]);
-        })
-        .finally(() => {
-          setIsLoadingStories(false);
-        });
-    }, [currentUser?.id, profileTab]),
-  );
+  }, [refreshMyPosts, refreshHighlights, currentUser?.id]);
 
   // Load reposts when reposts tab is active
   useFocusEffect(
@@ -203,41 +193,11 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.highlights}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storyStripScroll}>
-            {/* Nút Add Story */}
-            <TouchableOpacity
-              style={styles.storyStripItem}
-              onPress={() => router.push('/story/create' as any)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.addStoryCircle}>
-                <Feather name="plus" size={22} color={AppColors.primary} strokeWidth={2.5} />
-              </View>
-              <Text style={styles.storyStripLabel} numberOfLines={1}>New</Text>
-            </TouchableOpacity>
-
-            {/* Stories của user */}
-            {profileStories.map((story) => (
-              <TouchableOpacity
-                key={story.id}
-                style={styles.storyStripItem}
-                onPress={() => router.push(`/story/${story.id}` as any)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.storyCircle, !story.isViewed && styles.storyCircleActive]}>
-                  <Image
-                    source={story.previewUrl ? { uri: story.previewUrl } : defaultAvatar}
-                    style={styles.storyCircleImg}
-                  />
-                </View>
-                <Text style={styles.storyStripLabel} numberOfLines={1}>
-                  {story.displayName}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        <HighlightBar
+          highlights={highlights}
+          isCurrentUser={true}
+          onRefresh={refreshHighlights}
+        />
 
         <View style={styles.tabsContainer}>
           <TouchableOpacity
@@ -252,12 +212,6 @@ export default function ProfileScreen() {
           >
             <Feather name="refresh-cw" size={22} color={profileTab === 'reposts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
-            onPress={() => setProfileTab('stories')}
-          >
-            <Feather name="layers" size={22} color={profileTab === 'stories' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
-          </TouchableOpacity>
         </View>
 
         {profileTab === 'posts' ? (
@@ -270,7 +224,7 @@ export default function ProfileScreen() {
           ) : (
             <PostGrid posts={userPosts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
           )
-        ) : profileTab === 'reposts' ? (
+        ) : (
           isLoadingReposts ? (
             <View style={styles.loadingPosts}>
               <ActivityIndicator size="small" color={AppColors.primary} />
@@ -282,29 +236,6 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <PostGrid posts={reposts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
-          )
-        ) : (
-          isLoadingStories ? (
-            <View style={styles.loadingPosts}>
-              <ActivityIndicator size="small" color={AppColors.primary} />
-            </View>
-          ) : profileStories.length === 0 ? (
-            <View style={styles.emptyStories}>
-              <Feather name="layers" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
-              <Text style={styles.emptyStoriesText}>No stories yet</Text>
-              <TouchableOpacity
-                style={styles.emptyAddBtn}
-                onPress={() => router.push('/story/create' as any)}
-              >
-                <Text style={styles.emptyAddBtnText}>Create your first story</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <StoryGrid
-              stories={profileStories}
-              isCurrentUser={true}
-              onAddStory={() => router.push('/story/create' as any)}
-            />
           )
         )}
       </ScrollView>

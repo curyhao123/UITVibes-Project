@@ -11,7 +11,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -21,7 +20,7 @@ import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { getPostById, toggleCommentLike, repostPost, undoRepost } from "../../services/postService";
 import { Post, Comment } from "../../data/mockData";
-import { Avatar, CommentItem } from "../../components";
+import { Avatar, CommentItem, ImageCarousel } from "../../components";
 import { CommentContextMenu, DeleteConfirmModal } from "../../components";
 import { useApp } from "../../context/AppContext";
 import { AppColors } from "../../constants/theme";
@@ -102,16 +101,29 @@ export default function PostDetailScreen() {
 
   const handleLike = async () => {
     if (post) {
-      await toggleLike(post.id);
+      const wasLiked = post.isLiked;
       setPost((prev) =>
         prev
           ? {
               ...prev,
-              isLiked: !prev.isLiked,
-              likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1,
+              isLiked: !wasLiked,
+              likes: wasLiked ? prev.likes - 1 : prev.likes + 1,
             }
           : null,
       );
+      try {
+        const newLikedState = await toggleLike(post.id, wasLiked);
+        setPost((prev) =>
+          prev ? { ...prev, isLiked: newLikedState } : null,
+        );
+      } catch {
+        // Revert on error
+        setPost((prev) =>
+          prev
+            ? { ...prev, isLiked: wasLiked }
+            : null,
+        );
+      }
     }
   };
 
@@ -361,8 +373,21 @@ export default function PostDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Post Image */}
-      <Image source={{ uri: post.image }} style={styles.postImage} />
+      {/* Post Image(s) — Instagram-style carousel for multi-image */}
+      {(() => {
+        const images = post.images && post.images.length > 0
+          ? post.images
+          : post.image ? [post.image] : [];
+        if (images.length === 0) return null;
+        return (
+          <ImageCarousel
+            images={images}
+            height={styles.postImage.aspectRatio ? 400 : 400}
+            showDots={images.length > 1}
+            showCarouselIcon={images.length > 1}
+          />
+        );
+      })()}
 
       {/* Engagement Actions — single horizontal row */}
       <View style={styles.actionsRow}>

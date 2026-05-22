@@ -238,6 +238,15 @@ export interface BE_LikeResponse {
   createdAt: string;
 }
 
+export interface BE_LikeDto {
+  likeId: string;
+  postId: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  createdAt: string;
+}
+
 export interface CreatePostBody {
   content: string;
   location?: string;
