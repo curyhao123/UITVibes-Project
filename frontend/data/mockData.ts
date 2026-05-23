@@ -19,6 +19,7 @@ export interface User {
   isFollowing?: boolean;
   isBlocked?: boolean;
   createdAt?: string;
+  role?: "User" | "Admin"; // comes from BE_AuthResponse.user.role
 }
 
 export interface Comment {

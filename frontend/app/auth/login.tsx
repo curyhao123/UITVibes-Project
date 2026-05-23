@@ -81,7 +81,8 @@ export default function LoginScreen() {
     try {
       const result = await login(email, password);
       if (result) {
-        router.replace("/(tabs)/home");
+        // Role-based navigation: Admin → Admin Dashboard, User → App
+        router.replace(result.role === "Admin" ? "/admin/dashboard" : "/(tabs)/home");
       }
     } catch (err: any) {
       if (err?.errorCode === "NOT_VERIFIED") {

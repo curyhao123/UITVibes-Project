@@ -13,12 +13,14 @@ import {
   clearUserCache,
   clearCurrentUserEmail,
   getCurrentUser,
+  getPersistedUserRole,
   mergePersistedAvatarIfMissing,
   setCurrentAccount,
   setCurrentUser,
   setCurrentUserEmail,
   setCurrentUserId,
   writeLocalHandle,
+  setPersistedUserRole,
 } from "./session";
 import {
   BE_AuthResponse,
@@ -102,6 +104,7 @@ export async function login(email: string, password: string): Promise<User> {
       isVerified: false,
       fullName: profile?.fullName || "",
       gender: profile?.gender || "",
+      role: (data.user.role as "User" | "Admin") ?? "User",
     };
 
     user = await mergePersistedAvatarIfMissing(user);
@@ -110,6 +113,7 @@ export async function login(email: string, password: string): Promise<User> {
     setCurrentUser(user);
     await setCurrentUserEmail(data.user.email ?? email);
     if (user.username) void writeLocalHandle(user.id, user.username);
+    await setPersistedUserRole(user.role);
     return user;
   } catch (error: any) {
     // Surface backend error message to callers while logging full error
@@ -156,7 +160,8 @@ export async function register(
       posts: 0,
       isVerified: false,
       fullName: "",
-      gender: ""
+      gender: "",
+      role: (data.user.role as "User" | "Admin") ?? "User",
     };
 
     setCurrentUserId(data.user.id);
@@ -182,6 +187,7 @@ async function clearLocalAuthState(): Promise<void> {
   await clearTokens();
   await clearLocalHandle();
   await clearCurrentUserEmail();
+  await setPersistedUserRole(null);
   setCurrentUserId("current");
   setCurrentUser(null);
   setCurrentAccount("activeUser");
@@ -249,6 +255,9 @@ export async function refreshSession(): Promise<User | null> {
       stats = null;
     }
 
+    // Restore role from persistent storage (BE profile endpoint doesn't return role)
+    const persistedRole = await getPersistedUserRole();
+
     let user: User = {
       id: profile.userId,
       username: "",
@@ -263,6 +272,7 @@ export async function refreshSession(): Promise<User | null> {
       isVerified: false,
       fullName: profile.fullName || "",
       gender: profile.gender || "",
+      role: persistedRole ?? "User",
     };
 
     user = await mergePersistedAvatarIfMissing(user);
