@@ -672,6 +672,7 @@ public class UserProfileService : IUserProfileService
             ReporterId = userId,
             TargetUserId = request.TargetUserId,
             Reason = request.Reason,
+            AdditionalDetails = request.AdditionalDetails,
             Status = ReportStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
@@ -691,6 +692,7 @@ public class UserProfileService : IUserProfileService
             ReporterDisplayName = reporterProfile?.DisplayName ?? "Someone",
             ReportedDisplayName = targetProfile.DisplayName ?? "Someone",
             Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
             CreatedAt = report.CreatedAt,
             Status = report.Status
         };

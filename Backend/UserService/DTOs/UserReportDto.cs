@@ -1,4 +1,4 @@
-﻿using UserService.Models;
+using UserService.Models;
 
 namespace UserService.DTOs
 {
@@ -10,6 +10,7 @@ namespace UserService.DTOs
         public string ReporterDisplayName { get; set; } = null!;
         public string ReportedDisplayName { get; set; } = null!;
         public string Reason { get; set; } = null!;
+        public string? AdditionalDetails { get; set; }
  
         public DateTime CreatedAt { get; set; }
         public ReportStatus Status { get; set; }

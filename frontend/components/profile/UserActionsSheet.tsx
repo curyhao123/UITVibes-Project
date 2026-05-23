@@ -39,7 +39,9 @@ interface UserActionsSheetProps {
   visible: boolean;
   onClose: () => void;
   onBlock: () => Promise<void>;
-  onReport: () => void;
+  /** Called when user taps "Report User" — parent opens ReportUserSheet */
+  onReport: (reportedUserId: string) => void;
+  reportedUserId: string;
   blockedUsername: string;
 }
 
@@ -50,6 +52,7 @@ export function UserActionsSheet({
   onClose,
   onBlock,
   onReport,
+  reportedUserId,
   blockedUsername,
 }: UserActionsSheetProps) {
   const [isBlocking, setIsBlocking] = useState(false);
@@ -119,14 +122,7 @@ export function UserActionsSheet({
 
   const handleReport = () => {
     handleClose();
-    Alert.alert(
-      'Report User',
-      `Are you sure you want to report @${blockedUsername}?\n\nOur team will review this report.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Report', style: 'destructive', onPress: onReport },
-      ],
-    );
+    onReport(reportedUserId);
   };
 
   return (

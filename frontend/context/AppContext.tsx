@@ -27,7 +27,7 @@ interface AppContextType {
   isLoading: boolean;
   isNewUser: boolean;
   markUserActive: () => void;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (email: string, password: string, username: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -193,7 +193,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // ─── Auth Actions ────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
+    async (email: string, password: string): Promise<User | null> => {
       setIsLoading(true);
       setAuthError(null);
       try {
@@ -202,7 +202,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
         setIsNewUser(user.posts === 0);
-        return true;
+        return user;
       } catch (error) {
         console.error("Login failed:", error);
         const errorCode = (error as any)?.errorCode;

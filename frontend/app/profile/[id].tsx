@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -15,6 +15,8 @@ import { Typography } from '../../constants/typography';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
 import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
+import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
+import { Toast } from '../../components/Toast';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -29,6 +31,8 @@ export default function UserProfileScreen() {
   // Highlights state
   const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
   const [actionsSheetVisible, setActionsSheetVisible] = useState(false);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [reportToastVisible, setReportToastVisible] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -119,8 +123,13 @@ export default function UserProfileScreen() {
   };
 
   const handleReportUser = () => {
-    // TODO: implement actual report submission
-    console.log('[Report] user:', user.id);
+    setActionsSheetVisible(false);
+    setReportSheetVisible(true);
+  };
+
+  const handleReportSuccess = () => {
+    setReportSheetVisible(false);
+    setReportToastVisible(true);
   };
 
   const formatCount = (count: number | undefined | null): string => {
@@ -287,7 +296,23 @@ export default function UserProfileScreen() {
           onClose={() => setActionsSheetVisible(false)}
           onBlock={handleBlockUser}
           onReport={handleReportUser}
+          reportedUserId={user.id}
           blockedUsername={user.username}
+        />
+
+        <ReportUserSheet
+          visible={reportSheetVisible}
+          reportedDisplayName={user.displayName}
+          reportedUserId={user.id}
+          onClose={() => setReportSheetVisible(false)}
+          onReportSuccess={handleReportSuccess}
+        />
+
+        <Toast
+          visible={reportToastVisible}
+          message="Report submitted. Thanks for helping keep the community safe."
+          type="success"
+          onHide={() => setReportToastVisible(false)}
         />
       </SafeAreaView>
     </>

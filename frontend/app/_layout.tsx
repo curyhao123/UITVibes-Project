@@ -48,6 +48,10 @@ export default function RootLayout() {
           <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
           <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />
           <Stack.Screen name="auth/onboarding-find-friends" options={{ headerShown: false }} />
+          <Stack.Screen name="admin" options={{ headerShown: false }} />
+          <Stack.Screen name="admin/dashboard" options={{ headerShown: false }} />
+          <Stack.Screen name="admin/users" options={{ headerShown: false }} />
+          <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </AppProvider>
