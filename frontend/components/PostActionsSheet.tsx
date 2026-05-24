@@ -1,19 +1,13 @@
 /**
- * UserActionsSheet — animated bottom sheet with user action options.
+ * PostActionsSheet — animated bottom sheet for post-level actions.
+ * Used in PostCard header (ellipsis button).
  *
- * Uses React Native's built-in Animated API (no reanimated dependency)
- * for maximum compatibility across iOS, Android, and Expo.
+ * Actions:
+ *  - Report Post        (all users)
+ *  - Block User        (all users, non-self)
+ *  - Delete Post       (post owner only)
  *
- * Features:
- * - Slide-up animation via Animated.timing + Animated.spring
- * - Semi-transparent backdrop with press-to-dismiss
- * - Swipe handle visual cue
- * - Actions: Report User (neutral), Block User (danger), Cancel
- * - Block action has async loading state and auto-navigates after block
- * - Report action shows a confirm-alert placeholder
- *
- * Design: Instagram-style modal, rounded sheet, frosted-like blur via tint,
- * danger action with red text.
+ * Design: same animation pattern as UserActionsSheet / ReportUserSheet
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -30,43 +24,49 @@ import {
   Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
-import { Typography } from '../../constants/typography';
+import { Ionicons } from '@expo/vector-icons';
+import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { Typography } from '../constants/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface UserActionsSheetProps {
+interface PostActionsSheetProps {
   visible: boolean;
+  /** The user who owns the post */
+  postOwnerId: string;
+  /** ID of the currently logged-in user */
+  currentUserId: string;
+  /** Display name of the post owner (for block confirm dialog) */
+  postOwnerDisplayName: string;
+  /** Called when user taps "Report Post" */
+  onReportPost: () => void;
+  /** Called when user taps "Block User" */
+  onBlockUser: () => void;
+  /** Called when user taps "Delete Post" */
+  onDeletePost: () => void;
+  /** Called when sheet is fully dismissed */
   onClose: () => void;
-  onBlock: () => Promise<void>;
-  /** Called when user taps "Report User" — parent opens ReportUserSheet */
-  onReport: (reportedUserId: string) => void;
-  reportedUserId: string;
-  blockedUsername: string;
 }
 
-const SHEET_HEIGHT = 310;
+const SHEET_HEIGHT = 280;
 
-export function UserActionsSheet({
+export function PostActionsSheet({
   visible,
+  postOwnerId,
+  currentUserId,
+  postOwnerDisplayName,
+  onReportPost,
+  onBlockUser,
+  onDeletePost,
   onClose,
-  onBlock,
-  onReport,
-  reportedUserId,
-  blockedUsername,
-}: UserActionsSheetProps) {
-  const [isBlocking, setIsBlocking] = useState(false);
+}: PostActionsSheetProps) {
+  const isOwner = currentUserId === postOwnerId;
 
   // Local state so animation out completes before React unmounts the Modal.
   const [isRendered, setIsRendered] = useState(false);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
-
-  // Reset blocking state when modal closes
-  useEffect(() => {
-    if (!visible) setIsBlocking(false);
-  }, [visible]);
 
   // Mount animation
   useEffect(() => {
@@ -75,7 +75,7 @@ export function UserActionsSheet({
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 250,
+          duration: 240,
           useNativeDriver: true,
         }),
         Animated.spring(sheetTranslateY, {
@@ -89,7 +89,7 @@ export function UserActionsSheet({
     }
   }, [visible]);
 
-  // Cleanup: if not visible but still rendered, animate out then unmount
+  // Cleanup: if not visible but still rendered, animate out
   useEffect(() => {
     if (!visible && isRendered) {
       Animated.parallel([
@@ -110,27 +110,34 @@ export function UserActionsSheet({
 
   const handleClose = () => onClose();
 
-  const handleBlock = async () => {
-    if (isBlocking) return;
-    setIsBlocking(true);
-    try {
-      await onBlock();
-      onClose();
-      Alert.alert(
-        'User Blocked',
-        `You have blocked @${blockedUsername}. You can unblock them anytime from Settings.`,
-        [{ text: 'OK' }],
-      );
-    } catch {
-      Alert.alert('Error', 'Could not block this user. Please try again.');
-      setIsBlocking(false);
-    }
+  const handleReportPost = () => {
+    // Close this sheet, then open the report sheet after animation completes.
+    setTimeout(() => onReportPost(), 220);
+    onClose();
   };
 
-  const handleReport = () => {
-    // Close this sheet, then open the report sheet after animation completes.
-    setTimeout(() => onReport(reportedUserId), 220);
+  const handleBlockUser = () => {
     onClose();
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block @${postOwnerDisplayName}? You will no longer see their posts or be able to message them.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block', style: 'destructive', onPress: onBlockUser },
+      ],
+    );
+  };
+
+  const handleDeletePost = () => {
+    onClose();
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: onDeletePost },
+      ],
+    );
   };
 
   // Don't render anything while closing animation finishes
@@ -146,9 +153,7 @@ export function UserActionsSheet({
     >
       {/* Backdrop */}
       <Pressable style={styles.backdrop} onPress={handleClose}>
-        <Animated.View
-          style={[styles.backdropFill, { opacity: backdropOpacity }]}
-        />
+        <Animated.View style={[styles.backdropFill, { opacity: backdropOpacity }]} />
       </Pressable>
 
       {/* Sheet */}
@@ -168,10 +173,11 @@ export function UserActionsSheet({
 
         {/* Actions */}
         <View style={styles.actionsContainer}>
+          {/* Report Post — available to all */}
           <TouchableOpacity
             style={styles.actionRow}
             activeOpacity={0.65}
-            onPress={handleReport}
+            onPress={handleReportPost}
           >
             <View style={styles.actionIcon}>
               <Feather
@@ -181,34 +187,46 @@ export function UserActionsSheet({
                 strokeWidth={2}
               />
             </View>
-            <Text style={styles.actionLabel}>Report User</Text>
+            <Text style={styles.actionLabel}>Report Post</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionRow, isBlocking && styles.actionRowDisabled]}
-            activeOpacity={0.65}
-            onPress={handleBlock}
-            disabled={isBlocking}
-          >
-            <View style={styles.actionIcon}>
-              <Feather
-                name="slash"
-                size={20}
-                color="#ef4444"
-                strokeWidth={2}
-              />
-            </View>
-            <Text style={[styles.actionLabel, styles.dangerLabel]}>
-              {isBlocking ? 'Please wait...' : 'Block User'}
-            </Text>
-            {isBlocking && (
-              <ActivityIndicator
-                size="small"
-                color={AppColors.primary}
-                style={{ marginLeft: 8 }}
-              />
-            )}
-          </TouchableOpacity>
+          {/* Block User — available to all except self */}
+          {!isOwner && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              activeOpacity={0.65}
+              onPress={handleBlockUser}
+            >
+              <View style={styles.actionIcon}>
+                <Feather
+                  name="slash"
+                  size={20}
+                  color="#ef4444"
+                  strokeWidth={2}
+                />
+              </View>
+              <Text style={[styles.actionLabel, styles.dangerLabel]}>Block User</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Delete Post — owner only */}
+          {isOwner && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              activeOpacity={0.65}
+              onPress={handleDeletePost}
+            >
+              <View style={styles.actionIcon}>
+                <Feather
+                  name="trash-2"
+                  size={20}
+                  color="#ef4444"
+                  strokeWidth={2}
+                />
+              </View>
+              <Text style={[styles.actionLabel, styles.dangerLabel]}>Delete Post</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Cancel */}
@@ -245,7 +263,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: borderRadius.xl,
     backgroundColor: Platform.OS === 'ios' ? 'rgba(255,255,255,0.92)' : AppColors.surfaceElevated,
     paddingHorizontal: layoutPadding,
-    paddingBottom: 34, // home indicator inset
+    paddingBottom: 34,
     paddingTop: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -6 },
@@ -285,9 +303,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: AppColors.borderLight,
-  },
-  actionRowDisabled: {
-    opacity: 0.6,
   },
   actionIcon: {
     width: 32,

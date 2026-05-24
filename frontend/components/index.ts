@@ -15,6 +15,8 @@ export { HighlightCard } from './privacy/HighlightCard';
 export { CommentContextMenu } from './CommentContextMenu';
 export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { ReportUserSheet } from './profile/ReportUserSheet';
+export { PostActionsSheet } from './PostActionsSheet';
+export { ReportPostSheet } from './ReportPostSheet';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {

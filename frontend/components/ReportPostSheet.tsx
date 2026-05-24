@@ -1,19 +1,15 @@
 /**
- * ReportUserSheet — Instagram/TikTok-style animated bottom sheet for reporting a user.
+ * ReportPostSheet — animated bottom sheet for reporting a post.
  *
  * Flow:
- *  1. Slide-up sheet with "Report User" header
+ *  1. Slide-up sheet with "Report Post" header
  *  2. Radio-button list of report reasons (single selection)
  *  3. Optional free-text input for additional details
  *  4. "Submit Report" button — disabled until a reason is selected
  *  5. Loading spinner replaces button text while API request is in-flight
- *  6. Calls onReportSuccess({ userId, reason }) on success
+ *  6. Calls onReportSuccess({ postId, reason }) on success
  *
- * Design:
- * - Same animation pattern as UserActionsSheet (Animated.timing + Animated.spring)
- * - Custom radio-dot indicator for selected reason
- * - Keyboard-aware layout on iOS via KeyboardAvoidingView
- * - Legal disclaimer at the bottom
+ * Design: same animation pattern as ReportUserSheet / UserActionsSheet
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -29,36 +25,35 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
-  Keyboard,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
-import { Typography } from '../../constants/typography';
-import {
-  REPORT_REASONS,
-  ReportReason,
-} from '../../services/backendTypes';
+import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { Typography } from '../constants/typography';
+import { REPORT_REASONS, type ReportReason } from '../services/backendTypes';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.82;
 
-interface ReportUserSheetProps {
+interface ReportPostSheetProps {
   visible: boolean;
-  reportedDisplayName: string;
-  reportedUserId: string;
+  /** ID of the post being reported */
+  postId: string;
+  /** Display name of the post owner */
+  postOwnerDisplayName: string;
+  /** Called when sheet is fully dismissed */
   onClose: () => void;
   /** Called after report is successfully submitted. Parent handles toast. */
-  onReportSuccess: (payload: { userId: string; reason: ReportReason }) => void;
+  onReportSuccess: (payload: { postId: string; reason: ReportReason }) => void;
 }
 
-export function ReportUserSheet({
+export function ReportPostSheet({
   visible,
-  reportedDisplayName,
-  reportedUserId,
+  postId,
+  postOwnerDisplayName,
   onClose,
   onReportSuccess,
-}: ReportUserSheetProps) {
+}: ReportPostSheetProps) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +61,7 @@ export function ReportUserSheet({
   // Local state so animation out completes before React unmounts the Modal.
   const [isRendered, setIsRendered] = useState(false);
 
-  // Animation refs — fresh instances each time so they re-init on re-mount
+  // Animation refs
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SHEET_MAX_HEIGHT)).current;
   const sheetOpacity = useRef(new Animated.Value(0)).current;
@@ -136,12 +131,12 @@ export function ReportUserSheet({
     if (!selectedReason || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const { reportUser } = await import('../../services/reportService');
-      await reportUser(reportedUserId, selectedReason, additionalDetails);
+      const { reportPost } = await import('../services/reportService');
+      await reportPost(postId, selectedReason, additionalDetails);
       onClose();
-      onReportSuccess({ userId: reportedUserId, reason: selectedReason });
+      onReportSuccess({ postId, reason: selectedReason });
     } catch (err) {
-      console.error('[ReportUserSheet] submit error:', err);
+      console.error('[ReportPostSheet] submit error:', err);
       setIsSubmitting(false);
     }
   };
@@ -182,17 +177,21 @@ export function ReportUserSheet({
 
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={handleClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Feather name="x" size={20} color={AppColors.textMuted} strokeWidth={2.5} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Report User</Text>
+            <Text style={styles.headerTitle}>Report Post</Text>
             <View style={styles.closeBtn} />
           </View>
 
           {/* Subtitle */}
           <Text style={styles.subtitle}>
-            Why are you reporting{' '}
-            <Text style={styles.nameHighlight}>{reportedDisplayName}</Text>?
+            Why are you reporting this post by{' '}
+            <Text style={styles.nameHighlight}>{postOwnerDisplayName}</Text>?
           </Text>
 
           {/* Reasons list */}
@@ -212,9 +211,7 @@ export function ReportUserSheet({
                     </Text>
                   </View>
                   <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                    {isSelected && (
-                      <View style={styles.radioDot} />
-                    )}
+                    {isSelected && <View style={styles.radioDot} />}
                   </View>
                 </TouchableOpacity>
               );

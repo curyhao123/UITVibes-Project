@@ -36,7 +36,7 @@ type FilterStatus = AdminReportStatus | "All";
 const STATUS_COLORS: Record<AdminReportStatus, string> = {
   Pending: "#F59E0B",
   Resolved: "#22C55E",
-  Rejected: "#EF4444",
+  Dismissed: "#9CA3AF",
 };
 
 const TabButton: React.FC<{
@@ -63,7 +63,7 @@ const FilterChips: React.FC<{
   active: FilterStatus;
   onChange: (s: FilterStatus) => void;
 }> = ({ active, onChange }) => {
-  const options: FilterStatus[] = ["All", "Pending", "Resolved", "Rejected"];
+  const options: FilterStatus[] = ["All", "Pending", "Resolved", "Dismissed"];
   return (
     <View style={styles.chips}>
       {options.map((s) => (
@@ -170,12 +170,8 @@ function UserReportCard({
 
 function PostReportCard({
   report,
-  onResolve,
-  onReject,
 }: {
   report: BE_PostReport;
-  onResolve: () => void;
-  onReject: () => void;
 }) {
   const statusColor = STATUS_COLORS[report.status];
 
@@ -208,38 +204,6 @@ function PostReportCard({
           <Text style={styles.noteText}>Admin: {report.adminNote}</Text>
         </View>
       ) : null}
-      {report.status === "Pending" && (
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.btnReject}
-            onPress={() =>
-              Alert.alert("Reject Report", "Mark this report as invalid?", [
-                { text: "Cancel", style: "cancel" },
-                { text: "Reject", style: "destructive", onPress: onReject },
-              ])
-            }
-          >
-            <Feather name="x" size={14} color="#EF4444" />
-            <Text style={styles.btnRejectText}>Reject</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.btnResolve}
-            onPress={() =>
-              Alert.alert(
-                "Resolve Report",
-                "Dismiss this post report?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Resolve", onPress: onResolve },
-                ],
-              )
-            }
-          >
-            <Feather name="check" size={14} color="#22C55E" />
-            <Text style={styles.btnResolveText}>Resolve</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }
@@ -350,12 +314,12 @@ export default function ReportsScreen() {
       if (isUser) {
         await rejectUserReport(reportId);
         setUserReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, status: "Rejected" as AdminReportStatus } : r)),
+          prev.map((r) => (r.id === reportId ? { ...r, status: "Dismissed" as AdminReportStatus } : r)),
         );
       } else {
         await rejectPostReport(reportId);
         setPostReports((prev) =>
-          prev.map((r) => (r.id === reportId ? { ...r, status: "Rejected" as AdminReportStatus } : r)),
+          prev.map((r) => (r.id === reportId ? { ...r, status: "Dismissed" as AdminReportStatus } : r)),
         );
       }
     } catch {
@@ -438,8 +402,6 @@ export default function ReportsScreen() {
           ) : (
             <PostReportCard
               report={item as BE_PostReport}
-              onResolve={() => handleResolve(item.id, false)}
-              onReject={() => handleReject(item.id, false)}
             />
           )
         }

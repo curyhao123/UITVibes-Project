@@ -30,3 +30,41 @@ export async function reportUser(
   const res = await apiClient.post<BE_ReportUserResponse>('/user/userprofile/reports', body);
   return res.data;
 }
+
+// ─── Post Reports ─────────────────────────────────────────────────────────────────
+
+/** Request body for POST /post/post-report */
+export interface ReportPostRequest {
+  PostId: string;
+  Reason: string;
+  AdditionalDetails?: string;
+}
+
+/** Response from the post-report endpoint */
+export interface ReportPostResponse {
+  id: string;
+  postId: string;
+  reporterId: string;
+  reason: string;
+  status: string;
+}
+
+/**
+ * POST /post/post-report — submit a post report.
+ * @param postId  The post being reported
+ * @param reason  Free-text reason string
+ * @param additionalDetails  Optional free-text description from the user
+ */
+export async function reportPost(
+  postId: string,
+  reason: string,
+  additionalDetails?: string,
+): Promise<ReportPostResponse> {
+  const body: ReportPostRequest = {
+    PostId: postId,
+    Reason: reason,
+    ...(additionalDetails?.trim() ? { AdditionalDetails: additionalDetails.trim() } : {}),
+  };
+  const res = await apiClient.post<ReportPostResponse>('/post/post-report', body);
+  return res.data;
+}

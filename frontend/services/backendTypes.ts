@@ -346,7 +346,7 @@ export interface BE_ReportUserResponse {
 
 // ============ ADMIN TYPES ============
 
-export type AdminReportStatus = "Pending" | "Resolved" | "Rejected";
+export type AdminReportStatus = "Pending" | "Resolved" | "Dismissed";
 
 export interface BE_UserReport {
   id: string;
@@ -365,7 +365,7 @@ export interface BE_UserReport {
 export interface BE_PostReport {
   id: string;
   postId: string;
-  reporterUserId: string;
+  reporterId: string;
   reporterDisplayName: string;
   postContent: string;
   postMediaUrls: string[];
