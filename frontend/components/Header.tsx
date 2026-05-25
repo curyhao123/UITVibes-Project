@@ -25,6 +25,10 @@ interface HeaderProps {
   avatarHref?: string;
   /** Extra content rendered below the title row (e.g. feed tabs, search bar) */
   bottomContent?: ReactNode;
+  /** Custom header container style */
+  headerStyle?: object;
+  /** Custom title style */
+  titleStyle?: object;
 }
 
 /**
@@ -39,6 +43,8 @@ export function Header({
   rightAction,
   avatarHref,
   bottomContent,
+  headerStyle,
+  titleStyle,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -47,7 +53,7 @@ export function Header({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, headerStyle]}>
       <View style={styles.row}>
         {/* Left — avatar */}
         {showAvatar ? (
@@ -67,7 +73,7 @@ export function Header({
         )}
 
         {/* Center — title */}
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, titleStyle]} numberOfLines={1}>
           {title}
         </Text>
 

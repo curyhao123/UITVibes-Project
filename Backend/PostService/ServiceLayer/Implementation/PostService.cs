@@ -113,7 +113,7 @@ public class PostService : IPostService
     public async Task<List<PostDto>> GetUserPostsAsync(Guid userId, Guid? currentUserId = null, int skip = 0, int take = 20)
     {
         var posts = await _context.Posts
-            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original)
+            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original && p.Visibility != PostVisibility.Hidden)
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -142,6 +142,7 @@ public class PostService : IPostService
         var posts = await _context.Posts
             .Where(p => !p.IsDeleted
                      && p.PostType == PostType.Original
+                     && p.Visibility != PostVisibility.Hidden
                      && followingIds.Contains(p.UserId))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
@@ -598,8 +599,9 @@ public class PostService : IPostService
     public async Task<PostReportDto> CreatePostReportAsync(Guid userId, ReportPostRequest request)
     {
         // Check if post exists
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == request.PostId && !p.IsDeleted);
-        if (!postExists)
+        var post = await _context.Posts
+            .FirstOrDefaultAsync(p => p.Id == request.PostId && !p.IsDeleted);
+        if (post == null)
             throw new KeyNotFoundException("Post not found");
 
         var existingReport = await _context.PostReports
@@ -619,13 +621,25 @@ public class PostService : IPostService
         };
 
         _context.PostReports.Add(report);
+
+        // Auto-hide post if it has 3 or more pending reports
+        var pendingReportCount = await _context.PostReports
+            .CountAsync(r => r.PostId == request.PostId && r.Status == ReportStatus.Pending);
+        
+        if (pendingReportCount >= 2) // After adding this report, count will be >= 3
+        {
+            post.Visibility = PostVisibility.Hidden;
+            post.UpdatedAt = DateTime.UtcNow;
+            _logger.LogInformation("Auto-hiding post {PostId} due to {Count} pending reports", request.PostId, pendingReportCount + 1);
+        }
+
         await _context.SaveChangesAsync();
 
         var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(userId);
         var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
 
-        // Load post content for the DTO
-        var post = await _context.Posts
+        // Reload post with media for DTO
+        post = await _context.Posts
             .Include(p => p.Media)
             .FirstOrDefaultAsync(p => p.Id == request.PostId);
 
@@ -642,6 +656,92 @@ public class PostService : IPostService
             AdditionalDetails = report.AdditionalDetails,
             Status = report.Status,
             CreatedAt = report.CreatedAt
+        };
+    }
+
+    public async Task<PostReportDto> ResolvePostReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.PostReports
+            .Include(r => r.Post)
+            .ThenInclude(p => p.Media)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+            throw new KeyNotFoundException("Report not found");
+
+        if (report.Status != ReportStatus.Pending)
+            throw new InvalidOperationException("Report has already been processed");
+
+        report.Status = ReportStatus.Resolved;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Post report {ReportId} resolved by admin", reportId);
+
+        // Get reporter display name
+        var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(report.ReporterId);
+        var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+
+        return new PostReportDto
+        {
+            Id = report.Id,
+            PostId = report.PostId,
+            PostContent = report.Post?.Content ?? string.Empty,
+            PostMediaUrls = report.Post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
+            ReporterId = report.ReporterId,
+            ReporterDisplayName = reporterDisplayName,
+            ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            CreatedAt = report.CreatedAt,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<PostReportDto> DismissPostReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.PostReports
+            .Include(r => r.Post)
+            .ThenInclude(p => p.Media)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+            throw new KeyNotFoundException("Report not found");
+
+        if (report.Status != ReportStatus.Pending)
+            throw new InvalidOperationException("Report has already been processed");
+
+        report.Status = ReportStatus.Dismissed;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Post report {ReportId} dismissed by admin", reportId);
+
+        // Get reporter display name
+        var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(report.ReporterId);
+        var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+
+        return new PostReportDto
+        {
+            Id = report.Id,
+            PostId = report.PostId,
+            PostContent = report.Post?.Content ?? string.Empty,
+            PostMediaUrls = report.Post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
+            ReporterId = report.ReporterId,
+            ReporterDisplayName = reporterDisplayName,
+            ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            CreatedAt = report.CreatedAt,
+            ResolvedAt = report.ResolvedAt
         };
     }
 

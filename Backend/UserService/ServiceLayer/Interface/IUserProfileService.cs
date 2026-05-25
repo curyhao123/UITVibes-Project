@@ -25,4 +25,6 @@ public interface IUserProfileService
     Task<List<UserProfileDto>> GetAllUserProfilesAsync(int skip = 0, int take = 20);
     Task<List<UserReportDto>> GetUserReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null);
     Task<UserReportDto> CreateUserReportAsync(Guid userId, ReportUserRequest request);
+    Task<UserReportDto> ResolveUserReportAsync(Guid reportId, string? adminNote = null);
+    Task<UserReportDto> DismissUserReportAsync(Guid reportId, string? adminNote = null);
 }

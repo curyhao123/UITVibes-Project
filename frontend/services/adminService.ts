@@ -120,3 +120,18 @@ export async function rejectPostReport(
 ): Promise<void> {
   await apiClient.patch(`${BASE_POST}/post-report/${reportId}/reject`, body ?? {});
 }
+
+// ─── Post Visibility Management ─────────────────────────────────────────────────
+
+/**
+ * POST /post/{postId}/visibility
+ * Change post visibility (Admin can hide any post)
+ * @param postId The post to change visibility
+ * @param visibility 3 = Hidden, other values = Public/Followers/Private
+ */
+export async function changePostVisibility(
+  postId: string,
+  visibility: number,
+): Promise<void> {
+  await apiClient.post(`${BASE_POST}/${postId}/visibility`, visibility);
+}

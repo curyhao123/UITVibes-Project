@@ -218,7 +218,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                   ))
                 ) : (
                   <View style={styles.emptyState}>
-                    <Feather name="bookmark" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
+                    <Feather name="plus-square" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
                     <Text style={styles.emptyText}>No highlights yet</Text>
                     <Text style={styles.emptySubtext}>
                       Create your first highlight to save stories
@@ -233,7 +233,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                   activeOpacity={0.7}
                 >
                   <View style={styles.createNewIcon}>
-                    <Feather name="plus" size={24} color={AppColors.primary} strokeWidth={2.5} />
+                    <Feather name="plus-square" size={24} color={AppColors.primary} strokeWidth={2.5} />
                   </View>
                   <Text style={styles.createNewText}>Create new highlight</Text>
                 </TouchableOpacity>

@@ -241,7 +241,7 @@ export default function StoryViewerScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Feather name="bookmark" size={22} color="#fff" strokeWidth={2} />
+              <Feather name="plus-square" size={22} color="#fff" strokeWidth={2} />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => router.back()} style={styles.xBtn}>

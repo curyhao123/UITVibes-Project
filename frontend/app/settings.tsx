@@ -250,6 +250,11 @@ export default function SettingsScreen() {
             isFirst
           />
           <SettingsRow
+            icon="bookmark"
+            label="Saved"
+            onPress={() => settingsRouter.push('/archive' as any)}
+          />
+          <SettingsRow
             icon="shield"
             label="Privacy & Security"
             onPress={() => {}}

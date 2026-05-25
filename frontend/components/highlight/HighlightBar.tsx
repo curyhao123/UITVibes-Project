@@ -103,7 +103,7 @@ const AddHighlightCircle: React.FC<{ onPress: () => void }> = ({ onPress }) => (
   <TouchableOpacity style={styles.circleItem} onPress={onPress} activeOpacity={0.7}>
     <View style={styles.circleOuter}>
       <View style={styles.addIconCircle}>
-        <Feather name="plus" size={22} color={AppColors.primary} strokeWidth={2.5} />
+        <Feather name="plus-square" size={22} color={AppColors.primary} strokeWidth={2.5} />
       </View>
     </View>
     <Text style={styles.circleLabel}>New</Text>

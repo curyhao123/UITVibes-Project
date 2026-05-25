@@ -22,6 +22,7 @@ import {
   resolvePostReport,
   rejectUserReport,
   rejectPostReport,
+  changePostVisibility,
 } from "@/services/adminService";
 import type {
   BE_UserReport,
@@ -170,8 +171,16 @@ function UserReportCard({
 
 function PostReportCard({
   report,
+  onResolve,
+  onReject,
+  onHidePost,
+  isHiding,
 }: {
   report: BE_PostReport;
+  onResolve: () => void;
+  onReject: () => void;
+  onHidePost: () => void;
+  isHiding: boolean;
 }) {
   const statusColor = STATUS_COLORS[report.status];
 
@@ -204,6 +213,32 @@ function PostReportCard({
           <Text style={styles.noteText}>Admin: {report.adminNote}</Text>
         </View>
       ) : null}
+      {report.status === "Pending" && (
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.btnHide}
+            onPress={onHidePost}
+            disabled={isHiding}
+          >
+            <Feather name="eye-off" size={14} color="#F59E0B" />
+            <Text style={styles.btnHideText}>{isHiding ? "Hiding..." : "Hide Post"}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btnReject}
+            onPress={onReject}
+          >
+            <Feather name="x" size={14} color="#EF4444" />
+            <Text style={styles.btnRejectText}>Reject</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btnResolve}
+            onPress={onResolve}
+          >
+            <Feather name="check" size={14} color="#22C55E" />
+            <Text style={styles.btnResolveText}>Resolve</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -329,6 +364,23 @@ export default function ReportsScreen() {
     }
   };
 
+  const handleHidePost = async (postId: string, reportId: string) => {
+    setActionLoading((prev) => ({ ...prev, [postId]: true }));
+    try {
+      await changePostVisibility(postId, 3); // 3 = Hidden
+      // Update the report status to resolved
+      await resolvePostReport(reportId);
+      setPostReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, status: "Resolved" as AdminReportStatus } : r)),
+      );
+      Alert.alert("Success", "Post has been hidden successfully.");
+    } catch {
+      Alert.alert("Error", "Failed to hide post. Please try again.");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
   const pendingUserCount = userReports.filter((r) => r.status === "Pending").length;
   const pendingPostCount = postReports.filter((r) => r.status === "Pending").length;
 
@@ -402,6 +454,10 @@ export default function ReportsScreen() {
           ) : (
             <PostReportCard
               report={item as BE_PostReport}
+              onResolve={() => handleResolve(item.id, false)}
+              onReject={() => handleReject(item.id, false)}
+              onHidePost={() => handleHidePost((item as BE_PostReport).postId, item.id)}
+              isHiding={!!actionLoading[(item as BE_PostReport).postId]}
             />
           )
         }
@@ -493,6 +549,19 @@ const styles = StyleSheet.create({
   noteRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   noteText: { fontSize: 12, color: AppColors.textMuted },
   cardActions: { flexDirection: "row", gap: 8, marginTop: 8 },
+  btnHide: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  btnHideText: { fontSize: 13, fontWeight: "600", color: "#F59E0B" },
   btnReject: {
     flex: 1,
     flexDirection: "row",

@@ -698,6 +698,90 @@ public class UserProfileService : IUserProfileService
         };
     }
 
+    public async Task<UserReportDto> ResolveUserReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.UserReports
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+        {
+            throw new KeyNotFoundException("Report not found");
+        }
+
+        if (report.Status != ReportStatus.Pending)
+        {
+            throw new InvalidOperationException("Report has already been processed");
+        }
+
+        report.Status = ReportStatus.Resolved;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Report {ReportId} resolved by admin", reportId);
+
+        var reporterName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.ReporterId))?.DisplayName ?? "Someone";
+        var targetName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.TargetUserId))?.DisplayName ?? "Someone";
+
+        return new UserReportDto
+        {
+            Id = report.Id,
+            ReporterUserId = report.ReporterId,
+            ReportedUserId = report.TargetUserId,
+            ReporterDisplayName = reporterName,
+            ReportedDisplayName = targetName,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            CreatedAt = report.CreatedAt,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<UserReportDto> DismissUserReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.UserReports
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+        {
+            throw new KeyNotFoundException("Report not found");
+        }
+
+        if (report.Status != ReportStatus.Pending)
+        {
+            throw new InvalidOperationException("Report has already been processed");
+        }
+
+        report.Status = ReportStatus.Dismissed;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Report {ReportId} dismissed by admin", reportId);
+
+        var reporterName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.ReporterId))?.DisplayName ?? "Someone";
+        var targetName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.TargetUserId))?.DisplayName ?? "Someone";
+
+        return new UserReportDto
+        {
+            Id = report.Id,
+            ReporterUserId = report.ReporterId,
+            ReportedUserId = report.TargetUserId,
+            ReporterDisplayName = reporterName,
+            ReportedDisplayName = targetName,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            CreatedAt = report.CreatedAt,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
     public async Task<UserProfileDto?> GetProfileByDisplayNameAsync(string displayName)
     {
         var trimmed = displayName?.Trim();
