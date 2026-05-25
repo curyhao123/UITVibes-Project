@@ -12,7 +12,7 @@ import { Typography } from '../constants/typography';
 import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
 import { useSharedValue } from 'react-native-reanimated';
-import { repostPost, undoRepost } from '../services/postService';
+import { repostPost, undoRepost, toggleBookmark, removeBookmark } from '../services/postService';
 import { blockUser } from '../services/blockService';
 import { ImageCarousel } from './ImageCarousel';
 import { PostActionsSheet } from './PostActionsSheet';
@@ -44,6 +44,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [localReposted, setLocalReposted] = React.useState(post.isReposted ?? false);
   const [localRepostCount, setLocalRepostCount] = React.useState(post.repostCount ?? 0);
   const [localIsFollowing, setLocalIsFollowing] = useState(post.user.isFollowing ?? false);
+  const [localBookmarked, setLocalBookmarked] = useState(post.isBookmarked ?? false);
 
   const currentUserId = currentUser?.id ?? '';
   const isOwner = currentUserId === post.userId;
@@ -83,7 +84,17 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   };
 
   const handleBookmark = async () => {
-    await toggleBookmark(post.id);
+    try {
+      if (localBookmarked) {
+        await removeBookmark(post.id);
+        setLocalBookmarked(false);
+      } else {
+        await toggleBookmark(post.id);
+        setLocalBookmarked(true);
+      }
+    } catch (error) {
+      console.error("[PostCard] Failed to toggle bookmark:", error);
+    }
   };
 
   const handleRepost = async () => {
@@ -162,6 +173,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   };
 
   const formatCount = (count: number): string => {
+    if (!count && count !== 0) return '0';
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
@@ -270,8 +282,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <Feather
               name="bookmark"
               size={ACTION_ICON}
-              color={post.isBookmarked ? AppColors.primary : AppColors.iconMuted}
-              fill={post.isBookmarked ? AppColors.primary : 'transparent'}
+              color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
+              fill={localBookmarked ? AppColors.primary : 'transparent'}
               strokeWidth={2}
             />
           </TouchableOpacity>

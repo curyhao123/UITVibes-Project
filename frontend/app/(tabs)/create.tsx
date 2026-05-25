@@ -33,6 +33,14 @@ import { Toast } from '../../components/Toast';
 
 type CreateType = 'post' | 'reels';
 
+export type PostVisibility = 'Public' | 'Followers' | 'Private';
+
+const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.ComponentProps<typeof Feather>['name']; description: string }[] = [
+  { value: 'Public', label: 'Public', icon: 'globe', description: 'Anyone can see your post' },
+  { value: 'Followers', label: 'Followers', icon: 'users', description: 'Only followers can see' },
+  { value: 'Private', label: 'Private', icon: 'lock', description: 'Only mentioned users can see' },
+];
+
 const CAPTION_MAX = 2200;
 
 function OptionRow({
@@ -78,7 +86,9 @@ export default function CreateScreen() {
   const [toastVisible, setToastVisible] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState('');
   const [toastType, setToastType] = React.useState<'success' | 'error'>('success');
-  const { createPost, currentUser } = useApp();
+  const [selectedVisibility, setSelectedVisibility] = React.useState<PostVisibility>('Public');
+  const [showVisibilityPicker, setShowVisibilityPicker] = React.useState(false);
+  const { createPost, createReel, currentUser } = useApp();
   const router = useRouter();
 
   const tabAnim = useSharedValue(createType === 'post' ? 0 : 1);
@@ -142,6 +152,16 @@ export default function CreateScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
+      const fileSize = result.assets[0].fileSize;
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+
+      if (fileSize && fileSize > maxSize) {
+        setToastType('error');
+        setToastMessage('The file you selected is too large. The maximum size is 100MB.');
+        setToastVisible(true);
+        return;
+      }
+
       setSelectedMedia((prev) => [result.assets[0].uri]);
     }
   };
@@ -175,13 +195,16 @@ export default function CreateScreen() {
 
     setIsPosting(true);
     try {
-      await createPost(selectedMedia, caption);
-      setToastType('success');
-      setToastMessage(
-        createType === 'reels'
-          ? 'Your reel has been published!'
-          : 'Your post has been published!'
-      );
+      if (createType === 'reels') {
+        await createReel(selectedMedia[0], caption);
+        setToastType('success');
+        setToastMessage('Your reel has been published!');
+      } else {
+        const visibilityValue = selectedVisibility === 'Public' ? 0 : selectedVisibility === 'Followers' ? 1 : 2;
+        await createPost(selectedMedia, caption, undefined, visibilityValue);
+        setToastType('success');
+        setToastMessage('Your post has been published!');
+      }
       setToastVisible(true);
       setSelectedMedia([]);
       setCaption('');
@@ -263,21 +286,15 @@ export default function CreateScreen() {
           </Animated.View>
         </View>
 
-        {/* Title row: avatar + headline + Share (aligned) */}
+        {/* Header row: Close button (X) | Title | Share */}
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/profile' as any)}
-            activeOpacity={0.85}
-            style={styles.avatarBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={styles.closeBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            {currentUser ? (
-              <Avatar user={currentUser} size="small" />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Feather name="user" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-              </View>
-            )}
+            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.headerTitleBlock}>
             <Text style={styles.headerTitle}>New {typeLabel}</Text>
@@ -484,6 +501,13 @@ export default function CreateScreen() {
               disabled={optionsDisabled}
               onPress={mockOption('Topics')}
             />
+            <View style={styles.optionSeparator} />
+            <OptionRow
+              icon={selectedVisibility === 'Public' ? 'globe' : selectedVisibility === 'Followers' ? 'users' : 'lock'}
+              label={`Visibility: ${selectedVisibility}`}
+              disabled={false}
+              onPress={() => setShowVisibilityPicker(true)}
+            />
             {createType === 'reels' && (
               <>
                 <View style={styles.optionSeparator} />
@@ -498,6 +522,58 @@ export default function CreateScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Visibility Picker Modal */}
+      {showVisibilityPicker && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          style={styles.visibilityOverlay}
+        >
+          <Pressable style={styles.visibilityBackdrop} onPress={() => setShowVisibilityPicker(false)} />
+          <View style={styles.visibilityCard}>
+            <View style={styles.visibilityHeader}>
+              <Text style={styles.visibilityTitle}>Who can see your post?</Text>
+              <TouchableOpacity onPress={() => setShowVisibilityPicker(false)} style={styles.visibilityCloseBtn}>
+                <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+            {VISIBILITY_OPTIONS.map((option, index) => (
+              <React.Fragment key={option.value}>
+                {index > 0 && <View style={styles.visibilityOptionSeparator} />}
+                <Pressable
+                  style={[
+                    styles.visibilityOption,
+                    selectedVisibility === option.value && styles.visibilityOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedVisibility(option.value);
+                    setShowVisibilityPicker(false);
+                  }}
+                >
+                  <View style={[styles.visibilityIconWrap, selectedVisibility === option.value && styles.visibilityIconSelected]}>
+                    <Feather
+                      name={option.icon}
+                      size={20}
+                      color={selectedVisibility === option.value ? AppColors.primary : AppColors.textSecondary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                  <View style={styles.visibilityOptionText}>
+                    <Text style={[styles.visibilityOptionLabel, selectedVisibility === option.value && styles.visibilityOptionLabelSelected]}>
+                      {option.label}
+                    </Text>
+                    <Text style={styles.visibilityOptionDesc}>{option.description}</Text>
+                  </View>
+                  {selectedVisibility === option.value && (
+                    <Feather name="check" size={20} color={AppColors.primary} strokeWidth={2.5} />
+                  )}
+                </Pressable>
+              </React.Fragment>
+            ))}
+          </View>
+        </Animated.View>
+      )}
 
       <Toast
         visible={toastVisible}
@@ -556,6 +632,14 @@ const styles = StyleSheet.create({
   },
   avatarBtn: {
     marginRight: 12,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarFallback: {
     width: 32,
@@ -888,5 +972,97 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: AppColors.borderLight,
     marginLeft: 62,
+  },
+  // Visibility Picker Modal
+  visibilityOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  visibilityBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  visibilityCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 8,
+    width: '85%',
+    maxWidth: 340,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  visibilityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.borderLight,
+  },
+  visibilityTitle: {
+    ...Typography.sectionTitle,
+    fontSize: 18,
+    color: AppColors.text,
+  },
+  visibilityCloseBtn: {
+    padding: 4,
+  },
+  visibilityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  visibilityOptionSelected: {
+    backgroundColor: `${AppColors.primary}10`,
+  },
+  visibilityOptionSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: AppColors.borderLight,
+    marginLeft: 72,
+  },
+  visibilityIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  visibilityIconSelected: {
+    backgroundColor: `${AppColors.primary}20`,
+  },
+  visibilityOptionText: {
+    flex: 1,
+  },
+  visibilityOptionLabel: {
+    ...Typography.bodyMedium,
+    fontSize: 16,
+    color: AppColors.text,
+    marginBottom: 2,
+  },
+  visibilityOptionLabelSelected: {
+    color: AppColors.primary,
+    fontWeight: '600',
+  },
+  visibilityOptionDesc: {
+    ...Typography.meta,
+    fontSize: 13,
+    color: AppColors.iconMuted,
   },
 });

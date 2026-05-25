@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -161,7 +161,7 @@ namespace PostService.ServiceLayer.Implementation
         {
             var reels = await _context.Reels
                 .AsNoTracking()
-                .OrderByDescending(r => r.CreatedAt)
+                .OrderBy(r => Guid.NewGuid()) // Random order for discover feed
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();

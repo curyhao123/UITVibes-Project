@@ -49,15 +49,15 @@ namespace PostService.ServiceLayer.Implementation
 
         public async Task<bool> DeleteBookmarkAsync(Guid postId, Guid userId)
         {
-            var bookmark = await _context.Bookmarks.FirstOrDefaultAsync(b => b.Id == postId && b.UserId == userId);
+            var bookmark = await _context.Bookmarks.FirstOrDefaultAsync(b => b.PostId == postId && b.UserId == userId);
             if (bookmark == null)
             {
-                _logger.LogWarning("Bookmark with ID {BookmarkId} not found for deletion by User ID {UserId}", postId, userId);
+                _logger.LogWarning("Bookmark with Post ID {PostId} not found for deletion by User ID {UserId}", postId, userId);
                 return false;
             }
             _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Bookmark with ID {BookmarkId} deleted by User ID {UserId}", postId, userId);
+            _logger.LogInformation("Bookmark with Post ID {PostId} deleted by User ID {UserId}", postId, userId);
             return true;
         }
 
@@ -95,7 +95,24 @@ namespace PostService.ServiceLayer.Implementation
             var post = await _context.Posts
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
+            .Include(p => p.Likes)
             .FirstOrDefaultAsync(p => p.Id == bookmark.PostId);
+
+            if (post == null)
+            {
+                return new BookmarkDto
+                {
+                    Id = bookmark.Id,
+                    PostId = bookmark.PostId,
+                    UserId = bookmark.UserId,
+                    Collection = bookmark.Collection,
+                    CreatedAt = bookmark.CreatedAt,
+                    Post = null
+                };
+            }
+
+            // Check if current user has liked this post
+            var liked = post.Likes.Any(l => l.UserId == bookmark.UserId);
 
             return new BookmarkDto
             {
@@ -104,7 +121,7 @@ namespace PostService.ServiceLayer.Implementation
                 UserId = bookmark.UserId,
                 Collection = bookmark.Collection,
                 CreatedAt = bookmark.CreatedAt,
-                Post = post != null ? new PostDto
+                Post = new PostDto
                 {
                     Id = post.Id,
                     UserId = post.UserId,
@@ -114,6 +131,8 @@ namespace PostService.ServiceLayer.Implementation
                     LikesCount = post.LikesCount,
                     CommentsCount = post.CommentsCount,
                     SharesCount = post.SharesCount,
+                    ViewsCount = post.ViewsCount,
+                    RepostCount = post.RepostCount,
                     CreatedAt = post.CreatedAt,
                     UpdatedAt = post.UpdatedAt,
                     Media = post.Media.OrderBy(m => m.DisplayOrder).Select(m => new PostMediaDto
@@ -126,8 +145,11 @@ namespace PostService.ServiceLayer.Implementation
                         Width = m.Width,
                         Height = m.Height
                     }).ToList(),
-                    Hashtags = post.Hashtags.Select(ph => ph.Hashtag.Name).ToList()
-                } : null
+                    Hashtags = post.Hashtags.Select(ph => ph.Hashtag.Name).ToList(),
+                    IsLikedByCurrentUser = liked,
+                    IsBookmarkedByCurrentUser = true, // This is a bookmark, so it's always true
+                    IsRepostedByCurrentUser = false
+                }
             };
         }
     }

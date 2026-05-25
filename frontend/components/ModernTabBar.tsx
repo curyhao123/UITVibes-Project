@@ -60,6 +60,12 @@ const FLOAT_BOTTOM       = 14;
 /** Bottom inset: additional breathing room on top of safe area. */
 const BOTTOM_INSET       = 4;
 
+/**
+ * Total bottom offset for content that needs to avoid the floating tab bar.
+ * Use this value as bottom padding/margin for overlay content.
+ */
+export const TAB_BAR_BOTTOM_OFFSET = BAR_HEIGHT + BOTTOM_INSET + FLOAT_BOTTOM;
+
 /** Create-tab is index 3 (centered in the 7-tab layout). */
 const CREATE_INDEX = 3;
 
@@ -227,7 +233,11 @@ export function ModernTabBar({
     (state.routes.length > 0 &&
       state.routes.every((r) => TAB_ROUTE_NAMES.includes(r.name)));
 
-  if (!isTabNavigator) {
+  // Hide tab bar on create screen to give more space for content
+  const currentRoute = state.routes[state.index]?.name;
+  const shouldHideTabBar = currentRoute === 'create';
+
+  if (!isTabNavigator || shouldHideTabBar) {
     return null;
   }
 

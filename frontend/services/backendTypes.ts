@@ -395,3 +395,14 @@ export interface BE_AdminUserProfile {
   followingCount: number;
   postsCount: number;
 }
+
+// ============ BOOKMARK TYPES ============
+
+export interface BE_BookmarkResponse {
+  id: string;
+  postId: string;
+  userId: string;
+  collection: string | null;
+  createdAt: string;
+  post: BE_PostResponse | null;
+}

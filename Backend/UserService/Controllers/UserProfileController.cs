@@ -423,4 +423,60 @@ public class UserProfileController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while creating user report" });
         }
     }
+
+    [HttpPatch("reports/{reportId}/resolve")]
+    public async Task<ActionResult<UserReportDto>> ResolveUserReport(Guid reportId, [FromBody] ResolveReportRequest? request = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        try
+        {
+            var report = await _userProfileService.ResolveUserReportAsync(reportId, request?.AdminNote);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Report not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving user report {ReportId}", reportId);
+            return StatusCode(500, new { message = "An error occurred while resolving report" });
+        }
+    }
+
+    [HttpPatch("reports/{reportId}/reject")]
+    public async Task<ActionResult<UserReportDto>> DismissUserReport(Guid reportId, [FromBody] ResolveReportRequest? request = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        try
+        {
+            var report = await _userProfileService.DismissUserReportAsync(reportId, request?.AdminNote);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Report not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error dismissing user report {ReportId}", reportId);
+            return StatusCode(500, new { message = "An error occurred while dismissing report" });
+        }
+    }
 }
