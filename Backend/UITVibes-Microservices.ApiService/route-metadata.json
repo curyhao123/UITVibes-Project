@@ -109,6 +109,15 @@
           "requestBody": {
             "oldPassword": "CurrentPassword123!"
           }
+        },
+        {
+          "method": "POST",
+          "path": "/auth/auth/ban-user/{userId}",
+          "description": "Cấm (Ban) một người dùng bằng userId",
+          "requiresAuth": true,
+          "pathParameters": {
+            "userId": "guid"
+          }
         }
       ]
     },
