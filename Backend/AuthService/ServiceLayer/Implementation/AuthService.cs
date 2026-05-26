@@ -26,7 +26,7 @@ namespace AuthService.ServiceLayer.Implementation
             _tokenService = tokenService;
             _configuration = configuration;
             _messagePublisher = messagePublisher;  // 👈 Add this
-            _emailService = emailService; 
+            _emailService = emailService;
         }
 
 
@@ -379,6 +379,16 @@ namespace AuthService.ServiceLayer.Implementation
 
             verifiedUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> BanUserAsync(Guid userId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) throw new Exception("User not found");
+            user.IsActive = false;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

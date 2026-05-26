@@ -10,7 +10,7 @@ namespace AuthService.Controllers
     [ApiController]
     [Route("api/[controller]")]
 
-    public class AuthController: ControllerBase
+    public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
@@ -93,7 +93,6 @@ namespace AuthService.Controllers
             }
         }
 
-  
         [HttpPost("delete-account")]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
         {
@@ -205,5 +204,33 @@ namespace AuthService.Controllers
             }
         }
 
+        [HttpPost("ban-user/{userId}")]
+        public async Task<IActionResult> BanUser(Guid userId)
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+            {
+                return Unauthorized(new { message = "User ID not found in request headers" });
+            }
+
+            try
+            {
+                var result = await _authService.BanUserAsync(userId);
+                if (result)
+                {
+                    return Ok(new { message = "User banned successfully" });
+                }
+                else
+                {
+                    return NotFound(new { message = "User not found or already banned" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error banning user {UserId}", userId);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using PostService.DTOs;
+using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
+using System.Text.RegularExpressions;
 
 namespace PostService.ServiceLayer.Implementation
 {
@@ -11,12 +14,23 @@ namespace PostService.ServiceLayer.Implementation
         private readonly ILogger<ReelService> _logger;
         private readonly IUserProfileRpcClient _userProfileRpcClient;
         private readonly ICloudinaryService _cloudinaryService;
-        public ReelService(PostDbContext context, ILogger<ReelService> logger, IUserProfileRpcClient userProfileRpcClient, ICloudinaryService cloudinaryService)
+        private readonly IPostLikedPublisher _postLikedPublisher;
+        private readonly IPostCommentedPublisher _postCommentedPublisher;
+        private readonly ICommentMentionedPublisher _commentMentionedPublisher;
+     
+
+        public ReelService(PostDbContext context, ILogger<ReelService> logger, 
+            IUserProfileRpcClient userProfileRpcClient, ICloudinaryService cloudinaryService,
+            IPostLikedPublisher postLikedPublisher, IPostCommentedPublisher postCommentedPublisher,
+            ICommentMentionedPublisher commentMentionedPublisher)
         {
             _context = context;
             _logger = logger;
             _userProfileRpcClient = userProfileRpcClient;
             _cloudinaryService = cloudinaryService;
+            _postLikedPublisher = postLikedPublisher;
+            _postCommentedPublisher = postCommentedPublisher;
+            _commentMentionedPublisher = commentMentionedPublisher;
         }
 
         // CRUD
@@ -185,6 +199,10 @@ namespace PostService.ServiceLayer.Implementation
         // Tương tác
         public async Task LikeReelAsync(Guid reelId, Guid userId)
         {
+            var reel = await _context.Reels.FirstOrDefaultAsync(r => r.Id == reelId);
+            if (reel == null)
+                throw new KeyNotFoundException("Reel not found");
+
             var existingLike = await _context.ReelLikes
                 .FirstOrDefaultAsync(l => l.ReelId == reelId && l.UserId == userId);
             if (existingLike != null)
@@ -198,6 +216,23 @@ namespace PostService.ServiceLayer.Implementation
             };
             _context.ReelLikes.Add(like);
             await _context.SaveChangesAsync();
+
+            var likerProfile = await _userProfileRpcClient.GetProfileAsync(userId);
+            var likerName = likerProfile.Found ? likerProfile.DisplayName : "Someone";
+
+            try
+            {
+                await _postLikedPublisher.PublishAsync(new PostLikedEvent(
+                    reel.UserId,
+                    userId,
+                    likerName,
+                    reelId));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish PostLikedevent for reel {reelId}", reelId);
+            }
+
         }
         public async Task UnlikeReelAsync(Guid reelId, Guid userId)
         {
@@ -228,6 +263,58 @@ namespace PostService.ServiceLayer.Implementation
             };
             _context.ReelShares.Add(share);
             await _context.SaveChangesAsync();
+        }
+
+        private List<string> ExtractMentions(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return [];
+            }
+            var regex = new Regex(@"@(\w+)", RegexOptions.IgnoreCase);
+            var matches = regex.Matches(content);
+            return matches.Select(m => m.Groups[1].Value.ToLower()).Distinct().ToList();
+        }
+
+        private async Task ProcessMentionsAsync(Reel reel, ReelComment comment, List<string> usernames)
+        {
+            if (usernames.Count == 0)
+                return;
+            var mentionerProfile = await _userProfileRpcClient.GetProfileAsync(comment.UserId);
+            var mentionerName = mentionerProfile?.Found == true ? mentionerProfile.DisplayName : "Someone";
+            var commentPreview = comment.Content.Length <= 100
+                ? comment.Content
+                : comment.Content[..100];
+
+
+            foreach (var username in usernames)
+            {
+                var mentionedUserResult = await _userProfileRpcClient.GetProfileAsync(username);
+                if (mentionedUserResult?.Found != true || mentionedUserResult.UserId == Guid.Empty)
+                {
+                    continue;
+                }
+
+                if (mentionedUserResult.UserId == comment.UserId)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await _commentMentionedPublisher.PublishAsync(new CommentMentionedEvent(
+                        mentionedUserResult.UserId,
+                        comment.UserId,
+                        mentionerName,
+                        reel.Id,
+                        comment.Id,
+                        commentPreview));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish CommentMentioned event for comment {CommentId}", comment.Id);
+                }
+            }
         }
 
         // Comment
@@ -284,6 +371,29 @@ namespace PostService.ServiceLayer.Implementation
             _context.ReelComments.Add(comment);
             await _context.SaveChangesAsync();
             var isOwner = comment.UserId == userId ? true : false;
+
+            var mentionedUsernames = ExtractMentions(comment.Content);
+            await ProcessMentionsAsync(reel, comment, mentionedUsernames);
+
+            var commenterProfile = await _userProfileRpcClient.GetProfileAsync(userId);
+            var commenterName = commenterProfile?.DisplayName ?? string.Empty;
+            var commentPreview = request.Content.Length <= 100
+                ? request.Content
+                : request.Content[..100];
+
+            try
+            {
+                await _postCommentedPublisher.PublishAsync(new PostCommentedEvent(
+                    reel.UserId,
+                    userId,
+                    commenterName,
+                    reelId,
+                    commentPreview));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish PostCommented event for reel {ReelId}", reelId);
+            }
 
 
             return new ReelCommentDto
