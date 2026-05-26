@@ -5,13 +5,17 @@ import {
   BE_CommentResponse,
   BE_CommentLikeResponse,
   BE_LikeResponse,
+  BE_LikeDto,
   BE_HashtagDto,
   CreatePostBody,
   BE_RepostResponse,
   BE_RepostStatusResponse,
+  BE_BookmarkResponse,
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
 import { getAccessToken, API_BASE_URL } from "./httpClient";
+import { getCurrentUser } from "./api";
+import { getCurrentUserId } from "./session";
 
 // ─── Comment transformer ─────────────────────────────────────────────────────
 async function fetchRepliesForComment(
@@ -148,12 +152,16 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     "media:",
     JSON.stringify(post.media),
   );
+  const allImages = post.media?.map((m) => m.url) ?? [];
   return {
     id: post.id,
     userId: post.userId,
     user: author || {
       id: post.userId,
       username: "",
+      fullName: "",
+      coverImage: "",
+      gender: "",
       displayName: "",
       avatar: "",
       bio: "",
@@ -162,7 +170,8 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
       posts: 0,
       isVerified: false,
     },
-    image: post.media?.[0]?.url || "",
+    image: allImages[0] ?? "",
+    images: allImages,
     caption: post.content,
     likes: post.likesCount,
     comments: [],
@@ -251,6 +260,11 @@ export async function getPostById(id: string): Promise<Post | undefined> {
   const post = transformBEPost(data, author);
   post.comments = comments;
   return post;
+}
+
+export async function getPostLikes(postId: string): Promise<BE_LikeDto[]> {
+  const { data } = await apiClient.get<BE_LikeDto[]>(`/post/${postId}/likes`);
+  return data;
 }
 
 export async function getPostComments(postId: string): Promise<CommentType[]> {
@@ -365,77 +379,94 @@ export async function getUserPosts(userId: string): Promise<Post[]> {
 }
 
 export async function getBookmarkedPosts(): Promise<Post[]> {
-  const { data } = await apiClient.get<BE_PostResponse[]>("/post/bookmarks", {
-    params: { skip: 0, take: 20 },
-  });
-  const posts = await Promise.all(
-    data.map(async (post) => {
-      const author = await fetchUserById(post.userId);
-      return transformBEPost(post, author);
-    }),
-  );
-  return posts;
+  try {
+    const { data } = await apiClient.get<BE_BookmarkResponse[]>("/post/bookmarks", {
+      params: { skip: 0, take: 20 },
+    });
+    
+    const posts = await Promise.all(
+      data.map(async (bookmark) => {
+        // Backend returns BookmarkDto with nested Post
+        const post = bookmark.post;
+        if (!post) return null;
+        
+        const author = await fetchUserById(post.userId);
+        return transformBEPost(post, author);
+      }),
+    );
+    
+    // Filter out null values (posts without data)
+    return posts.filter((p): p is Post => p !== null);
+  } catch (error) {
+    console.error("[getBookmarkedPosts] Error:", error);
+    return [];
+  }
 }
 
 export async function createPost(
-  imageUri: string,
+  imageUris: string[],
   caption: string,
   location?: string,
+  visibility?: number,
 ): Promise<Post> {
-  const isLocal =
-    imageUri.startsWith("file://") ||
-    imageUri.startsWith("content://") ||
-    imageUri.startsWith("blob:") ||
-    imageUri.startsWith("data:");
+  // Upload all local media to Cloudinary, keep remote URLs as-is
+  const uploadedMedia = await Promise.all(
+    imageUris.map(async (uri, index) => {
+      const isLocal =
+        uri.startsWith("file://") ||
+        uri.startsWith("content://") ||
+        uri.startsWith("blob:") ||
+        uri.startsWith("data:");
 
-  let mediaUrl = imageUri;
-  let publicId: string | undefined;
-  let thumbnailUrl: string | undefined;
-  let width: number | undefined;
-  let height: number | undefined;
+      if (!isLocal) {
+        return { url: uri, displayOrder: index };
+      }
 
-  if (isLocal) {
-    const uploaded = await uploadMedia(imageUri, "image");
-    mediaUrl = uploaded.url;
-    publicId = uploaded.publicId;
-    thumbnailUrl = uploaded.thumbnailUrl;
-    width = uploaded.width;
-    height = uploaded.height;
-  }
+      const uploaded = await uploadMedia(uri, "image");
+      return {
+        url: uploaded.url,
+        publicId: uploaded.publicId,
+        thumbnailUrl: uploaded.thumbnailUrl,
+        width: uploaded.width,
+        height: uploaded.height,
+        displayOrder: index,
+      };
+    }),
+  );
 
   const body: CreatePostBody = {
     content: caption,
     location,
-    visibility: 0,
-    media: [
-      {
-        type: 0,
-        url: mediaUrl,
-        publicId,
-        thumbnailUrl,
-        displayOrder: 0,
-        width,
-        height,
-      },
-    ],
+    visibility: visibility ?? 0,
+    media: uploadedMedia.map((m) => ({
+      type: 0,
+      url: m.url,
+      publicId: m.publicId,
+      thumbnailUrl: m.thumbnailUrl,
+      displayOrder: m.displayOrder,
+      width: m.width,
+      height: m.height,
+    })),
   };
 
   const { data } = await apiClient.post<BE_PostResponse>("/post", body);
-  const author =
-    getCurrentUser() ||
-    ({
+  let author = await getCurrentUser();
+  if (!author) {
+    author = {
       id: getCurrentUserId(),
       username: "",
       displayName: "You",
       fullName: "",
       gender: "",
       avatar: "",
+      coverImage: "",
       bio: "",
       followers: 0,
       following: 0,
       posts: 0,
       isVerified: false,
-    } as User);
+    };
+  }
   return transformBEPost(data, author);
 }
 
@@ -456,7 +487,11 @@ export async function deletePost(postId: string): Promise<boolean> {
   return true;
 }
 
-export async function toggleLike(postId: string): Promise<boolean> {
+export async function toggleLike(postId: string, isCurrentlyLiked: boolean): Promise<boolean> {
+  if (isCurrentlyLiked) {
+    await apiClient.delete(`/post/${postId}/like`);
+    return false;
+  }
   const { data } = await apiClient.post<BE_LikeResponse>(
     `/post/${postId}/like`,
   );
@@ -464,8 +499,23 @@ export async function toggleLike(postId: string): Promise<boolean> {
 }
 
 export async function toggleBookmark(postId: string): Promise<boolean> {
-  await apiClient.post(`/post/${postId}/bookmark`);
-  return true;
+  try {
+    await apiClient.post(`/post/${postId}/bookmark`);
+    return true;
+  } catch (error) {
+    console.error("[toggleBookmark] API error:", error);
+    return false;
+  }
+}
+
+export async function removeBookmark(postId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/post/${postId}/bookmark`);
+    return true;
+  } catch (error) {
+    console.error("[removeBookmark] API error:", error);
+    return false;
+  }
 }
 
 export async function addComment(
@@ -551,15 +601,8 @@ export async function repostPost(postId: string): Promise<Post> {
 
 export async function undoRepost(postId: string): Promise<Post> {
   await apiClient.delete(`/post/${postId}/repost`);
-  // Reload post để lấy fresh RepostCount
-  // Nếu postId là original post → reload chính nó
-  // Nếu postId là repost record → reload original post (idempotent)
   const post = await getPostById(postId);
   return post!;
-  await apiClient.delete(`/post/${postId}/repost`);
-  // Backend không trả body, nên gọi lại API repost/status để lấy fresh count
-  // Trả về 0 để caller giảm count tạm, rồi reload post để lấy count chuẩn
-  return 0;
 }
 
 export async function getRepostStatus(
@@ -592,4 +635,285 @@ export async function getUserReposts(
     }),
   );
   return posts;
+}
+
+// ─── Reels ─────────────────────────────────────────────────────────────────────
+
+export interface ReelUploadResult {
+  videoUrl: string;
+  videoPublicId: string;
+  thumbnailUrl?: string;
+  thumbnailPublicId?: string;
+  duration: number;
+}
+
+export async function uploadReelVideo(
+  uri: string,
+): Promise<ReelUploadResult> {
+  const formData = new FormData();
+
+  let fileUri = uri;
+  let fileName = "video.mp4";
+  let mimeType = "video/mp4";
+
+  if (uri.startsWith("file://") || uri.startsWith("content://")) {
+    fileName = uri.split("/").pop() || "video.mp4";
+    mimeType = "video/mp4";
+  } else if (uri.startsWith("blob:") || uri.startsWith("data:")) {
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    mimeType = blob.type || "video/mp4";
+    fileName = "video.mp4";
+    if (typeof File !== "undefined") {
+      formData.append("File", new File([blob], fileName, { type: mimeType }));
+    } else {
+      formData.append("File", blob as any, fileName);
+    }
+    fileUri = "";
+  } else if (!uri.startsWith("https://")) {
+    fileName = uri.split("/").pop() || "video.mp4";
+    mimeType = "video/mp4";
+  } else {
+    // Already uploaded URL, return as-is
+    return { videoUrl: uri, videoPublicId: "", duration: 0 };
+  }
+
+  if (fileUri) {
+    (formData as any).append("File", {
+      uri: fileUri,
+      type: mimeType,
+      name: fileName,
+    } as any);
+  }
+
+  const { data } = await apiClient.post<{
+    videoUrl: string;
+    videoPublicId: string;
+    thumbnailUrl?: string;
+    thumbnailPublicId?: string;
+    duration: number;
+  }>("/post/reel/uploadvideo", formData, {
+    headers: { "Content-Type": "multipart/form-data" } as any,
+  });
+
+  return data;
+}
+
+export interface CreateReelBody {
+  videoUrl: string;
+  videoPublicId: string;
+  thumbnailUrl?: string;
+  thumbnailPublicId?: string;
+  caption?: string;
+  duration: number;
+}
+
+export interface BE_ReelResponse {
+  id: string;
+  userId: string;
+  ownerDisplayName: string;
+  ownerAvatarUrl?: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  caption?: string;
+  duration: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  viewCount: number;
+  isLiked: boolean;
+  isOwner: boolean;
+  createdAt: string;
+}
+
+export interface Reel {
+  id: string;
+  userId: string;
+  ownerDisplayName: string;
+  ownerAvatarUrl?: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  caption?: string;
+  duration: number;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  viewCount: number;
+  isLiked: boolean;
+  isOwner: boolean;
+  createdAt: string;
+}
+
+export async function createReel(
+  videoUri: string,
+  caption: string,
+  duration?: number,
+): Promise<Reel> {
+  // Upload video first
+  const uploadResult = await uploadReelVideo(videoUri);
+
+  const body: CreateReelBody = {
+    videoUrl: uploadResult.videoUrl,
+    videoPublicId: uploadResult.videoPublicId,
+    thumbnailUrl: uploadResult.thumbnailUrl,
+    thumbnailPublicId: uploadResult.thumbnailPublicId,
+    caption,
+    duration: duration ?? uploadResult.duration,
+  };
+
+  const { data } = await apiClient.post<BE_ReelResponse>("/post/reel", body);
+  return data;
+}
+
+// ─── Get Reel Feed ────────────────────────────────────────────────────────────
+
+export async function getReels(skip = 0, take = 20): Promise<Reel[]> {
+  try {
+    const { data } = await apiClient.get<BE_ReelResponse[]>("/post/reel", {
+      params: { skip, take },
+    });
+    if (!data || !Array.isArray(data)) return [];
+    return data;
+  } catch (error) {
+    console.error("[getReels] API error:", error);
+    return [];
+  }
+}
+
+// ─── Get Single Reel ─────────────────────────────────────────────────────────
+
+export async function getReelById(id: string): Promise<Reel | undefined> {
+  try {
+    const { data } = await apiClient.get<BE_ReelResponse>(`/post/reel/${id}`);
+    return data;
+  } catch (error) {
+    console.error("[getReelById] API error:", error);
+    return undefined;
+  }
+}
+
+// ─── Toggle Reel Like ────────────────────────────────────────────────────────
+
+export async function toggleReelLike(reelId: string, isCurrentlyLiked: boolean): Promise<boolean> {
+  try {
+    if (isCurrentlyLiked) {
+      await apiClient.delete(`/post/reel/${reelId}/like`);
+      return false;
+    }
+    await apiClient.post(`/post/reel/${reelId}/like`);
+    return true;
+  } catch (error) {
+    console.error("[toggleReelLike] API error:", error);
+    return isCurrentlyLiked;
+  }
+}
+
+// ─── Toggle Reel Bookmark ───────────────────────────────────────────────────
+
+export async function toggleReelBookmark(reelId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/post/reel/${reelId}/bookmark`);
+    return true;
+  } catch (error) {
+    console.error("[toggleReelBookmark] API error:", error);
+    return false;
+  }
+}
+
+// ─── Get Reel Comments ───────────────────────────────────────────────────────
+
+export async function getReelComments(reelId: string): Promise<CommentType[]> {
+  try {
+    const { data } = await apiClient.get<BE_CommentResponse[]>(
+      `/post/reel/${reelId}/comments`,
+    );
+    if (!data || !Array.isArray(data)) return [];
+
+    const comments = await Promise.all(
+      data.map(async (c) => {
+        const user = await fetchUserById(c.userId);
+        return await transformComment(c, user);
+      }),
+    );
+    return comments;
+  } catch (error) {
+    console.error("[getReelComments] API error:", error);
+    return [];
+  }
+}
+
+// ─── Add Reel Comment ───────────────────────────────────────────────────────
+
+export async function addReelComment(
+  reelId: string,
+  text: string,
+  parentCommentId?: string,
+): Promise<{ success: boolean; comment?: CommentType }> {
+  try {
+    const body: { content: string; parentCommentId?: string } = { content: text };
+    if (parentCommentId) {
+      body.parentCommentId = parentCommentId;
+    }
+    const { data } = await apiClient.post<BE_CommentResponse>(
+      `/post/reel/${reelId}/comment`,
+      body,
+    );
+    const currentUser = await fetchUserById(data.userId);
+    const comment = await transformComment(data, currentUser || undefined);
+    return { success: true, comment };
+  } catch (error) {
+    console.error("[addReelComment] API error:", error);
+    return { success: false };
+  }
+}
+
+// ─── Delete Reel Comment ─────────────────────────────────────────────────────
+
+export async function deleteReelComment(commentId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/post/comment/${commentId}`);
+    return true;
+  } catch (error) {
+    console.error("[deleteReelComment] API error:", error);
+    return false;
+  }
+}
+
+// ─── Toggle Reel Comment Like ─────────────────────────────────────────────────
+
+export async function toggleReelCommentLike(commentId: string): Promise<boolean> {
+  try {
+    await apiClient.post(`/post/reel/comment/${commentId}/like`);
+    return true;
+  } catch (error) {
+    console.error("[toggleReelCommentLike] API error:", error);
+    return false;
+  }
+}
+
+// ─── Get My Reels ────────────────────────────────────────────────────────────
+
+export async function getMyReels(): Promise<Reel[]> {
+  try {
+    const { data } = await apiClient.get<BE_ReelResponse[]>("/post/reel/my-reels", {
+      params: { skip: 0, take: 50 },
+    });
+    if (!data || !Array.isArray(data)) return [];
+    return data;
+  } catch (error) {
+    console.error("[getMyReels] API error:", error);
+    return [];
+  }
+}
+
+// ─── Delete Reel ─────────────────────────────────────────────────────────────
+
+export async function deleteReel(reelId: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/post/reel/${reelId}`);
+    return true;
+  } catch (error) {
+    console.error("[deleteReel] API error:", error);
+    return false;
+  }
 }

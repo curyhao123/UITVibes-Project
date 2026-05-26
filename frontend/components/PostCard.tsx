@@ -1,18 +1,23 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { Image } from 'expo-image';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { GestureDetector } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 import { Avatar } from './Avatar';
 import { Post } from '../data/mockData';
 import { useApp } from '../context/AppContext';
-import { useRouter } from 'expo-router';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
 import { useSharedValue } from 'react-native-reanimated';
-import { repostPost, undoRepost } from '../services/postService';
+import { repostPost, undoRepost, toggleBookmark, removeBookmark } from '../services/postService';
+import { blockUser } from '../services/blockService';
+import { ImageCarousel } from './ImageCarousel';
+import { PostActionsSheet } from './PostActionsSheet';
+import { ReportPostSheet } from './ReportPostSheet';
+import { type ReportReason } from '../services/backendTypes';
 
 const ACTION_ICON = 24;
 
@@ -21,8 +26,16 @@ interface PostCardProps {
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const { toggleLike, toggleBookmark } = useApp();
+  const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost } = useApp();
   const router = useRouter();
+
+  const [showActionsSheet, setShowActionsSheet] = useState(false);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+
+  // ── Multi-image source ────────────────────────────────────────────────
+  const images = post.images && post.images.length > 0
+    ? post.images
+    : post.image ? [post.image] : [];
 
   // ── Heart animation state ──────────────────────────────────────────────
   const { scale: heartScale, opacity: heartOpacity, play: playHeart } = useAnimatedHeart();
@@ -30,41 +43,62 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [localLiked, setLocalLiked] = React.useState(post.isLiked);
   const [localReposted, setLocalReposted] = React.useState(post.isReposted ?? false);
   const [localRepostCount, setLocalRepostCount] = React.useState(post.repostCount ?? 0);
+  const [localIsFollowing, setLocalIsFollowing] = useState(post.user.isFollowing ?? false);
+  const [localBookmarked, setLocalBookmarked] = useState(post.isBookmarked ?? false);
 
-  // ── Double-tap gesture on image — runs entirely on the UI thread ─────────────────
+  const currentUserId = currentUser?.id ?? '';
+  const isOwner = currentUserId === post.userId;
+
+  // ── Double-tap to like ────────────────────────────────────────────────
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
-      await toggleLike(post.id);
+      await toggleLike(post.id, false);
     }
     playHeart();
   }, [localLiked, post.id, playHeart, toggleLike]);
 
-  const handleImageSingleTap = useCallback(() => {
+  const handleOpenPost = useCallback(() => {
     router.push(`/post/${post.id}` as any);
   }, [post.id, router]);
 
   const { tapGesture } = useDoubleTap({
     onDoubleTap: handleDoubleTap,
-    onSingleTap: handleImageSingleTap,
+    onSingleTap: handleOpenPost,
     delay: 260,
   });
 
-  // ── Button handlers ────────────────────────────────────────────────────
+  // ── Button handlers ───────────────────────────────────────────────────
   const handleLike = async () => {
-    const newState = !localLiked;
-    setLocalLiked(newState);
-    await toggleLike(post.id);
-    // Micro-bounce driven by the animated icon component
+    const wasLiked = localLiked;
+    setLocalLiked(!wasLiked);
+    try {
+      await toggleLike(post.id, wasLiked);
+    } catch {
+      setLocalLiked(wasLiked);
+    }
+  };
+
+  const handleLikeLongPress = () => {
+    router.push(`/post/likes?postId=${post.id}`);
   };
 
   const handleBookmark = async () => {
-    await toggleBookmark(post.id);
+    try {
+      if (localBookmarked) {
+        await removeBookmark(post.id);
+        setLocalBookmarked(false);
+      } else {
+        await toggleBookmark(post.id);
+        setLocalBookmarked(true);
+      }
+    } catch (error) {
+      console.error("[PostCard] Failed to toggle bookmark:", error);
+    }
   };
 
   const handleRepost = async () => {
     const wasReposted = localReposted;
-    // Optimistic update
     setLocalReposted(!wasReposted);
     setLocalRepostCount((prev) => (wasReposted ? prev - 1 : prev + 1));
 
@@ -77,7 +111,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
       }
     } catch (err) {
-      // Rollback on error
       setLocalReposted(wasReposted);
       setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
       console.error('[PostCard] Repost error:', err);
@@ -92,6 +125,42 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     router.push(`/post/${post.id}` as any);
   };
 
+  const handleFollowToggle = async () => {
+    const wasFollowing = localIsFollowing;
+    setLocalIsFollowing(!wasFollowing);
+    try {
+      await toggleFollow(post.userId);
+    } catch {
+      setLocalIsFollowing(wasFollowing);
+    }
+  };
+
+  const handleEllipsisPress = () => {
+    setShowActionsSheet(true);
+  };
+
+  // ── Sheet callbacks ────────────────────────────────────────────────────
+  const handleBlockUser = async () => {
+    try {
+      await blockUser(post.userId);
+      Alert.alert('Blocked', `You have blocked @${post.user.displayName || post.user.username}.`);
+    } catch {
+      Alert.alert('Error', 'Could not block this user. Please try again.');
+    }
+  };
+
+  const handleDeletePost = async () => {
+    try {
+      await deletePost(post.id);
+    } catch {
+      Alert.alert('Error', 'Could not delete this post. Please try again.');
+    }
+  };
+
+  const handleReportSuccess = (_payload: { postId: string; reason: ReportReason }) => {
+    Alert.alert('Report Submitted', 'Thank you for your report. Our team will review it shortly.');
+  };
+
   const formatTimeAgo = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
@@ -104,33 +173,63 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   };
 
   const formatCount = (count: number): string => {
+    if (!count && count !== 0) return '0';
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   };
 
+  const displayName = post.user.displayName || post.user.username;
+
   return (
     <View style={styles.container}>
+      {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
+      <View style={styles.postHeader}>
+        <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
+          <Avatar user={post.user} size={36} />
+          <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.headerRight}>
+          {!isOwner && (
+            <TouchableOpacity
+              style={[styles.followBtn, localIsFollowing && styles.followBtnFollowing]}
+              onPress={handleFollowToggle}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.followBtnText, localIsFollowing && styles.followBtnTextFollowing]}>
+                {localIsFollowing ? 'Following' : 'Follow'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.ellipsisBtn}
+            onPress={handleEllipsisPress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={AppColors.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Image + Actions wrapper — enables absolute positioning */}
       <View style={styles.imageContainer}>
-        {/* Image Area — single tap opens post, double tap likes */}
+        {/* Image Area — double tap likes, single tap opens post detail */}
         <GestureDetector gesture={tapGesture}>
-          <View style={styles.imageWrap}>
-            <Image
-              source={{ uri: post.image }}
-              style={styles.postImage}
-              contentFit="cover"
-            />
-            {/* Large bouncing heart overlay — centered on image */}
-            <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
+          <View>
+            {/* Instagram-style carousel: swipe, dots, carousel icon */}
+            <View style={styles.carouselWrapper}>
+              <ImageCarousel
+                images={images}
+                height={300}
+                onPress={handleOpenPost}
+              />
+            </View>
 
-            <View style={styles.overlayBottomLeft}>
-              <TouchableOpacity onPress={handleProfilePress} style={styles.overlayUser} activeOpacity={0.9}>
-                <Avatar user={post.user} size="small" />
-                <Text style={styles.overlayName} numberOfLines={1}>
-                  @{post.user.displayName || post.user.username}
-                </Text>
-              </TouchableOpacity>
+            {/* Heart overlay — positioned on the carousel */}
+            <View style={styles.heartOverlay}>
+              <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
             </View>
           </View>
         </GestureDetector>
@@ -139,6 +238,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             onPress={handleLike}
+            onLongPress={handleLikeLongPress}
+            delayLongPress={400}
             style={styles.actionGroup}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
@@ -181,8 +282,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <Feather
               name="bookmark"
               size={ACTION_ICON}
-              color={post.isBookmarked ? AppColors.primary : AppColors.iconMuted}
-              fill={post.isBookmarked ? AppColors.primary : 'transparent'}
+              color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
+              fill={localBookmarked ? AppColors.primary : 'transparent'}
               strokeWidth={2}
             />
           </TouchableOpacity>
@@ -191,7 +292,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       <View style={styles.captionContainer}>
           <Text style={styles.caption}>
-            <Text style={styles.captionUsername}>@{post.user.displayName || post.user.username}</Text>
+            <Text style={styles.captionUsername}>@{displayName}</Text>
             {' '}
             {post.caption}
           </Text>
@@ -204,6 +305,26 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       )}
 
       <Text style={styles.timeAgo}>{formatTimeAgo(post.createdAt)}</Text>
+
+      {/* ── Action Sheets ── */}
+      <PostActionsSheet
+        visible={showActionsSheet}
+        postOwnerId={post.userId}
+        currentUserId={currentUserId}
+        postOwnerDisplayName={displayName}
+        onReportPost={() => setShowReportSheet(true)}
+        onBlockUser={handleBlockUser}
+        onDeletePost={handleDeletePost}
+        onClose={() => setShowActionsSheet(false)}
+      />
+
+      <ReportPostSheet
+        visible={showReportSheet}
+        postId={post.id}
+        postOwnerDisplayName={displayName}
+        onClose={() => setShowReportSheet(false)}
+        onReportSuccess={handleReportSuccess}
+      />
     </View>
   );
 };
@@ -228,13 +349,67 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  // ── Post Header ──────────────────────────────────────────────────────
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  headerUsername: {
+    ...Typography.bodySemibold,
+    fontSize: 14,
+    color: AppColors.text,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  followBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: borderRadius.md,
+    backgroundColor: AppColors.primary,
+  },
+  followBtnFollowing: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  followBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  followBtnTextFollowing: {
+    color: AppColors.text,
+  },
+  ellipsisBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: AppColors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // ── Image area ──────────────────────────────────────────────────────
   imageContainer: {
     position: 'relative',
     width: '100%',
   },
-  imageWrap: {
-    position: 'relative',
+  carouselWrapper: {
     width: '100%',
+    height: 332, // carousel height (300) + dots area (32)
   },
   postImage: {
     width: '100%',
@@ -242,24 +417,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
   },
-  overlayBottomLeft: {
+  heartOverlay: {
     position: 'absolute',
-    bottom: 14,
-    left: layoutPadding,
-    right: 56,
-  },
-  overlayUser: {
-    flexDirection: 'row',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
     alignItems: 'center',
-    gap: 8,
-  },
-  overlayName: {
-    ...Typography.captionSemibold,
-    fontSize: 14,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    justifyContent: 'center',
   },
   actionsRow: {
     flexDirection: 'row',

@@ -33,6 +33,14 @@ import { Toast } from '../../components/Toast';
 
 type CreateType = 'post' | 'reels';
 
+export type PostVisibility = 'Public' | 'Followers' | 'Private';
+
+const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.ComponentProps<typeof Feather>['name']; description: string }[] = [
+  { value: 'Public', label: 'Public', icon: 'globe', description: 'Anyone can see your post' },
+  { value: 'Followers', label: 'Followers', icon: 'users', description: 'Only followers can see' },
+  { value: 'Private', label: 'Private', icon: 'lock', description: 'Only mentioned users can see' },
+];
+
 const CAPTION_MAX = 2200;
 
 function OptionRow({
@@ -72,13 +80,15 @@ function OptionRow({
 
 export default function CreateScreen() {
   const [createType, setCreateType] = React.useState<CreateType>('post');
-  const [selectedMedia, setSelectedMedia] = React.useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = React.useState<string[]>([]);
   const [caption, setCaption] = React.useState('');
   const [isPosting, setIsPosting] = React.useState(false);
   const [toastVisible, setToastVisible] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState('');
   const [toastType, setToastType] = React.useState<'success' | 'error'>('success');
-  const { createPost, currentUser } = useApp();
+  const [selectedVisibility, setSelectedVisibility] = React.useState<PostVisibility>('Public');
+  const [showVisibilityPicker, setShowVisibilityPicker] = React.useState(false);
+  const { createPost, createReel, currentUser } = useApp();
   const router = useRouter();
 
   const tabAnim = useSharedValue(createType === 'post' ? 0 : 1);
@@ -115,12 +125,18 @@ export default function CreateScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
       aspect: createType === 'reels' ? [9, 16] : [1, 1],
       quality: 0.85,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setSelectedMedia(result.assets[0].uri);
+    if (!result.canceled && result.assets.length > 0) {
+      const newUris = result.assets.map((a) => a.uri);
+      setSelectedMedia((prev) => {
+        const combined = [...prev, ...newUris].slice(0, 10);
+        return combined;
+      });
     }
   };
 
@@ -136,7 +152,17 @@ export default function CreateScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setSelectedMedia(result.assets[0].uri);
+      const fileSize = result.assets[0].fileSize;
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+
+      if (fileSize && fileSize > maxSize) {
+        setToastType('error');
+        setToastMessage('The file you selected is too large. The maximum size is 100MB.');
+        setToastVisible(true);
+        return;
+      }
+
+      setSelectedMedia((prev) => [result.assets[0].uri]);
     }
   };
 
@@ -148,8 +174,12 @@ export default function CreateScreen() {
     }
   };
 
+  const handleRemoveMedia = (index: number) => {
+    setSelectedMedia((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handlePost = async () => {
-    if (!selectedMedia) {
+    if (selectedMedia.length === 0) {
       setToastType('error');
       setToastMessage('Please select a photo or video before sharing.');
       setToastVisible(true);
@@ -165,15 +195,18 @@ export default function CreateScreen() {
 
     setIsPosting(true);
     try {
-      await createPost(selectedMedia, caption);
-      setToastType('success');
-      setToastMessage(
-        createType === 'reels'
-          ? 'Your reel has been published!'
-          : 'Your post has been published!'
-      );
+      if (createType === 'reels') {
+        await createReel(selectedMedia[0], caption);
+        setToastType('success');
+        setToastMessage('Your reel has been published!');
+      } else {
+        const visibilityValue = selectedVisibility === 'Public' ? 0 : selectedVisibility === 'Followers' ? 1 : 2;
+        await createPost(selectedMedia, caption, undefined, visibilityValue);
+        setToastType('success');
+        setToastMessage('Your post has been published!');
+      }
       setToastVisible(true);
-      setSelectedMedia(null);
+      setSelectedMedia([]);
       setCaption('');
       setTimeout(() => {
         router.push('/(tabs)/home');
@@ -193,13 +226,13 @@ export default function CreateScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       setCreateType(t);
-      setSelectedMedia(null);
+      setSelectedMedia([]);
     }
   };
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
-  const shareReady = !!selectedMedia && !!caption.trim() && !isPosting;
-  const optionsDisabled = !selectedMedia;
+  const shareReady = selectedMedia.length > 0 && !!caption.trim() && !isPosting;
+  const optionsDisabled = selectedMedia.length === 0;
 
   const mockOption = (title: string) => () =>
     Alert.alert(title, 'This option will be available in a future update.');
@@ -253,21 +286,15 @@ export default function CreateScreen() {
           </Animated.View>
         </View>
 
-        {/* Title row: avatar + headline + Share (aligned) */}
+        {/* Header row: Close button (X) | Title | Share */}
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/profile' as any)}
-            activeOpacity={0.85}
-            style={styles.avatarBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={styles.closeBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            {currentUser ? (
-              <Avatar user={currentUser} size="small" />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Feather name="user" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-              </View>
-            )}
+            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.headerTitleBlock}>
             <Text style={styles.headerTitle}>New {typeLabel}</Text>
@@ -292,8 +319,8 @@ export default function CreateScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Media: empty state or preview */}
-        {!selectedMedia ? (
+        {/* Media: empty state, single preview (reels/video), or multi-image grid */}
+        {!selectedMedia.length ? (
           <Animated.View
             key={`empty-${createType}`}
             entering={FadeIn.duration(260)}
@@ -324,7 +351,7 @@ export default function CreateScreen() {
                   />
                 </View>
                 <Text style={styles.mediaPrimaryLabel}>
-                  {createType === 'reels' ? 'Select video' : 'Select image'}
+                  {createType === 'reels' ? 'Select video' : 'Select images'}
                 </Text>
                 <Text style={styles.mediaInstruction}>
                   Take a photo, record, or choose from your gallery
@@ -332,28 +359,23 @@ export default function CreateScreen() {
                 {createType === 'reels' && (
                   <Text style={styles.mediaHint}>Vertical 9:16 works best for Reels</Text>
                 )}
+                {createType === 'post' && (
+                  <Text style={styles.mediaHint}>Select up to 10 photos</Text>
+                )}
               </View>
             </TouchableOpacity>
           </Animated.View>
-        ) : (
+        ) : createType === 'reels' ? (
           <Animated.View
-            key="preview-media"
+            key="preview-media-reels"
             entering={FadeIn.duration(280)}
             exiting={FadeOut.duration(180)}
             style={styles.mediaAnimWrap}
           >
-            <View
-              style={[
-                styles.previewShell,
-                createType === 'reels' ? styles.previewShellReels : styles.previewShellPost,
-              ]}
-            >
+            <View style={[styles.previewShell, styles.previewShellReels]}>
               <Image
-                source={{ uri: selectedMedia }}
-                style={[
-                  styles.previewImage,
-                  createType === 'reels' ? styles.previewImageReels : styles.previewImagePost,
-                ]}
+                source={{ uri: selectedMedia[0] }}
+                style={styles.previewImageReels}
                 contentFit="cover"
               />
               <LinearGradient
@@ -363,11 +385,72 @@ export default function CreateScreen() {
               <TouchableOpacity style={styles.changeMediaFab} onPress={handleMediaPick} activeOpacity={0.9}>
                 <Feather name="edit-2" size={18} color="#FFFFFF" strokeWidth={2} />
               </TouchableOpacity>
-              {createType === 'reels' && (
-                <View style={styles.reelsPill}>
-                  <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
-                  <Text style={styles.reelsPillText}>Reels</Text>
-                </View>
+              <View style={styles.reelsPill}>
+                <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.reelsPillText}>Reels</Text>
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <Animated.View
+            key="preview-grid"
+            entering={FadeIn.duration(280)}
+            exiting={FadeOut.duration(180)}
+            style={styles.mediaAnimWrap}
+          >
+            <View style={styles.mediaGridContainer}>
+              <View style={styles.mediaGrid}>
+                {selectedMedia.map((uri, index) => (
+                  <View key={`${uri}-${index}`} style={styles.mediaGridItem}>
+                    <Image
+                      source={{ uri }}
+                      style={[
+                        styles.mediaGridImage,
+                        selectedMedia.length === 1 && styles.mediaGridImageSingle,
+                      ]}
+                      contentFit="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeMediaBtn}
+                      onPress={() => handleRemoveMedia(index)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Feather name="x" size={14} color="#FFFFFF" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    {selectedMedia.length > 1 && (
+                      <View style={styles.mediaIndexBadge}>
+                        <Text style={styles.mediaIndexText}>{index + 1}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+                {selectedMedia.length < 10 && (
+                  <TouchableOpacity
+                    style={[
+                      styles.mediaGridItem,
+                      styles.addMoreMediaBtn,
+                      selectedMedia.length === 0 && styles.mediaGridImageSingle,
+                    ]}
+                    onPress={handleMediaPick}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.addMoreMediaInner}>
+                      <Feather name="plus" size={28} color={AppColors.iconMuted} strokeWidth={1.5} />
+                      <Text style={styles.addMoreMediaText}>Add more</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {selectedMedia.length > 1 && (
+                <TouchableOpacity
+                  style={styles.changeMediaLink}
+                  onPress={handleMediaPick}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.changeMediaLinkText}>
+                    {selectedMedia.length} photo{selectedMedia.length > 1 ? 's' : ''} selected — tap to change
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
           </Animated.View>
@@ -418,6 +501,13 @@ export default function CreateScreen() {
               disabled={optionsDisabled}
               onPress={mockOption('Topics')}
             />
+            <View style={styles.optionSeparator} />
+            <OptionRow
+              icon={selectedVisibility === 'Public' ? 'globe' : selectedVisibility === 'Followers' ? 'users' : 'lock'}
+              label={`Visibility: ${selectedVisibility}`}
+              disabled={false}
+              onPress={() => setShowVisibilityPicker(true)}
+            />
             {createType === 'reels' && (
               <>
                 <View style={styles.optionSeparator} />
@@ -432,6 +522,58 @@ export default function CreateScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Visibility Picker Modal */}
+      {showVisibilityPicker && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          style={styles.visibilityOverlay}
+        >
+          <Pressable style={styles.visibilityBackdrop} onPress={() => setShowVisibilityPicker(false)} />
+          <View style={styles.visibilityCard}>
+            <View style={styles.visibilityHeader}>
+              <Text style={styles.visibilityTitle}>Who can see your post?</Text>
+              <TouchableOpacity onPress={() => setShowVisibilityPicker(false)} style={styles.visibilityCloseBtn}>
+                <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+            {VISIBILITY_OPTIONS.map((option, index) => (
+              <React.Fragment key={option.value}>
+                {index > 0 && <View style={styles.visibilityOptionSeparator} />}
+                <Pressable
+                  style={[
+                    styles.visibilityOption,
+                    selectedVisibility === option.value && styles.visibilityOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedVisibility(option.value);
+                    setShowVisibilityPicker(false);
+                  }}
+                >
+                  <View style={[styles.visibilityIconWrap, selectedVisibility === option.value && styles.visibilityIconSelected]}>
+                    <Feather
+                      name={option.icon}
+                      size={20}
+                      color={selectedVisibility === option.value ? AppColors.primary : AppColors.textSecondary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                  <View style={styles.visibilityOptionText}>
+                    <Text style={[styles.visibilityOptionLabel, selectedVisibility === option.value && styles.visibilityOptionLabelSelected]}>
+                      {option.label}
+                    </Text>
+                    <Text style={styles.visibilityOptionDesc}>{option.description}</Text>
+                  </View>
+                  {selectedVisibility === option.value && (
+                    <Feather name="check" size={20} color={AppColors.primary} strokeWidth={2.5} />
+                  )}
+                </Pressable>
+              </React.Fragment>
+            ))}
+          </View>
+        </Animated.View>
+      )}
 
       <Toast
         visible={toastVisible}
@@ -490,6 +632,14 @@ const styles = StyleSheet.create({
   },
   avatarBtn: {
     marginRight: 12,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarFallback: {
     width: 32,
@@ -658,6 +808,86 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  mediaGridContainer: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: AppColors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: AppColors.border,
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  mediaGridItem: {
+    width: '50%',
+    aspectRatio: 1,
+    padding: 1,
+    position: 'relative',
+  },
+  mediaGridImage: {
+    flex: 1,
+    borderRadius: 4,
+  },
+  mediaGridImageSingle: {
+    borderRadius: borderRadius.lg - 2,
+  },
+  removeMediaBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaIndexBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaIndexText: {
+    ...Typography.meta,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  addMoreMediaBtn: {
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  },
+  addMoreMediaInner: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  addMoreMediaText: {
+    ...Typography.meta,
+    fontSize: 11,
+    color: AppColors.iconMuted,
+  },
+  changeMediaLink: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: AppColors.borderLight,
+  },
+  changeMediaLinkText: {
+    ...Typography.meta,
+    fontSize: 12,
+    color: AppColors.primary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   captionSection: {
     marginTop: 20,
     paddingHorizontal: layoutPadding,
@@ -742,5 +972,97 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: AppColors.borderLight,
     marginLeft: 62,
+  },
+  // Visibility Picker Modal
+  visibilityOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  visibilityBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  visibilityCard: {
+    backgroundColor: AppColors.surface,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 8,
+    width: '85%',
+    maxWidth: 340,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+  visibilityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.borderLight,
+  },
+  visibilityTitle: {
+    ...Typography.sectionTitle,
+    fontSize: 18,
+    color: AppColors.text,
+  },
+  visibilityCloseBtn: {
+    padding: 4,
+  },
+  visibilityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  visibilityOptionSelected: {
+    backgroundColor: `${AppColors.primary}10`,
+  },
+  visibilityOptionSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: AppColors.borderLight,
+    marginLeft: 72,
+  },
+  visibilityIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  visibilityIconSelected: {
+    backgroundColor: `${AppColors.primary}20`,
+  },
+  visibilityOptionText: {
+    flex: 1,
+  },
+  visibilityOptionLabel: {
+    ...Typography.bodyMedium,
+    fontSize: 16,
+    color: AppColors.text,
+    marginBottom: 2,
+  },
+  visibilityOptionLabelSelected: {
+    color: AppColors.primary,
+    fontWeight: '600',
+  },
+  visibilityOptionDesc: {
+    ...Typography.meta,
+    fontSize: 13,
+    color: AppColors.iconMuted,
   },
 });

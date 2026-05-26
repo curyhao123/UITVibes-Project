@@ -200,10 +200,10 @@ public class StoryService : IStoryService
     {
         var now = DateTime.UtcNow;
 
-        // Lấy story groups của user đó (đã hết hạn hoặc chưa đều lấy — profile page hiển thị tất cả)
+        // Lấy story groups của user đó (chỉ lấy story chưa hết hạn)
         var groups = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .Where(g => g.UserId == userId)
+            .Where(g => g.UserId == userId && g.ExpiresAt > now)
             .OrderByDescending(g => g.CreatedAt)
             .Take(limit)
             .ToListAsync();
@@ -254,7 +254,7 @@ public class StoryService : IStoryService
     {
         var group = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .FirstOrDefaultAsync(g => g.Id == storyGroupId);
+            .FirstOrDefaultAsync(g => g.Id == storyGroupId && g.ExpiresAt > DateTime.UtcNow);
 
         if (group == null) return null;
 

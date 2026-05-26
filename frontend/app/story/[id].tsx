@@ -20,6 +20,8 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { getStoryDetail, markStoryViewed, Story, StoryItem } from '../../services/storyService';
+import { AddToHighlightModal } from '../../components/highlight';
+import { useApp } from '../../context/AppContext';
 import defaultAvatar from '../../assets/images/default-avatar.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,12 +38,15 @@ export default function StoryViewerScreen() {
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [highlightModalVisible, setHighlightModalVisible] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedProgressRef = useRef(0);
+  const currentProgressRef = useRef(0);
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { currentUser } = useApp();
 
   // Track which items have been marked viewed
   const viewedItemIds = useRef<Set<string>>(new Set());
-
-  // Progress timer
-  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearTimer = useCallback(() => {
     if (progressRef.current) {
@@ -50,23 +55,35 @@ export default function StoryViewerScreen() {
     }
   }, []);
 
-  // Start progress for the current item
-  const startProgress = useCallback(() => {
+  // Start/resume progress for the current item
+  const startProgress = useCallback((fromProgress = 0) => {
     clearTimer();
-    setProgress(0);
+    setProgress(fromProgress);
     const item = story?.items?.[currentIndex];
     if (!item) return;
 
     progressRef.current = setInterval(() => {
       setProgress((prev) => {
+        const next = prev >= 1 ? prev : prev + PROGRESS_TICK_MS / ITEM_DURATION_MS;
+        currentProgressRef.current = next;
         if (prev >= 1) {
           clearTimer();
-          return prev;
         }
-        return prev + PROGRESS_TICK_MS / ITEM_DURATION_MS;
+        return next;
       });
     }, PROGRESS_TICK_MS);
   }, [clearTimer, story, currentIndex]);
+
+  // Save progress when pausing, restore when resuming
+  useEffect(() => {
+    if (isPaused) {
+      pausedProgressRef.current = currentProgressRef.current;
+      clearTimer();
+    } else {
+      startProgress(pausedProgressRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaused, startProgress, clearTimer]);
 
   // Mark current item viewed (only once)
   const markCurrentViewed = useCallback(() => {
@@ -211,9 +228,26 @@ export default function StoryViewerScreen() {
             )}
           </View>
         </View>
-        <TouchableOpacity onPress={() => router.back()} style={styles.xBtn}>
-          <Feather name="x" size={24} color="#fff" strokeWidth={2.5} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {currentUser?.id === story.userId && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => {
+                const item = story.items?.[currentIndex];
+                if (item) {
+                  setIsPaused(true);
+                  setHighlightModalVisible(true);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus-square" size={22} color="#fff" strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => router.back()} style={styles.xBtn}>
+            <Feather name="x" size={24} color="#fff" strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Media content */}
@@ -231,6 +265,18 @@ export default function StoryViewerScreen() {
           />
         ) : null}
       </TouchableOpacity>
+
+      {/* Add to Highlight Modal */}
+      {currentItem && (
+        <AddToHighlightModal
+          visible={highlightModalVisible}
+          storyItemId={currentItem.id}
+          onClose={() => {
+            setIsPaused(false);
+            setHighlightModalVisible(false);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -309,6 +355,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 11,
     marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   xBtn: {
     width: 36,

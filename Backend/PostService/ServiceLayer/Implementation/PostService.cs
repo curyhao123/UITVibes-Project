@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
-using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -17,6 +16,7 @@ public class PostService : IPostService
     private readonly IPostLikedPublisher _postLikedPublisher;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly IRepostService _repostService;
+    private readonly IPostMentionedPublisher _postMentionedPublisher;
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
@@ -24,7 +24,8 @@ public class PostService : IPostService
         ILogger<PostService> logger,
         IPostLikedPublisher postLikedPublisher,
         IUserProfileRpcClient userProfileRpcClient,
-        IRepostService repostService)
+        IRepostService repostService,
+        IPostMentionedPublisher postMentionedPublisher)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
@@ -35,6 +36,7 @@ public class PostService : IPostService
         _repostService = repostService;
         _userProfileRpcClient = userProfileRpcClient;
         _postLikedPublisher = postLikedPublisher;
+        _postMentionedPublisher = postMentionedPublisher;
     }
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
@@ -87,7 +89,7 @@ public class PostService : IPostService
 
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}", 
+        _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}",
             post.Id, post.Media.Count, userId);
 
         return await GetPostByIdAsync(post.Id, userId);
@@ -111,7 +113,7 @@ public class PostService : IPostService
     public async Task<List<PostDto>> GetUserPostsAsync(Guid userId, Guid? currentUserId = null, int skip = 0, int take = 20)
     {
         var posts = await _context.Posts
-            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original)
+            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original && p.Visibility != PostVisibility.Hidden)
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -140,6 +142,7 @@ public class PostService : IPostService
         var posts = await _context.Posts
             .Where(p => !p.IsDeleted
                      && p.PostType == PostType.Original
+                     && p.Visibility != PostVisibility.Hidden
                      && followingIds.Contains(p.UserId))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
@@ -235,7 +238,7 @@ public class PostService : IPostService
         if (isVideo)
         {
             var (url, thumbnailUrl, publicId, duration) = await _cloudinaryService.UploadVideoAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -248,7 +251,7 @@ public class PostService : IPostService
         else
         {
             var (url, publicId, width, height) = await _cloudinaryService.UploadImageAsync(file, "uitvibes/posts");
-            
+
             return new MediaUploadResponse
             {
                 Url = url,
@@ -312,23 +315,49 @@ public class PostService : IPostService
 
     private async Task ProcessMentionsAsync(Post post, List<string> usernames)
     {
+        if (usernames.Count == 0)
+        {
+            return;
+        }
+
+        var mentionerProfile = await _userProfileRpcClient.GetProfileAsync(post.UserId);
+        var mentionerName = mentionerProfile?.Found == true ? mentionerProfile.DisplayName : "Someone";
+
+
         foreach (var username in usernames)
         {
+            var mentionedUserResult = await _userProfileRpcClient.GetProfileAsync(username);
+            if (mentionedUserResult?.Found != true || mentionedUserResult.UserId == Guid.Empty)
+            {
+                continue;
+            }
+
+            if (mentionedUserResult.UserId == post.UserId)
+            {
+                continue;
+            }
+
             var mention = new PostMention
             {
                 Id = Guid.NewGuid(),
                 PostId = post.Id,
-                MentionedUserId = Guid.Empty, // TODO: Resolve from UserService
+                MentionedUserId = mentionedUserResult.UserId,
                 StartPosition = 0,
                 Length = username.Length,
                 CreatedAt = DateTime.UtcNow
             };
+
             post.Mentions.Add(mention);
+
+            await _postMentionedPublisher.PublishAsync(new PostMentionedEvent(
+                mentionedUserResult.UserId,
+                post.UserId,
+                mentionerName,
+                post.Id));
         }
-        
+
         await Task.CompletedTask;
     }
-
 
     private async Task<PostDto> MapToDto(Post post, Guid? currentUserId)
     {
@@ -432,8 +461,6 @@ public class PostService : IPostService
             _logger.LogError(ex, "Failed to publish PostLikedevent for post {PostId}", postId);
         }
 
-
-
         return new LikeResponse
         {
             LikeId = like.Id,
@@ -487,28 +514,44 @@ public class PostService : IPostService
             .OrderByDescending(l => l.CreatedAt)
             .Skip(skip)
             .Take(take)
-            .Select(l => new LikeDto
+            .ToListAsync();
+
+        var userIds = likes.Select(l => l.UserId).Distinct().ToList();
+
+        var profileResults = await Task.WhenAll(
+            userIds.Select(id => _userProfileRpcClient.GetProfileAsync(id)));
+
+        var profileLookup = userIds
+            .Zip(profileResults, (id, profile) => new { id, profile })
+            .ToDictionary(x => x.id, x => x.profile);
+
+        return likes.Select(l =>
+        {
+            profileLookup.TryGetValue(l.UserId, out var profile);
+            var displayName = profile?.Found == true ? profile.DisplayName : "Someone";
+
+            return new LikeDto
             {
                 LikeId = l.Id,
                 PostId = l.PostId,
                 UserId = l.UserId,
+                DisplayName = displayName,
+                AvatarUrl = profile?.Found == true ? profile.AvatarUrl ?? "" : "",
                 CreatedAt = l.CreatedAt
-            })
-            .ToListAsync();
-
-        return likes;
+            };
+        }).ToList();
     }
 
     public async Task<List<PostReportDto>> GetPostReportsAsync(int skip = 0, int take = 20, ReportStatus? status = null)
     {
         var query = _context.PostReports
             .Include(r => r.Post)
+            .ThenInclude(p => p.Media)
             .AsQueryable();
         if (status.HasValue)
         {
             query = query.Where(r => r.Status == (Models.ReportStatus)status.Value);
         }
-
 
         var reportEntities = await query
             .OrderByDescending(r => r.CreatedAt)
@@ -538,10 +581,13 @@ public class PostService : IPostService
                 {
                     Id = r.Id,
                     PostId = r.PostId,
+                    PostContent = r.Post?.Content ?? string.Empty,
+                    PostMediaUrls = r.Post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
                     ReporterId = r.ReporterId,
                     ReporterDisplayName = displayName,
                     ReporterProfile = profile?.Found == true ? profile : null,
                     Reason = r.Reason,
+                    AdditionalDetails = r.AdditionalDetails,
                     Status = r.Status,
                     AdminNote = r.AdminNote,
                     CreatedAt = r.CreatedAt,
@@ -553,10 +599,11 @@ public class PostService : IPostService
     public async Task<PostReportDto> CreatePostReportAsync(Guid userId, ReportPostRequest request)
     {
         // Check if post exists
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == request.PostId && !p.IsDeleted);
-        if (!postExists)
+        var post = await _context.Posts
+            .FirstOrDefaultAsync(p => p.Id == request.PostId && !p.IsDeleted);
+        if (post == null)
             throw new KeyNotFoundException("Post not found");
-        
+
         var existingReport = await _context.PostReports
             .FirstOrDefaultAsync(r => r.PostId == request.PostId && r.ReporterId == userId && r.Status == Models.ReportStatus.Pending);
         if (existingReport != null)
@@ -568,25 +615,149 @@ public class PostService : IPostService
             PostId = request.PostId,
             ReporterId = userId,
             Reason = request.Reason,
+            AdditionalDetails = request.AdditionalDetails,
             Status = ReportStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.PostReports.Add(report);
+
+        // Auto-hide post if it has 3 or more pending reports
+        var pendingReportCount = await _context.PostReports
+            .CountAsync(r => r.PostId == request.PostId && r.Status == ReportStatus.Pending);
+        
+        if (pendingReportCount >= 2) // After adding this report, count will be >= 3
+        {
+            post.Visibility = PostVisibility.Hidden;
+            post.UpdatedAt = DateTime.UtcNow;
+            _logger.LogInformation("Auto-hiding post {PostId} due to {Count} pending reports", request.PostId, pendingReportCount + 1);
+        }
+
         await _context.SaveChangesAsync();
 
         var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(userId);
         var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+
+        // Reload post with media for DTO
+        post = await _context.Posts
+            .Include(p => p.Media)
+            .FirstOrDefaultAsync(p => p.Id == request.PostId);
+
         return new PostReportDto
         {
             Id = report.Id,
             PostId = report.PostId,
+            PostContent = post?.Content ?? string.Empty,
+            PostMediaUrls = post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
             ReporterId = report.ReporterId,
             ReporterDisplayName = reporterDisplayName,
             ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
             Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
             Status = report.Status,
             CreatedAt = report.CreatedAt
         };
+    }
+
+    public async Task<PostReportDto> ResolvePostReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.PostReports
+            .Include(r => r.Post)
+            .ThenInclude(p => p.Media)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+            throw new KeyNotFoundException("Report not found");
+
+        if (report.Status != ReportStatus.Pending)
+            throw new InvalidOperationException("Report has already been processed");
+
+        report.Status = ReportStatus.Resolved;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Post report {ReportId} resolved by admin", reportId);
+
+        // Get reporter display name
+        var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(report.ReporterId);
+        var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+
+        return new PostReportDto
+        {
+            Id = report.Id,
+            PostId = report.PostId,
+            PostContent = report.Post?.Content ?? string.Empty,
+            PostMediaUrls = report.Post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
+            ReporterId = report.ReporterId,
+            ReporterDisplayName = reporterDisplayName,
+            ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            CreatedAt = report.CreatedAt,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<PostReportDto> DismissPostReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.PostReports
+            .Include(r => r.Post)
+            .ThenInclude(p => p.Media)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+            throw new KeyNotFoundException("Report not found");
+
+        if (report.Status != ReportStatus.Pending)
+            throw new InvalidOperationException("Report has already been processed");
+
+        report.Status = ReportStatus.Dismissed;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Post report {ReportId} dismissed by admin", reportId);
+
+        // Get reporter display name
+        var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(report.ReporterId);
+        var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";
+
+        return new PostReportDto
+        {
+            Id = report.Id,
+            PostId = report.PostId,
+            PostContent = report.Post?.Content ?? string.Empty,
+            PostMediaUrls = report.Post?.Media.Select(m => m.Url).ToList() ?? new List<string>(),
+            ReporterId = report.ReporterId,
+            ReporterDisplayName = reporterDisplayName,
+            ReporterProfile = reporterProfileResult.Found ? reporterProfileResult : null,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            CreatedAt = report.CreatedAt,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<PostDto> ChangePostVisibilityAsync(Guid postId, Guid userId, PostVisibility postVisibility)
+    {
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+        if (post == null)
+            throw new KeyNotFoundException("Post not found");
+
+        if (post.UserId != userId && postVisibility != PostVisibility.Hidden)
+            throw new UnauthorizedAccessException("You can only change visibility of your own posts");
+
+        post.Visibility = postVisibility;
+        post.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Changed visibility of post {PostId} to {Visibility}", postId, postVisibility);
+        return await GetPostByIdAsync(postId, userId);
     }
 }

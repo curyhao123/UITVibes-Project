@@ -1,31 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, Stack, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { getUserById, getUserPosts, getUserStories, toggleFollow, type Story } from '../../services/api';
+import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
 import { getUserReposts } from '../../services/postService';
+import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
 import { getCurrentUserId } from '../../services/session';
 import { User, Post } from '../../data/mockData';
-import { Avatar, PostGrid, StoryGrid } from '../../components';
+import { Avatar, PostGrid } from '../../components';
+import { HighlightBar } from '../../components/highlight';
 import { AppColors, layoutPadding, borderRadius } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
 import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
-import defaultAvatar from '../../assets/images/default-avatar.png';
+import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
+import { Toast } from '../../components/Toast';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [blockStatus, setBlockStatus] = useState<BlockStatusDto | null>(null);
-  const [profileTab, setProfileTab] = useState<'posts' | 'stories' | 'reposts'>('posts');
+  const [profileTab, setProfileTab] = useState<'posts' | 'reposts'>('posts');
   const [reposts, setReposts] = useState<Post[]>([]);
   const [isLoadingReposts, setIsLoadingReposts] = useState(false);
+
+  // Highlights state
+  const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
   const [actionsSheetVisible, setActionsSheetVisible] = useState(false);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [reportToastVisible, setReportToastVisible] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -58,19 +65,20 @@ export default function UserProfileScreen() {
         if (status.blockedByMe || status.blockedMe) {
           setUser(null);
           setPosts([]);
-          setStories([]);
           return;
         }
       }
 
-      const [userData, userPosts, userStories] = await Promise.all([
+      const [userData, userPosts] = await Promise.all([
         getUserById(targetId),
         getUserPosts(targetId),
-        getUserStories(targetId),
       ]);
       setUser(userData || null);
       setPosts(userPosts);
-      setStories(userStories);
+
+      // Load highlights for this user
+      const userHighlights = await getUserHighlights(targetId);
+      setHighlights(userHighlights);
     } catch (err) {
       console.error("[loadUserData] error:", err);
       // Try to at least load the user even if posts/stories fail
@@ -112,12 +120,16 @@ export default function UserProfileScreen() {
     setBlockStatus({ blockedByMe: true, blockedMe: false });
     setUser(null);
     setPosts([]);
-    setStories([]);
   };
 
   const handleReportUser = () => {
-    // TODO: implement actual report submission
-    console.log('[Report] user:', user.id);
+    setActionsSheetVisible(false);
+    setReportSheetVisible(true);
+  };
+
+  const handleReportSuccess = () => {
+    setReportSheetVisible(false);
+    setReportToastVisible(true);
   };
 
   const formatCount = (count: number | undefined | null): string => {
@@ -234,26 +246,10 @@ export default function UserProfileScreen() {
             )}
           </View>
 
-          <View style={styles.storyStripScroll}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {stories.slice(0, 8).map((story) => (
-                <TouchableOpacity
-                  key={story.id}
-                  style={styles.storyStripItem}
-                  onPress={() => router.push(`/story/${story.id}` as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.storyCircle, !story.isViewed && styles.storyCircleActive]}>
-                    <Image
-                      source={story.previewUrl ? { uri: story.previewUrl } : defaultAvatar}
-                      style={styles.storyCircleImg}
-                    />
-                  </View>
-                  <Text style={styles.storyStripLabel} numberOfLines={1}>{story.displayName}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          <HighlightBar
+            highlights={highlights}
+            isCurrentUser={false}
+          />
 
           <View style={styles.tabsContainer}>
             <TouchableOpacity
@@ -268,17 +264,18 @@ export default function UserProfileScreen() {
             >
               <Feather name="refresh-cw" size={24} color={profileTab === 'reposts' ? AppColors.primary : AppColors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, profileTab === 'stories' && styles.activeTab]}
-              onPress={() => setProfileTab('stories')}
-            >
-              <Feather name="layers" size={24} color={profileTab === 'stories' ? AppColors.primary : AppColors.textMuted} />
-            </TouchableOpacity>
           </View>
 
           {profileTab === 'posts' ? (
-            <PostGrid posts={posts} />
-          ) : profileTab === 'reposts' ? (
+            posts.length === 0 ? (
+              <View style={styles.emptyStories}>
+                <Feather name="grid" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
+                <Text style={styles.emptyStoriesText}>No posts yet</Text>
+              </View>
+            ) : (
+              <PostGrid posts={posts} />
+            )
+          ) : (
             isLoadingReposts ? (
               <View style={styles.emptyStories}>
                 <ActivityIndicator size="small" color={AppColors.primary} />
@@ -291,13 +288,6 @@ export default function UserProfileScreen() {
             ) : (
               <PostGrid posts={reposts} />
             )
-          ) : stories.length === 0 ? (
-            <View style={styles.emptyStories}>
-              <Feather name="layers" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
-              <Text style={styles.emptyStoriesText}>No stories yet</Text>
-            </View>
-          ) : (
-            <StoryGrid stories={stories} isCurrentUser={false} />
           )}
         </ScrollView>
 
@@ -306,7 +296,23 @@ export default function UserProfileScreen() {
           onClose={() => setActionsSheetVisible(false)}
           onBlock={handleBlockUser}
           onReport={handleReportUser}
+          reportedUserId={user.id}
           blockedUsername={user.username}
+        />
+
+        <ReportUserSheet
+          visible={reportSheetVisible}
+          reportedDisplayName={user.displayName}
+          reportedUserId={user.id}
+          onClose={() => setReportSheetVisible(false)}
+          onReportSuccess={handleReportSuccess}
+        />
+
+        <Toast
+          visible={reportToastVisible}
+          message="Report submitted. Thanks for helping keep the community safe."
+          type="success"
+          onHide={() => setReportToastVisible(false)}
         />
       </SafeAreaView>
     </>

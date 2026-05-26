@@ -11,7 +11,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -19,9 +18,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { getPostById, toggleCommentLike, repostPost, undoRepost } from "../../services/postService";
+import { getPostById, toggleCommentLike, repostPost, undoRepost, toggleBookmark, removeBookmark } from "../../services/postService";
 import { Post, Comment } from "../../data/mockData";
-import { Avatar, CommentItem } from "../../components";
+import { Avatar, CommentItem, ImageCarousel } from "../../components";
 import { CommentContextMenu, DeleteConfirmModal } from "../../components";
 import { useApp } from "../../context/AppContext";
 import { AppColors } from "../../constants/theme";
@@ -82,6 +81,7 @@ export default function PostDetailScreen() {
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [localReposted, setLocalReposted] = useState(false);
   const [localRepostCount, setLocalRepostCount] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -96,22 +96,36 @@ export default function PostDetailScreen() {
       setIsFollowingAuthor(!!data.user.isFollowing);
       setLocalReposted(data.isReposted ?? false);
       setLocalRepostCount(data.repostCount ?? 0);
+      setIsBookmarked(data.isBookmarked ?? false);
     }
     setIsLoading(false);
   };
 
   const handleLike = async () => {
     if (post) {
-      await toggleLike(post.id);
+      const wasLiked = post.isLiked;
       setPost((prev) =>
         prev
           ? {
               ...prev,
-              isLiked: !prev.isLiked,
-              likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1,
+              isLiked: !wasLiked,
+              likes: wasLiked ? prev.likes - 1 : prev.likes + 1,
             }
           : null,
       );
+      try {
+        const newLikedState = await toggleLike(post.id, wasLiked);
+        setPost((prev) =>
+          prev ? { ...prev, isLiked: newLikedState } : null,
+        );
+      } catch {
+        // Revert on error
+        setPost((prev) =>
+          prev
+            ? { ...prev, isLiked: wasLiked }
+            : null,
+        );
+      }
     }
   };
 
@@ -329,6 +343,20 @@ export default function PostDetailScreen() {
     });
   };
 
+  const handleBookmarkToggle = async () => {
+    try {
+      if (isBookmarked) {
+        await removeBookmark(post.id);
+        setIsBookmarked(false);
+      } else {
+        await toggleBookmark(post.id);
+        setIsBookmarked(true);
+      }
+    } catch (error) {
+      console.error("[PostDetail] Failed to toggle bookmark:", error);
+    }
+  };
+
   if (isLoading || !post) {
     return <PostDetailSkeleton />;
   }
@@ -361,8 +389,21 @@ export default function PostDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Post Image */}
-      <Image source={{ uri: post.image }} style={styles.postImage} />
+      {/* Post Image(s) — Instagram-style carousel for multi-image */}
+      {(() => {
+        const images = post.images && post.images.length > 0
+          ? post.images
+          : post.image ? [post.image] : [];
+        if (images.length === 0) return null;
+        return (
+          <ImageCarousel
+            images={images}
+            height={styles.postImage.aspectRatio ? 400 : 400}
+            showDots={images.length > 1}
+            showCarouselIcon={images.length > 1}
+          />
+        );
+      })()}
 
       {/* Engagement Actions — single horizontal row */}
       <View style={styles.actionsRow}>
@@ -400,8 +441,8 @@ export default function PostDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.bookmarkGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Feather name="bookmark" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+        <TouchableOpacity style={styles.bookmarkGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={handleBookmarkToggle}>
+          <Feather name="bookmark" size={24} color={isBookmarked ? AppColors.primary : AppColors.iconMuted} fill={isBookmarked ? AppColors.primary : 'transparent'} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 

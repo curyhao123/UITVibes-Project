@@ -187,6 +187,63 @@ namespace PostService.Migrations
                     b.ToTable("Hashtags");
                 });
 
+            modelBuilder.Entity("PostService.Models.HighlightGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CoverImage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("HighlightGroups");
+                });
+
+            modelBuilder.Entity("PostService.Models.HighlightItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HighlightGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StoryItemId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HighlightGroupId");
+
+                    b.HasIndex("StoryItemId");
+
+                    b.HasIndex("HighlightGroupId", "StoryItemId")
+                        .IsUnique();
+
+                    b.ToTable("HighlightItems");
+                });
+
             modelBuilder.Entity("PostService.Models.Like", b =>
                 {
                     b.Property<Guid>("Id")
@@ -367,6 +424,9 @@ namespace PostService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdditionalDetails")
+                        .HasColumnType("text");
+
                     b.Property<string>("AdminNote")
                         .HasColumnType("text");
 
@@ -394,6 +454,183 @@ namespace PostService.Migrations
                     b.HasIndex("PostId");
 
                     b.ToTable("PostReports");
+                });
+
+            modelBuilder.Entity("PostService.Models.Reel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Duration")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ThumbnailPublicId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VideoPublicId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("VideoUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("Reels");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("ReelId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReelComments");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelCommentLike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReelCommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ReelCommentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ReelCommentLikes");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelLike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ReelId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ReelLikes");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ReelId", "UserId");
+
+                    b.ToTable("ReelShares");
                 });
 
             modelBuilder.Entity("PostService.Models.StoryGroup", b =>
@@ -562,6 +799,25 @@ namespace PostService.Migrations
                     b.Navigation("Comment");
                 });
 
+            modelBuilder.Entity("PostService.Models.HighlightItem", b =>
+                {
+                    b.HasOne("PostService.Models.HighlightGroup", "HighlightGroup")
+                        .WithMany("Items")
+                        .HasForeignKey("HighlightGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PostService.Models.StoryItem", "StoryItem")
+                        .WithMany()
+                        .HasForeignKey("StoryItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HighlightGroup");
+
+                    b.Navigation("StoryItem");
+                });
+
             modelBuilder.Entity("PostService.Models.Like", b =>
                 {
                     b.HasOne("PostService.Models.Post", "Post")
@@ -616,6 +872,57 @@ namespace PostService.Migrations
                     b.Navigation("Post");
                 });
 
+            modelBuilder.Entity("PostService.Models.ReelComment", b =>
+                {
+                    b.HasOne("PostService.Models.ReelComment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PostService.Models.Reel", "Reel")
+                        .WithMany("Comments")
+                        .HasForeignKey("ReelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Reel");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelCommentLike", b =>
+                {
+                    b.HasOne("PostService.Models.ReelComment", "ReelComment")
+                        .WithMany("Likes")
+                        .HasForeignKey("ReelCommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReelComment");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelLike", b =>
+                {
+                    b.HasOne("PostService.Models.Reel", "Reel")
+                        .WithMany("Likes")
+                        .HasForeignKey("ReelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Reel");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelShare", b =>
+                {
+                    b.HasOne("PostService.Models.Reel", "Reel")
+                        .WithMany("Shares")
+                        .HasForeignKey("ReelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Reel");
+                });
+
             modelBuilder.Entity("PostService.Models.StoryItem", b =>
                 {
                     b.HasOne("PostService.Models.StoryGroup", "StoryGroup")
@@ -650,6 +957,11 @@ namespace PostService.Migrations
                     b.Navigation("Posts");
                 });
 
+            modelBuilder.Entity("PostService.Models.HighlightGroup", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("PostService.Models.Post", b =>
                 {
                     b.Navigation("Comments");
@@ -663,6 +975,22 @@ namespace PostService.Migrations
                     b.Navigation("Mentions");
 
                     b.Navigation("Reports");
+                });
+
+            modelBuilder.Entity("PostService.Models.Reel", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
+
+                    b.Navigation("Shares");
+                });
+
+            modelBuilder.Entity("PostService.Models.ReelComment", b =>
+                {
+                    b.Navigation("Likes");
+
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("PostService.Models.StoryGroup", b =>

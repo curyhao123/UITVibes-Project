@@ -27,6 +27,7 @@ import { transformBEMessage } from "../services/messageService";
 
 const NOTIF_PERMISSION_PROMPTED_KEY =
   "@uitvibes_notification_permission_prompted";
+import type { Reel as APIReel } from '../services/postService';
 
 interface AppContextType {
   // Auth / User
@@ -89,12 +90,24 @@ interface AppContextType {
   ) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
-    image: string,
+    images: string[],
     caption: string,
     location?: string,
+    visibility?: number,
   ) => Promise<Post | null>;
+  createReel: (videoUri: string, caption: string, duration?: number) => Promise<any>;
   updatePost: (postId: string, caption: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
+
+  // Reels
+  reels: APIReel[];
+  refreshReels: () => Promise<void>;
+  toggleReelLike: (reelId: string, isLiked: boolean) => Promise<void>;
+  toggleReelBookmark: (reelId: string) => Promise<void>;
+  addReelComment: (reelId: string, text: string, parentCommentId?: string) => Promise<void>;
+  deleteReelComment: (commentId: string) => Promise<void>;
+  toggleReelCommentLike: (commentId: string) => Promise<void>;
+  deleteReel: (reelId: string) => Promise<void>;
 
   // User / Follow
   refreshUser: () => Promise<void>;
@@ -280,7 +293,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // ─── Auth Actions ────────────────────────────────────────
   const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
+    async (email: string, password: string): Promise<User | null> => {
       setIsLoading(true);
       setAuthError(null);
       try {
@@ -289,7 +302,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
         setIsNewUser(user.posts === 0);
-        return true;
+        return user;
       } catch (error) {
         console.error("Login failed:", error);
         const errorCode = (error as any)?.errorCode;
@@ -441,6 +454,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [lastPostsFetch, setLastPostsFetch] = useState(0); // Timestamp of last successful fetch for stale-while-revalidate
   const [lastStoriesFetch, setLastStoriesFetch] = useState(0);
 
+  // ─── Reels ────────────────────────────────────────────────────────────────
+  const [reels, setReels] = useState<APIReel[]>([]);
+
   // ─── Messages ─────────────────────────────────────────────
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -515,22 +531,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, []);
 
   const toggleLike = useCallback(
-    async (postId: string) => {
+    async (postId: string, isCurrentlyLiked: boolean) => {
       // Optimistic update
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id === postId) {
             return {
               ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked ? post.likes - 1 : post.likes + 1,
             };
           }
           return post;
         }),
       );
       try {
-        await api.toggleLike(postId);
+        const newLikedState = await api.toggleLike(postId, isCurrentlyLiked);
+        // Sync with server-returned state
+        setPosts((prev) =>
+          prev.map((post) => {
+            if (post.id === postId) {
+              return { ...post, isLiked: newLikedState };
+            }
+            return post;
+          }),
+        );
       } catch (error) {
         // Revert on failure
         await refreshPosts();
@@ -659,15 +684,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const createPost = useCallback(
     async (
-      image: string,
+      images: string[],
       caption: string,
       location?: string,
+      visibility?: number,
     ): Promise<Post | null> => {
       try {
-        const newPost = await api.createPost(image, caption, location);
+        const newPost = await api.createPost(images, caption, location, visibility);
         setPosts((prev) => [newPost, ...prev]);
-        setMyPosts((prev) => [newPost, ...prev]); // Thêm vào myPosts cho profile
-        // Refresh myPosts từ server để đảm bảo đồng bộ
+        setMyPosts((prev) => [newPost, ...prev]);
         await refreshMyPosts();
         // Cập nhật số posts trên profile ngay lập tức
         setCurrentUser((prev) =>
@@ -681,6 +706,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
     },
     [refreshMyPosts],
+  );
+
+  const createReel = useCallback(
+    async (videoUri: string, caption: string, duration?: number): Promise<any> => {
+      try {
+        const newReel = await api.createReel(videoUri, caption, duration);
+        return newReel;
+      } catch (error) {
+        console.error("Failed to create reel:", error);
+        throw error;
+      }
+    },
+    [],
   );
 
   const updatePost = useCallback(
@@ -706,6 +744,100 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       );
     } catch (error) {
       console.error("Failed to delete post:", error);
+    }
+  }, []);
+
+  // ─── Reels ─────────────────────────────────────────────────────────────
+  const refreshReels = useCallback(async () => {
+    try {
+      const data = await api.getReels();
+      setReels(data);
+    } catch (error) {
+      console.error("Failed to fetch reels:", error);
+    }
+  }, []);
+
+  const toggleReelLike = useCallback(
+    async (reelId: string, isCurrentlyLiked: boolean) => {
+      // Optimistic update
+      setReels((prev) =>
+        prev.map((reel) => {
+          if (reel.id === reelId) {
+            return {
+              ...reel,
+              isLiked: !isCurrentlyLiked,
+              likeCount: isCurrentlyLiked ? reel.likeCount - 1 : reel.likeCount + 1,
+            };
+          }
+          return reel;
+        }),
+      );
+      try {
+        await api.toggleReelLike(reelId, isCurrentlyLiked);
+      } catch (error) {
+        // Revert on failure
+        await refreshReels();
+        console.error("Failed to toggle reel like:", error);
+      }
+    },
+    [refreshReels],
+  );
+
+  const toggleReelBookmark = useCallback(
+    async (reelId: string) => {
+      const reel = reels.find((r) => r.id === reelId);
+      if (!reel) return;
+
+      // Optimistic update - toggle isBookmarked state
+      setReels((prev) =>
+        prev.map((r) =>
+          r.id === reelId ? { ...r, isBookmarked: !(r as any).isBookmarked } : r,
+        ),
+      );
+      try {
+        await api.toggleReelBookmark(reelId);
+      } catch (error) {
+        // Revert on failure
+        await refreshReels();
+        console.error("Failed to toggle reel bookmark:", error);
+      }
+    },
+    [reels, refreshReels],
+  );
+
+  const addReelComment = useCallback(
+    async (reelId: string, text: string, parentCommentId?: string) => {
+      try {
+        await api.addReelComment(reelId, text, parentCommentId);
+      } catch (error) {
+        console.error("Failed to add reel comment:", error);
+      }
+    },
+    [],
+  );
+
+  const deleteReelComment = useCallback(async (commentId: string) => {
+    try {
+      await api.deleteReelComment(commentId);
+    } catch (error) {
+      console.error("Failed to delete reel comment:", error);
+    }
+  }, []);
+
+  const toggleReelCommentLike = useCallback(async (commentId: string) => {
+    try {
+      await api.toggleReelCommentLike(commentId);
+    } catch (error) {
+      console.error("Failed to toggle reel comment like:", error);
+    }
+  }, []);
+
+  const deleteReelFn = useCallback(async (reelId: string) => {
+    try {
+      await api.deleteReel(reelId);
+      setReels((prev) => prev.filter((r) => r.id !== reelId));
+    } catch (error) {
+      console.error("Failed to delete reel:", error);
     }
   }, []);
 
@@ -1086,6 +1218,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             refreshPosts(),
             refreshMyPosts(),
             refreshStories(),
+            refreshReels(),
             refreshConversations(),
             refreshNotifications(),
             fetchSuggestedUsers(),
@@ -1096,6 +1229,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           await Promise.all([
             refreshPosts(),
             refreshStories(),
+            refreshReels(),
             refreshConversations(),
             refreshNotifications(),
           ]);
@@ -1106,6 +1240,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await Promise.all([
           refreshPosts(),
           refreshStories(),
+          refreshReels(),
           refreshConversations(),
           refreshNotifications(),
         ]);
@@ -1118,6 +1253,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, [
     refreshPosts,
     refreshStories,
+    refreshReels,
     refreshConversations,
     refreshNotifications,
     fetchSuggestedUsers,
@@ -1321,8 +1457,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         addComment,
         deleteComment,
         createPost,
+        createReel,
         updatePost,
         deletePost,
+        // Reels
+        reels,
+        refreshReels,
+        toggleReelLike,
+        toggleReelBookmark,
+        addReelComment,
+        deleteReelComment,
+        toggleReelCommentLike,
+        deleteReel: deleteReelFn,
         refreshUser,
         toggleFollow,
         updateProfile,

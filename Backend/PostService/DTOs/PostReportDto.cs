@@ -1,4 +1,4 @@
-﻿using PostService.Models;
+using PostService.Models;
 
 namespace PostService.DTOs
 {
@@ -8,6 +8,8 @@ namespace PostService.DTOs
 
         // Bài đăng bị report
         public Guid PostId { get; set; }
+        public string PostContent { get; set; } = string.Empty;
+        public List<string> PostMediaUrls { get; set; } = new();
 
         public UserProfileRpcResponse? ReporterProfile { get; set; }
 
@@ -17,6 +19,7 @@ namespace PostService.DTOs
 
         // Nội dung report
         public string Reason { get; set; } = string.Empty;
+        public string? AdditionalDetails { get; set; }
 
         // Trạng thái xử lý
         public ReportStatus Status { get; set; }

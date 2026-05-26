@@ -12,6 +12,8 @@ const followedUserIds: Set<string> = new Set();
 
 const LOCAL_HANDLE_KEY = "@uitvibes_local_username_handle";
 const CURRENT_EMAIL_KEY = "@uitvibes_current_user_email";
+/** Role được persist qua restart — dùng khi refreshSession chưa trả role từ BE profile */
+const USER_ROLE_KEY = "@uitvibes_user_role";
 /** URL avatar đã xác nhận từ BE — dùng khi login/refresh tạm thời không trả avatarUrl */
 const AVATAR_URL_PREFIX = "@uitvibes_avatar_url_";
 
@@ -169,6 +171,30 @@ export async function clearCurrentUserEmail(): Promise<void> {
   currentUserEmail = null;
   try {
     await AsyncStorage.removeItem(CURRENT_EMAIL_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ─── Role persistence ──────────────────────────────────────────────────────────
+
+export async function getPersistedUserRole(): Promise<"User" | "Admin" | null> {
+  try {
+    const stored = await AsyncStorage.getItem(USER_ROLE_KEY);
+    if (stored === "Admin" || stored === "User") return stored;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setPersistedUserRole(role: "User" | "Admin" | null): Promise<void> {
+  try {
+    if (role) {
+      await AsyncStorage.setItem(USER_ROLE_KEY, role);
+    } else {
+      await AsyncStorage.removeItem(USER_ROLE_KEY);
+    }
   } catch {
     /* ignore */
   }

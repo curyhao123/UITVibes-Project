@@ -19,6 +19,7 @@ export interface User {
   isFollowing?: boolean;
   isBlocked?: boolean;
   createdAt?: string;
+  role?: "User" | "Admin"; // comes from BE_AuthResponse.user.role
 }
 
 export interface Comment {
@@ -37,7 +38,8 @@ export interface Post {
   id: string;
   userId: string;
   user: User;
-  image: string;
+  image: string;         // first image (backwards-compatible)
+  images?: string[];     // all images for multi-image posts
   caption: string;
   likes: number;
   comments: Comment[];
@@ -548,5 +550,213 @@ export const mockActiveUserPosts: Post[] = [
     views: 2800,
     location: 'District 4, HCMC',
     tags: ['food', 'streetfood', 'vietnam'],
+  },
+];
+
+// ============================================================
+// REELS
+// ============================================================
+
+export const mockReels: Reel[] = [
+  {
+    id: 'r1',
+    user: u1,
+    video: 'https://example.com/reel1.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel1/400/800',
+    caption: 'Sunset vibes at Da Nang beach 🌅 The most beautiful moment of the day! #travel #vietnam #sunset',
+    likes: 12450,
+    comments: 234,
+    views: 89500,
+    shares: 156,
+    isLiked: false,
+    isBookmarked: false,
+    music: 'Golden Hour',
+    musicArtist: 'Vance Joy',
+    createdAt: '2024-01-15T18:00:00Z',
+  },
+  {
+    id: 'r2',
+    user: u2,
+    video: 'https://example.com/reel2.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel2/400/800',
+    caption: 'Street food tour in Saigon 🍜 Best banh xeo I have ever tried!',
+    likes: 8900,
+    comments: 156,
+    views: 56000,
+    shares: 89,
+    isLiked: true,
+    isBookmarked: true,
+    music: 'Foodie',
+    musicArtist: 'Local Artist',
+    createdAt: '2024-01-14T12:00:00Z',
+  },
+  {
+    id: 'r3',
+    user: u3,
+    video: 'https://example.com/reel3.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel3/400/800',
+    caption: 'Morning workout complete! 💪 5km run + strength training. No excuses! #fitness #workout',
+    likes: 15600,
+    comments: 312,
+    views: 120000,
+    shares: 234,
+    isLiked: false,
+    isBookmarked: false,
+    music: 'Eye of the Tiger',
+    musicArtist: 'Survivor',
+    createdAt: '2024-01-13T07:00:00Z',
+  },
+  {
+    id: 'r4',
+    user: u4,
+    video: 'https://example.com/reel4.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel4/400/800',
+    caption: 'New beat just dropped! 🎵 Check out my latest track on Spotify #producer #music',
+    likes: 23400,
+    comments: 456,
+    views: 180000,
+    shares: 567,
+    isLiked: false,
+    isBookmarked: true,
+    music: 'Midnight Vibes',
+    musicArtist: 'Duc Tran',
+    createdAt: '2024-01-12T20:00:00Z',
+  },
+  {
+    id: 'r5',
+    user: u5,
+    video: 'https://example.com/reel5.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel5/400/800',
+    caption: 'Commission piece time-lapse 🎨 Watch me create this in 2 minutes! Commission open DM me.',
+    likes: 34500,
+    comments: 678,
+    views: 250000,
+    shares: 890,
+    isLiked: true,
+    isBookmarked: false,
+    music: 'Creative Vibes',
+    musicArtist: 'Various Artists',
+    createdAt: '2024-01-11T14:00:00Z',
+  },
+  {
+    id: 'r6',
+    user: u6,
+    video: 'https://example.com/reel6.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel6/400/800',
+    caption: 'Building my first React Native app! 🚀 Join me on this coding journey #developer #tech',
+    likes: 8900,
+    comments: 189,
+    views: 67000,
+    shares: 123,
+    isLiked: false,
+    isBookmarked: false,
+    music: 'Coding Mode',
+    musicArtist: 'Lo-fi Beats',
+    createdAt: '2024-01-10T10:00:00Z',
+  },
+  {
+    id: 'r7',
+    user: u7,
+    video: 'https://example.com/reel7.mp4',
+    thumbnail: 'https://picsum.photos/seed/reel7/400/800',
+    caption: 'OOTD for the week 👗 Minimalist fashion tips for every occasion #fashion #style',
+    likes: 45600,
+    comments: 890,
+    views: 320000,
+    shares: 1200,
+    isLiked: false,
+    isBookmarked: true,
+    music: 'Runway',
+    musicArtist: 'Fashion Music',
+    createdAt: '2024-01-09T08:00:00Z',
+  },
+];
+
+// ============================================================
+// MOCK COMMENTS
+// ============================================================
+
+export const mockComments: Comment[] = [
+  {
+    id: 'c1',
+    userId: 'u2',
+    user: u2,
+    text: 'This is absolutely stunning! 😍 Where was this taken?',
+    createdAt: '2024-01-15T18:30:00Z',
+    likes: 45,
+    isLiked: false,
+    replies: [
+      {
+        id: 'c1r1',
+        userId: 'u1',
+        user: u1,
+        text: 'Thank you! This was at My Khe Beach in Da Nang 🌅',
+        createdAt: '2024-01-15T18:45:00Z',
+        likes: 12,
+        isLiked: true,
+        parentId: 'c1',
+      },
+    ],
+  },
+  {
+    id: 'c2',
+    userId: 'u3',
+    user: u3,
+    text: 'The lighting is perfect! You captured it beautifully ✨',
+    createdAt: '2024-01-15T19:00:00Z',
+    likes: 23,
+    isLiked: true,
+    replies: [],
+  },
+  {
+    id: 'c3',
+    userId: 'u5',
+    user: u5,
+    text: 'Adding this to my travel bucket list! 📍',
+    createdAt: '2024-01-15T19:30:00Z',
+    likes: 8,
+    isLiked: false,
+    replies: [],
+  },
+  {
+    id: 'c4',
+    userId: 'current',
+    user: me,
+    text: 'Amazing view! Love your content 💯',
+    createdAt: '2024-01-15T20:00:00Z',
+    likes: 5,
+    isLiked: false,
+    replies: [],
+  },
+  {
+    id: 'c5',
+    userId: 'u7',
+    user: u7,
+    text: 'The colors in this are incredible! What filter did you use?',
+    createdAt: '2024-01-15T20:30:00Z',
+    likes: 15,
+    isLiked: false,
+    replies: [
+      {
+        id: 'c5r1',
+        userId: 'u1',
+        user: u1,
+        text: 'No filter! Just natural golden hour lighting 🌟',
+        createdAt: '2024-01-15T21:00:00Z',
+        likes: 28,
+        isLiked: true,
+        parentId: 'c5',
+      },
+      {
+        id: 'c5r2',
+        userId: 'u7',
+        user: u7,
+        text: 'Wow that\'s amazing! Nature is the best filter 📸',
+        createdAt: '2024-01-15T21:15:00Z',
+        likes: 3,
+        isLiked: false,
+        parentId: 'c5',
+      },
+    ],
   },
 ];

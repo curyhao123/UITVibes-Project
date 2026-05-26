@@ -15,7 +15,7 @@
  * Design: Instagram-style modal, rounded sheet, frosted-like blur via tint,
  * danger action with red text.
  */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -39,7 +39,9 @@ interface UserActionsSheetProps {
   visible: boolean;
   onClose: () => void;
   onBlock: () => Promise<void>;
-  onReport: () => void;
+  /** Called when user taps "Report User" — parent opens ReportUserSheet */
+  onReport: (reportedUserId: string) => void;
+  reportedUserId: string;
   blockedUsername: string;
 }
 
@@ -50,9 +52,13 @@ export function UserActionsSheet({
   onClose,
   onBlock,
   onReport,
+  reportedUserId,
   blockedUsername,
 }: UserActionsSheetProps) {
   const [isBlocking, setIsBlocking] = useState(false);
+
+  // Local state so animation out completes before React unmounts the Modal.
+  const [isRendered, setIsRendered] = useState(false);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
@@ -62,9 +68,10 @@ export function UserActionsSheet({
     if (!visible) setIsBlocking(false);
   }, [visible]);
 
-  // Animate in
+  // Mount animation
   useEffect(() => {
     if (visible) {
+      setIsRendered(true);
       Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 1,
@@ -82,30 +89,33 @@ export function UserActionsSheet({
     }
   }, [visible]);
 
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.spring(sheetTranslateY, {
-        toValue: SHEET_HEIGHT,
-        damping: 30,
-        stiffness: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
-  };
+  // Cleanup: if not visible but still rendered, animate out then unmount
+  useEffect(() => {
+    if (!visible && isRendered) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sheetTranslateY, {
+          toValue: SHEET_HEIGHT,
+          damping: 30,
+          stiffness: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setIsRendered(false));
+    }
+  }, [visible, isRendered]);
+
+  const handleClose = () => onClose();
 
   const handleBlock = async () => {
     if (isBlocking) return;
     setIsBlocking(true);
     try {
       await onBlock();
-      handleClose();
+      onClose();
       Alert.alert(
         'User Blocked',
         `You have blocked @${blockedUsername}. You can unblock them anytime from Settings.`,
@@ -118,16 +128,13 @@ export function UserActionsSheet({
   };
 
   const handleReport = () => {
-    handleClose();
-    Alert.alert(
-      'Report User',
-      `Are you sure you want to report @${blockedUsername}?\n\nOur team will review this report.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Report', style: 'destructive', onPress: onReport },
-      ],
-    );
+    // Close this sheet, then open the report sheet after animation completes.
+    setTimeout(() => onReport(reportedUserId), 220);
+    onClose();
   };
+
+  // Don't render anything while closing animation finishes
+  if (!isRendered) return null;
 
   return (
     <Modal

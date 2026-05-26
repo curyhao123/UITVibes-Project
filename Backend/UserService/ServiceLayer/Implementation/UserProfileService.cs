@@ -672,6 +672,7 @@ public class UserProfileService : IUserProfileService
             ReporterId = userId,
             TargetUserId = request.TargetUserId,
             Reason = request.Reason,
+            AdditionalDetails = request.AdditionalDetails,
             Status = ReportStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
@@ -691,8 +692,114 @@ public class UserProfileService : IUserProfileService
             ReporterDisplayName = reporterProfile?.DisplayName ?? "Someone",
             ReportedDisplayName = targetProfile.DisplayName ?? "Someone",
             Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
             CreatedAt = report.CreatedAt,
             Status = report.Status
         };
+    }
+
+    public async Task<UserReportDto> ResolveUserReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.UserReports
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+        {
+            throw new KeyNotFoundException("Report not found");
+        }
+
+        if (report.Status != ReportStatus.Pending)
+        {
+            throw new InvalidOperationException("Report has already been processed");
+        }
+
+        report.Status = ReportStatus.Resolved;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Report {ReportId} resolved by admin", reportId);
+
+        var reporterName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.ReporterId))?.DisplayName ?? "Someone";
+        var targetName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.TargetUserId))?.DisplayName ?? "Someone";
+
+        return new UserReportDto
+        {
+            Id = report.Id,
+            ReporterUserId = report.ReporterId,
+            ReportedUserId = report.TargetUserId,
+            ReporterDisplayName = reporterName,
+            ReportedDisplayName = targetName,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            CreatedAt = report.CreatedAt,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<UserReportDto> DismissUserReportAsync(Guid reportId, string? adminNote = null)
+    {
+        var report = await _context.UserReports
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+
+        if (report == null)
+        {
+            throw new KeyNotFoundException("Report not found");
+        }
+
+        if (report.Status != ReportStatus.Pending)
+        {
+            throw new InvalidOperationException("Report has already been processed");
+        }
+
+        report.Status = ReportStatus.Dismissed;
+        report.AdminNote = adminNote;
+        report.ResolvedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Report {ReportId} dismissed by admin", reportId);
+
+        var reporterName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.ReporterId))?.DisplayName ?? "Someone";
+        var targetName = (await _context.UserProfiles.FirstOrDefaultAsync(p => p.UserId == report.TargetUserId))?.DisplayName ?? "Someone";
+
+        return new UserReportDto
+        {
+            Id = report.Id,
+            ReporterUserId = report.ReporterId,
+            ReportedUserId = report.TargetUserId,
+            ReporterDisplayName = reporterName,
+            ReportedDisplayName = targetName,
+            Reason = report.Reason,
+            AdditionalDetails = report.AdditionalDetails,
+            CreatedAt = report.CreatedAt,
+            Status = report.Status,
+            AdminNote = report.AdminNote,
+            ResolvedAt = report.ResolvedAt
+        };
+    }
+
+    public async Task<UserProfileDto?> GetProfileByDisplayNameAsync(string displayName)
+    {
+        var trimmed = displayName?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            throw new ArgumentException("Display name is required");
+        }
+
+        var profile = await _context.UserProfiles
+            .Include(p => p.SocialLinks)
+            .FirstOrDefaultAsync(p => p.DisplayName != null &&
+                                     EF.Functions.ILike(p.DisplayName, trimmed));
+
+        if (profile == null)
+        {
+            throw new KeyNotFoundException("User profile not found");
+        }
+
+        return MapToDto(profile);
     }
 }

@@ -521,4 +521,83 @@ public class PostController : ControllerBase
         }
 
     }
+
+    [HttpPatch("post-report/{reportId}/resolve")]
+    public async Task<ActionResult<PostReportDto>> ResolvePostReport(Guid reportId, [FromBody] ResolvePostReportRequest? request = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        try
+        {
+            var report = await _postService.ResolvePostReportAsync(reportId, request?.AdminNote);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Report not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving post report {ReportId}", reportId);
+            return StatusCode(500, new { message = "An error occurred while resolving report" });
+        }
+    }
+
+    [HttpPatch("post-report/{reportId}/reject")]
+    public async Task<ActionResult<PostReportDto>> DismissPostReport(Guid reportId, [FromBody] ResolvePostReportRequest? request = null)
+    {
+        var userRoleHeader = Request.Headers["X-User-Role"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userRoleHeader) || userRoleHeader != "Admin")
+        {
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+        }
+        try
+        {
+            var report = await _postService.DismissPostReportAsync(reportId, request?.AdminNote);
+            return Ok(report);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Report not found" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error dismissing post report {ReportId}", reportId);
+            return StatusCode(500, new { message = "An error occurred while dismissing report" });
+        }
+    }
+
+    [HttpPost("{postId}/visibility")]
+    public async Task<ActionResult<PostDto>> ChangePostVisibility(Guid postId, [FromBody] PostVisibility postVisibility)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+        try
+        {
+            var post = await _postService.ChangePostVisibilityAsync(postId, userId, postVisibility);
+            return Ok(post);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Post not found" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+    }
 }
