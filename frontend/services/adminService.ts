@@ -8,6 +8,8 @@
  *   GET  /userprofile              → all user profiles (paginated)
  *   GET  /userprofile/reports     → user reports (paginated, filter by status)
  *   GET  /post/post-report        → post reports (paginated, filter by status)
+ *   POST /auth/auth/ban-user/{userId}  → ban a user
+ *   POST /auth/auth/unban-user/{userId} → unban a user
  */
 
 import apiClient from "./httpClient";
@@ -20,6 +22,7 @@ import type {
 
 const BASE_USER = "/user/userprofile";
 const BASE_POST = "/post";
+const BASE_AUTH = "/auth/auth";
 
 export interface PaginatedUsers {
   items: BE_AdminUserProfile[];
@@ -134,4 +137,16 @@ export async function changePostVisibility(
   visibility: number,
 ): Promise<void> {
   await apiClient.post(`${BASE_POST}/${postId}/visibility`, visibility);
+}
+
+// ─── Ban / Unban Users ───────────────────────────────────────────────────────
+
+/** POST /auth/auth/ban-user/{userId} */
+export async function banUser(userId: string): Promise<void> {
+  await apiClient.post(`${BASE_AUTH}/ban-user/${userId}`);
+}
+
+/** POST /auth/auth/unban-user/{userId} */
+export async function unbanUser(userId: string): Promise<void> {
+  await apiClient.post(`${BASE_AUTH}/unban-user/${userId}`);
 }

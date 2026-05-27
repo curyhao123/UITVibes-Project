@@ -19,6 +19,7 @@ public class UserProfile
     public int FollowingCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public bool IsBanned { get; set; } = false;
 
     // Navigation property
     public ICollection<SocialLink> SocialLinks { get; set; } = new List<SocialLink>();

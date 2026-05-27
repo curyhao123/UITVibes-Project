@@ -18,6 +18,7 @@ import { FormInput } from "../../components/FormInput";
 import { Button } from "../../components/Button";
 import { Toast } from "../../components/Toast";
 import { ForgotPasswordModal } from "../../components/ForgotPasswordModal";
+import { BannedAccountModal } from "../../components/BannedAccountModal";
 import { useApp } from "../../context/AppContext";
 import { AppColors, borderRadius } from "../../constants/theme";
 
@@ -46,6 +47,9 @@ export default function LoginScreen() {
 
   // ── Forgot password modal state ──────────────────────────────────────────
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
+
+  // ── Banned account modal state ──────────────────────────────────────────
+  const [bannedModalVisible, setBannedModalVisible] = useState(false);
 
   const isFormFilled = email.trim().length > 0 && password.trim().length > 0;
 
@@ -87,6 +91,8 @@ export default function LoginScreen() {
     } catch (err: any) {
       if (err?.errorCode === "NOT_VERIFIED") {
         handleNotVerified(err?.email ?? email);
+      } else if (err?.errorCode === "IS_BANNED") {
+        setBannedModalVisible(true);
       } else {
         setToastType("error");
         setToastMessage(err?.message ?? "Login failed. Please try again.");
@@ -335,6 +341,12 @@ export default function LoginScreen() {
         visible={forgotModalVisible}
         onClose={() => setForgotModalVisible(false)}
         onSuccess={handleForgotPasswordSuccess}
+      />
+
+      {/* ── Banned Account Modal ── */}
+      <BannedAccountModal
+        visible={bannedModalVisible}
+        onClose={() => setBannedModalVisible(false)}
       />
     </SafeAreaView>
   );

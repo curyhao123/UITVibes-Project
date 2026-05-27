@@ -13,6 +13,13 @@ public class UserProfileDto
     public string? Website { get; set; }
     public string? FullName { get; set; }
     public string? Gender { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsBanned { get; set; } = false;
+    public bool IsVerified { get; set; } = false;
+    public DateTime CreatedAt { get; set; }
+    public int FollowersCount { get; set; }
+    public int FollowingCount { get; set; }
+    public int PostsCount { get; set; }
     public List<SocialLinkDto> SocialLinks { get; set; } = new();
 }
 

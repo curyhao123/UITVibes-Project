@@ -125,6 +125,18 @@ export async function login(email: string, password: string): Promise<User> {
       err.email = error?.response?.data?.email ?? email;
       throw err;
     }
+    if (errorCode === "IS_BANNED") {
+      const err = new Error(error?.response?.data?.message ?? "User account is banned.") as Error & { errorCode: string };
+      err.errorCode = errorCode;
+      throw err;
+    }
+    // Also check for IS_BANNED in error message (from backend exception)
+    const errorMessage = error?.response?.data?.message ?? error?.message ?? "";
+    if (errorMessage.toLowerCase().includes("is_banned") || errorMessage.toLowerCase().includes("banned")) {
+      const err = new Error(errorMessage) as Error & { errorCode: string };
+      err.errorCode = "IS_BANNED";
+      throw err;
+    }
     const message =
       (error?.response?.data &&
         (error.response.data.message || error.response.data.error)) ||
