@@ -30,6 +30,7 @@ interface AppContextType {
   markUserActive: () => void;
   login: (email: string, password: string) => Promise<User | null>;
   register: (email: string, password: string, username: string) => Promise<boolean>;
+  confirmPendingAuth: (user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 
@@ -166,6 +167,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // ─── Pending Verification (after register, before OTP verify) ────
+  // Stores user data temporarily so AuthGuard doesn't redirect to home
+  const [pendingAuthUser, setPendingAuthUser] = useState<User | null>(null);
+
   const markUserActive = useCallback(() => setIsNewUser(false), []);
 
   // ─── Onboarding ─────────────────────────────────────────
@@ -247,9 +252,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setAuthError(null);
       try {
         const user = await api.register(email, password, username);
+        // Store user temporarily for pending verification — do NOT set isAuthenticated yet
+        // This prevents AuthGuard from redirecting to home before OTP verification
+        setPendingAuthUser(user);
         setCurrentUser(user);
-        setIsAuthenticated(true);
-        setIsNewUser(true); // Tài khoản mới → posts = 0
         setOnboardingStep(0);
         return true;
       } catch (error) {
@@ -267,12 +273,21 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [],
   );
 
+  // Called from email-verification after OTP is successfully verified
+  const confirmPendingAuth = useCallback((user: User) => {
+    setPendingAuthUser(null);
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsNewUser(true); // posts = 0 for new account
+  }, []);
+
   const resetSessionAfterSignOut = useCallback(() => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setIsNewUser(false);
     setAuthError(null);
     setOnboardingStep(0);
+    setPendingAuthUser(null);
     setPosts([]);
     setStories([]);
     setConversations([]);
@@ -1222,6 +1237,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         markUserActive,
         login,
         register,
+        confirmPendingAuth,
         logout,
         deleteAccount,
         isAuthenticated,

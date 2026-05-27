@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import * as api from "../../services/api";
 import { saveTokens } from "../../services/httpClient";
 import { setCurrentUser, setCurrentUserId } from "../../services/session";
+import { useApp } from "../../context/AppContext";
 import { Button } from "../../components/Button";
 import { Toast } from "../../components/Toast";
 import { AppColors, borderRadius } from "../../constants/theme";
@@ -25,6 +26,7 @@ const RESEND_COOLDOWN = 60; // seconds
 export default function EmailVerificationScreen() {
   const router = useRouter();
   const { email, fromLogin } = useLocalSearchParams<{ email?: string; fromLogin?: string }>();
+  const { currentUser, confirmPendingAuth } = useApp();
   const isFromLogin = fromLogin === "1";
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -100,9 +102,13 @@ export default function EmailVerificationScreen() {
         setToastVisible(true);
         router.replace("/auth/login");
       } else {
-        // ── Luồng 1: Register → Verify → Token đã có từ register ──
+        // ── Luồng 1: Register → Verify → complete auth & go to onboarding ──
         await api.verifyEmail(verifiedEmail, code);
-        console.log("[Verify] Email verified (register flow). Navigating to onboarding.");
+        console.log("[Verify] Email verified (register flow). Completing auth & navigating to onboarding.");
+        // Activate authentication now — AuthGuard will allow navigation to onboarding
+        if (currentUser) {
+          confirmPendingAuth(currentUser);
+        }
         router.replace("/auth/onboarding-fullname");
       }
     } catch (err: any) {

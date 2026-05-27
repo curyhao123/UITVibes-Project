@@ -1,4 +1,4 @@
-﻿using StackExchange.Redis;
+using StackExchange.Redis;
 
 namespace AuthService.Models
 {
@@ -11,6 +11,7 @@ namespace AuthService.Models
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsBanned { get; set; } = false;
         public bool IsVerified { get; set; } = false;
 
         public Role Role { get; set; } = Role.User;

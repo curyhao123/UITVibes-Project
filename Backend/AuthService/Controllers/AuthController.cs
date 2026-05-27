@@ -47,6 +47,10 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during login");
+                if (ex.Message.StartsWith("IS_BANNED|"))
+                {
+                    return BadRequest(new { errorCode = "IS_BANNED", message = ex.Message.Substring("IS_BANNED|".Length) });
+                }
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -61,6 +65,10 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during token refresh");
+                if (ex.Message.StartsWith("IS_BANNED|"))
+                {
+                    return BadRequest(new { errorCode = "IS_BANNED", message = ex.Message.Substring("IS_BANNED|".Length) });
+                }
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -229,6 +237,35 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error banning user {UserId}", userId);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("unban-user/{userId}")]
+        public async Task<IActionResult> UnbanUser(Guid userId)
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+            {
+                return Unauthorized(new { message = "User ID not found in request headers" });
+            }
+
+            try
+            {
+                var result = await _authService.UnbanUserAsync(userId);
+                if (result)
+                {
+                    return Ok(new { message = "User unbanned successfully" });
+                }
+                else
+                {
+                    return NotFound(new { message = "User not found or not banned" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unbanning user {UserId}", userId);
                 return BadRequest(new { message = ex.Message });
             }
         }
