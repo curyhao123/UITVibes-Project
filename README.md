@@ -84,6 +84,7 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 ## 🛠️ Tech Stack
 ## Sơ đồ:
 <img width="968" height="522" alt="download" src="https://github.com/user-attachments/assets/959277fa-078f-4e84-9f5d-8c31eb8a00e7" />
+
 ### Frontend
 | Công Nghệ | Mục Đích |
 |-----------|----------|
