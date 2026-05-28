@@ -717,3 +717,53 @@ VALUES
     '88888888-2222-2222-2222-222222222222',
     CURRENT_TIMESTAMP - INTERVAL '3 hours'
 );
+
+-- ================================
+-- Seed PostReports
+-- Status: 0 = Pending, 1 = Resolved, 2 = Dismissed
+-- ================================
+INSERT INTO "PostReports" (
+    "Id",
+    "PostId",
+    "ReporterId",
+    "Reason",
+    "AdditionalDetails",
+    "Status",
+    "AdminNote",
+    "CreatedAt",
+    "ResolvedAt"
+)
+VALUES
+(
+    'eeeeeeee-1111-1111-1111-111111111111',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+    '22222222-2222-2222-2222-222222222222',
+    'Nội dung không phù hợp',
+    'Caption có thể gây hiểu lầm.',
+    0,
+    NULL,
+    CURRENT_TIMESTAMP - INTERVAL '2 days',
+    NULL
+),
+(
+    'eeeeeeee-2222-2222-2222-222222222222',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4',
+    '33333333-3333-3333-3333-333333333333',
+    'Spam hoặc lừa đảo',
+    'Bài đăng lặp lại nhiều lần.',
+    1,
+    'Đã nhắc nhở người đăng.',
+    CURRENT_TIMESTAMP - INTERVAL '4 days',
+    CURRENT_TIMESTAMP - INTERVAL '3 days'
+),
+(
+    'eeeeeeee-3333-3333-3333-333333333333',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    '55555555-5555-5555-5555-555555555555',
+    'Ngôn từ gây hấn hoặc thù ghét',
+    'Ngôn từ trong bài gây khó chịu.',
+    2,
+    'Không đủ cơ sở vi phạm.',
+    CURRENT_TIMESTAMP - INTERVAL '5 days',
+    CURRENT_TIMESTAMP - INTERVAL '4 days'
+);
