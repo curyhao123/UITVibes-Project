@@ -1,110 +1,109 @@
--- Script thêm dữ liệu mẫu cho UserDb (PostgreSQL) - Bảng UserProfiles
--- Các UserId này phải khớp y hệt với cột "Id" trong bảng "Users" của AuthDb
+-- Sample data seeder for UserDb (PostgreSQL) - UserProfiles table
+-- These UserIds must match exactly with the "Id" column in the "Users" table of AuthDb
 
 INSERT INTO "UserProfiles" (
-    "Id", 
-    "UserId", 
-    "DisplayName", 
-    "FullName", 
-    "Bio", 
+    "Id",
+    "UserId",
+    "DisplayName",
+    "FullName",
+    "Bio",
     "Gender",
     "AvatarUrl",
-    "DateOfBirth", 
-    "Location", 
-    "FollowersCount", 
-    "FollowingCount", 
-    "CreatedAt", 
-    "UpdatedAt", 
+    "DateOfBirth",
+    "Location",
+    "FollowersCount",
+    "FollowingCount",
+    "CreatedAt",
+    "UpdatedAt",
     "IsBanned"
-) 
-VALUES 
+)
+VALUES
 (
-    gen_random_uuid(), 
-    '11111111-1111-1111-1111-111111111111', 
-    'admin_uit', 
-    'Quản trị viên', 
-    'Chào mừng đến với hệ thống UITVibes. Tôi là Admin.', 
+    gen_random_uuid(),
+    '11111111-1111-1111-1111-111111111111',
+    'admin_uit',
+    'Administrator',
+    'Welcome to UITVibes system. I am the Admin.',
     'Other',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1768667412/avatars/aizkxaeqdqmhfnhoup6s.png',
-    '2000-01-01 00:00:00', 
-    'Hồ Chí Minh, Việt Nam', 
-    0, 
-    0, 
-    CURRENT_TIMESTAMP, 
-    CURRENT_TIMESTAMP, 
+    '2000-01-01 00:00:00',
+    'Ho Chi Minh City, Vietnam',
+    0,
+    0,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     false
 ),
 (
-    gen_random_uuid(), 
-    '22222222-2222-2222-2222-222222222222', 
-    'Ted', 
-    'Hoàng Văn Tài', 
-    'Sinh viên CNTT đam mê coding.', 
+    gen_random_uuid(),
+    '22222222-2222-2222-2222-222222222222',
+    'Ted',
+    'Hoang Van Tai',
+    'IT student passionate about coding.',
     'Male',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1778842884/uitvibes/avatars/d6gnotvwteqq3in5nblp.jpg',
-    '2002-05-15 00:00:00', 
-    'Hà Nội, Việt Nam', 
-    0, 
-    0, 
-    CURRENT_TIMESTAMP, 
-    CURRENT_TIMESTAMP, 
+    '2002-05-15 00:00:00',
+    'Hanoi, Vietnam',
+    0,
+    0,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     false
 ),
 (
-    gen_random_uuid(), 
-    '33333333-3333-3333-3333-333333333333', 
-    'cury_hao', 
-    'Trần Anh Hào', 
-    'Yêu mèo, thích đọc sách.', 
+    gen_random_uuid(),
+    '33333333-3333-3333-3333-333333333333',
+    'cury_hao',
+    'Tran Anh Hao',
+    'Loves cats, enjoys reading books.',
     'Male',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1777887992/uitvibes/avatars/nwbmbviwwdxelfj8zkbd.jpg',
-    '2003-08-20 00:00:00', 
-    'Đà Nẵng, Việt Nam', 
-    0, 
-    0, 
-    CURRENT_TIMESTAMP, 
-    CURRENT_TIMESTAMP, 
+    '2003-08-20 00:00:00',
+    'Da Nang, Vietnam',
+    0,
+    0,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     false
 ),
 (
-    gen_random_uuid(), 
-    '44444444-4444-4444-4444-444444444444', 
-    'Muller25', 
-    'Thomas Muller', 
-    'Huyền thoại Bayern Munich', 
+    gen_random_uuid(),
+    '44444444-4444-4444-4444-444444444444',
+    'Muller25',
+    'Thomas Muller',
+    'Bayern Munich Legend',
     'Male',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1779938081/muller_vagidy.jpg',
-    '1989-09-13 00:00:00', 
-    'Munich, Germany', 
-    0, 
-    0, 
-    CURRENT_TIMESTAMP, 
-    CURRENT_TIMESTAMP, 
+    '1989-09-13 00:00:00',
+    'Munich, Germany',
+    0,
+    0,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     false
 ),
 (
-    gen_random_uuid(), 
-    '55555555-5555-5555-5555-555555555555', 
-    'HaiQQ', 
-    'Nguyễn Quốc Hải', 
-    'Chưa có tiểu sử.', 
+    gen_random_uuid(),
+    '55555555-5555-5555-5555-555555555555',
+    'HaiQQ',
+    'Nguyen Quoc Hai',
+    'No bio yet.',
     'Male',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1778851092/uitvibes/avatars/q0g57j4vy3d8dhrkizji.jpg',
-    '2004-03-25 00:00:00', 
-    'Hồ Chí Minh, Việt Nam', 
-    0, 
-    0, 
-    CURRENT_TIMESTAMP, 
-    CURRENT_TIMESTAMP, 
+    '2004-03-25 00:00:00',
+    'Ho Chi Minh City, Vietnam',
+    0,
+    0,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     false
 );
 
 
--- Script thêm dữ liệu mẫu Follows (UserDb)
--- Đã cập nhật gen_random_uuid() cho cột Id bị thiếu
+-- Sample data seeder for Follows (UserDb)
 
 INSERT INTO "Follows" ("Id", "FollowerId", "FollowingId", "CreatedAt")
-VALUES 
+VALUES
 -- Admin follows User1, User2, User3, User4
 (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', CURRENT_TIMESTAMP),
 (gen_random_uuid(), '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', CURRENT_TIMESTAMP),
@@ -132,8 +131,8 @@ VALUES
 (gen_random_uuid(), '55555555-5555-5555-5555-555555555555', '44444444-4444-4444-4444-444444444444', CURRENT_TIMESTAMP);
 
 
--- Cập nhật bộ đếm cho 4 User: (Có 4 người Follow gồm Admin và 3 User kia, đang Follow 3 User kia)
-UPDATE "UserProfiles" 
+-- Update counters for 4 Users: (4 people are following, including Admin and 3 other Users, following 3 other Users)
+UPDATE "UserProfiles"
 SET "FollowersCount" = 4, "FollowingCount" = 3
 WHERE "UserId" IN (
     '22222222-2222-2222-2222-222222222222',
@@ -142,61 +141,61 @@ WHERE "UserId" IN (
     '55555555-5555-5555-5555-555555555555'
 );
 
--- Cập nhật bộ đếm cho Admin (Không ai Follow, đi Follow 4 người)
-UPDATE "UserProfiles" 
+-- Update counters for Admin: (No followers, following 4 people)
+UPDATE "UserProfiles"
 SET "FollowersCount" = 0, "FollowingCount" = 4
 WHERE "UserId" = '11111111-1111-1111-1111-111111111111';
 
--- Script thêm dữ liệu mẫu UserReports (UserDb)
--- Status: 0 = Pending (Chờ xử lý), 1 = Resolved (Đã ghi nhận), 2 = Dismissed (Bỏ qua)
+-- Sample data seeder for UserReports (UserDb)
+-- Status: 0 = Pending, 1 = Resolved, 2 = Dismissed
 
 INSERT INTO "UserReports" (
-    "Id", 
-    "TargetUserId", 
-    "ReporterId", 
-    "Reason", 
-    "AdditionalDetails", 
-    "Status", 
-    "AdminNote", 
-    "CreatedAt", 
+    "Id",
+    "TargetUserId",
+    "ReporterId",
+    "Reason",
+    "AdditionalDetails",
+    "Status",
+    "AdminNote",
+    "CreatedAt",
     "ResolvedAt"
 )
-VALUES 
--- Trường hợp 1: Ted (User1) report HaiQQ (User4) vì dùng từ ngữ không phù hợp - Đang chờ xử lý (Pending = 0)
+VALUES
+-- Case 1: Ted (User1) reports HaiQQ (User4) for inappropriate language - Pending (Pending = 0)
 (
-    gen_random_uuid(), 
+    gen_random_uuid(),
     '55555555-5555-5555-5555-555555555555', -- Target: HaiQQ
     '22222222-2222-2222-2222-222222222222', -- Reporter: Ted
-    'Ngôn từ gây hấn hoặc thù ghét', 
-    'Người này thường xuyên dùng từ ngữ không hay ho trong phần bình luận của tôi.', 
-    0, 
-    NULL, 
-    CURRENT_TIMESTAMP - INTERVAL '2 days', 
+    'Hateful or harassing language',
+    'This person frequently uses inappropriate language in my comments.',
+    0,
+    NULL,
+    CURRENT_TIMESTAMP - INTERVAL '2 days',
     NULL
 ),
 
--- Trường hợp 2: cury_hao (User2) report Muller25 (User3) vì nghi ngờ tài khoản giả mạo - Đã xử lý / Bỏ qua (Dismissed = 2)
+-- Case 2: cury_hao (User2) reports Muller25 (User3) for suspected fake account - Dismissed (Dismissed = 2)
 (
-    gen_random_uuid(), 
+    gen_random_uuid(),
     '44444444-4444-4444-4444-444444444444', -- Target: Muller25
     '33333333-3333-3333-3333-333333333333', -- Reporter: cury_hao
-    'Tài khoản giả mạo', 
-    'Tôi nghĩ đây không phải là Thomas Muller thật, chỉ là fan lập clone.', 
-    2, 
-    'Đã kiểm tra, không vi phạm quy định mạo danh của platform.', 
-    CURRENT_TIMESTAMP - INTERVAL '5 days', 
+    'Impersonation or fake account',
+    'I believe this is not the real Thomas Muller, just a fan creating a clone account.',
+    2,
+    'Verified, no platform impersonation violation found.',
+    CURRENT_TIMESTAMP - INTERVAL '5 days',
     CURRENT_TIMESTAMP - INTERVAL '4 days'
 ),
 
--- Trường hợp 3: HaiQQ (User4) report Ted (User1) vì spam - Đã ghi nhận (Resolved = 1)
+-- Case 3: HaiQQ (User4) reports Ted (User1) for spam - Resolved (Resolved = 1)
 (
-    gen_random_uuid(), 
+    gen_random_uuid(),
     '22222222-2222-2222-2222-222222222222', -- Target: Ted
     '55555555-5555-5555-5555-555555555555', -- Reporter: HaiQQ
-    'Spam hoặc lừa đảo', 
-    'Nhắn tin gửi link quảng cáo liên tục.', 
-    1, 
-    'Đã cảnh cáo tài khoản này vì hành vi spam tin nhắn.', 
-    CURRENT_TIMESTAMP - INTERVAL '10 days', 
+    'Spam or fraud',
+    'Continuously sending advertising links via messages.',
+    1,
+    'This account has been warned for message spamming behavior.',
+    CURRENT_TIMESTAMP - INTERVAL '10 days',
     CURRENT_TIMESTAMP - INTERVAL '8 days'
 );

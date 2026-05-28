@@ -10,7 +10,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { Avatar } from "./Avatar";
 import { Comment } from "../data/mockData";
-import { AppColors } from "../constants/theme";
+import { AppColors, layoutPadding } from "../constants/theme";
 import { useApp } from "../context/AppContext";
 
 interface CommentInputProps {

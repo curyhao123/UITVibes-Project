@@ -23,11 +23,11 @@ import { Post, Comment } from "../../data/mockData";
 import { Avatar, CommentItem, ImageCarousel } from "../../components";
 import { CommentContextMenu, DeleteConfirmModal } from "../../components";
 import { useApp } from "../../context/AppContext";
-import { AppColors } from "../../constants/theme";
+import { AppColors, layoutPadding } from "../../constants/theme";
 import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { updateComment, deleteComment } from "../../services/postService";
 import { CommentInput } from "../../components/CommentInput";
-import { ScreenHeader } from "../../components/ScreenHeader";
+import { CompactHeader } from "../../components/StaticPremiumHeader";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
 const PostDetailSkeleton = () => (
@@ -363,7 +363,7 @@ export default function PostDetailScreen() {
 
   const renderHeader = () => (
     <>
-      <ScreenHeader title="Post" onBack={() => router.back()} />
+      <CompactHeader title="Post" showBack onBack={() => router.back()} />
 
       {/* Post Header: User Info */}
       <View style={styles.postHeader}>
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 12,
   },
   userInfoRow: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 14,
     gap: 20,
   },
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     color: AppColors.iconMuted,
   },
   captionContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
   },
   commentsHeader: {
-    paddingHorizontal: 16,
+    paddingHorizontal: layoutPadding,
     paddingVertical: 12,
     color: AppColors.textSecondary,
     fontSize: 13,

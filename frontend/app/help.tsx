@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import { HelpCard, FAQItem, SectionHeader } from '../components/help';
 import { SupportModal } from '../components/contact';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
@@ -173,8 +174,9 @@ export default function HelpCenterScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader
+      <CompactHeader
         title="Help Center"
+        showBack
         onBack={() => router.back()}
       />
 

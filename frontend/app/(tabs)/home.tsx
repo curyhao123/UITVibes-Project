@@ -1,13 +1,14 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useMemo, useCallback, useRef, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { PostCard, StoryBar, Avatar, Header } from '../../components';
+import { PostCard, StoryBar } from '../../components';
+import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
 import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import { FeedSkeleton } from '../../components/SkeletonLoader';
+import { FeedSkeleton } from '../../components';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -78,30 +79,23 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Header
-          title="Discover"
+        <StaticPremiumHeader
+          title="Home"
           showAvatar
           avatarUser={currentUser}
-          rightAction={
-            <TouchableOpacity
-              style={styles.notificationButton}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Feather name="bell" size={22} color={AppColors.text} strokeWidth={2} />
-            </TouchableOpacity>
-          }
-          bottomContent={
-            <View style={styles.feedTabs}>
-              <View style={[styles.feedTab, styles.feedTabActive]}>
-                <Text style={[styles.feedTabText, styles.feedTabTextActive]}>For You</Text>
-              </View>
-              <View style={styles.feedTab}>
-                <Text style={styles.feedTabText}>Following</Text>
-              </View>
-            </View>
-          }
+          onNotificationPress={() => router.push('/notifications')}
+          notificationCount={unreadCount}
         />
+        <View style={styles.feedTabsContainer}>
+          <View style={styles.feedTabs}>
+            <View style={[styles.feedTab, styles.feedTabActive]}>
+              <Text style={[styles.feedTabText, styles.feedTabTextActive]}>For You</Text>
+            </View>
+            <View style={styles.feedTab}>
+              <Text style={styles.feedTabText}>Following</Text>
+            </View>
+          </View>
+        </View>
         <FeedSkeleton count={3} />
       </SafeAreaView>
     );
@@ -109,49 +103,37 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Unified premium header */}
-      <Header
-        title="Discover"
+      {/* Premium header với blur effect */}
+      <StaticPremiumHeader
+        title="Home"
         showAvatar
         avatarUser={currentUser}
-        rightAction={
-          <TouchableOpacity
-            style={styles.notificationButton}
-            activeOpacity={0.7}
-            onPress={() => router.push('/notifications' as any)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="bell" size={22} color={AppColors.text} strokeWidth={2} />
-            {unreadCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        }
-        bottomContent={
-          <View style={styles.feedTabs}>
-            <TouchableOpacity
-              style={[styles.feedTab, feedTab === 'foryou' && styles.feedTabActive]}
-              onPress={() => setFeedTab('foryou')}
-            >
-              <Text style={[styles.feedTabText, feedTab === 'foryou' && styles.feedTabTextActive]}>
-                For You
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.feedTab, feedTab === 'following' && styles.feedTabActive]}
-              onPress={() => setFeedTab('following')}
-            >
-              <Text style={[styles.feedTabText, feedTab === 'following' && styles.feedTabTextActive]}>
-                Following
-              </Text>
-            </TouchableOpacity>
-          </View>
-        }
+        onNotificationPress={() => router.push('/notifications')}
+        notificationCount={unreadCount}
+        largeTitle
       />
+
+      {/* Feed tabs */}
+      <View style={styles.feedTabsContainer}>
+        <View style={styles.feedTabs}>
+          <TouchableOpacity
+            style={[styles.feedTab, feedTab === 'foryou' && styles.feedTabActive]}
+            onPress={() => setFeedTab('foryou')}
+          >
+            <Text style={[styles.feedTabText, feedTab === 'foryou' && styles.feedTabTextActive]}>
+              For You
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.feedTab, feedTab === 'following' && styles.feedTabActive]}
+            onPress={() => setFeedTab('following')}
+          >
+            <Text style={[styles.feedTabText, feedTab === 'following' && styles.feedTabTextActive]}>
+              Following
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <FlatList
         data={displayedPosts}
@@ -245,9 +227,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   // Feed Tabs
+  feedTabsContainer: {
+    backgroundColor: AppColors.background,
+  },
   feedTabs: {
     flexDirection: 'row',
     paddingHorizontal: layoutPadding,
+    backgroundColor: AppColors.background,
   },
   feedTab: {
     flex: 1,

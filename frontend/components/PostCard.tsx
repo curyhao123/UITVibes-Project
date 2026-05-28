@@ -4,6 +4,12 @@ import { Feather } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Avatar } from './Avatar';
 import { Post } from '../data/mockData';
 import { useApp } from '../context/AppContext';
@@ -11,13 +17,14 @@ import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useDoubleTap } from '../animations/useDoubleTap';
 import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
-import { useSharedValue } from 'react-native-reanimated';
+import { SwipeableRow } from './SwipeableRow';
 import { repostPost, undoRepost, toggleBookmark, removeBookmark } from '../services/postService';
 import { blockUser } from '../services/blockService';
 import { ImageCarousel } from './ImageCarousel';
 import { PostActionsSheet } from './PostActionsSheet';
 import { ReportPostSheet } from './ReportPostSheet';
 import { type ReportReason } from '../services/backendTypes';
+import { triggerHaptic } from '../hooks/useMicroInteractions';
 
 const ACTION_ICON = 24;
 
@@ -179,153 +186,218 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     return count.toString();
   };
 
+  // ── Micro-interaction animations ───────────────────────────────────────────
+  const bookmarkScale = useSharedValue(1);
+  const commentScale = useSharedValue(1);
+
+  const handleBookmarkWithAnimation = async () => {
+    bookmarkScale.value = withSequence(
+      withSpring(1.3, { damping: 12, stiffness: 400 }),
+      withSpring(1, { damping: 15, stiffness: 200 }),
+    );
+    triggerHaptic('medium');
+    await handleBookmark();
+  };
+
+  const handleCommentWithAnimation = () => {
+    commentScale.value = withSequence(
+      withSpring(0.85, { damping: 15, stiffness: 300 }),
+      withSpring(1, { damping: 15, stiffness: 200 }),
+    );
+    triggerHaptic('light');
+    handleCommentPress();
+  };
+
+  const bookmarkAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bookmarkScale.value }],
+  }));
+
+  const commentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: commentScale.value }],
+  }));
+
   const displayName = post.user.displayName || post.user.username;
 
-  return (
-    <View style={styles.container}>
-      {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
-      <View style={styles.postHeader}>
-        <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
-          <Avatar user={post.user} size={36} />
-          <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
-        </TouchableOpacity>
+  // Swipe action handlers
+  const handleSwipeBookmark = () => {
+    handleBookmarkWithAnimation();
+  };
 
-        <View style={styles.headerRight}>
-          {!isOwner && (
+  const handleSwipeDelete = () => {
+    if (isOwner) {
+      handleDeletePost();
+    } else {
+      setShowActionsSheet(true);
+    }
+  };
+
+  return (
+    <SwipeableRow
+      rightAction={{
+        icon: localBookmarked ? 'bookmark' : 'bookmark',
+        color: localBookmarked ? AppColors.primary : AppColors.textMuted,
+        backgroundColor: localBookmarked ? `${AppColors.primary}20` : AppColors.borderLight,
+        label: localBookmarked ? 'Saved' : 'Save',
+        onPress: handleSwipeBookmark,
+      }}
+      leftAction={isOwner ? {
+        icon: 'trash-2',
+        color: '#FFFFFF',
+        backgroundColor: AppColors.error,
+        label: 'Delete',
+        onPress: handleSwipeDelete,
+      } : undefined}
+      testID={`swipeable-post-${post.id}`}
+    >
+      <View style={styles.container}>
+        {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
+        <View style={styles.postHeader}>
+          <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
+            <Avatar user={post.user} size={36} />
+            <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.headerRight}>
+            {!isOwner && (
+              <TouchableOpacity
+                style={[styles.followBtn, localIsFollowing && styles.followBtnFollowing]}
+                onPress={handleFollowToggle}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.followBtnText, localIsFollowing && styles.followBtnTextFollowing]}>
+                  {localIsFollowing ? 'Following' : 'Follow'}
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={[styles.followBtn, localIsFollowing && styles.followBtnFollowing]}
-              onPress={handleFollowToggle}
-              activeOpacity={0.75}
+              style={styles.ellipsisBtn}
+              onPress={handleEllipsisPress}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.followBtnText, localIsFollowing && styles.followBtnTextFollowing]}>
-                {localIsFollowing ? 'Following' : 'Follow'}
+              <Ionicons name="ellipsis-horizontal" size={20} color={AppColors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Image + Actions wrapper — enables absolute positioning */}
+        <View style={styles.imageContainer}>
+          {/* Image Area — double tap likes, single tap opens post detail */}
+          <GestureDetector gesture={tapGesture}>
+            <View>
+              {/* Instagram-style carousel: swipe, dots, carousel icon */}
+              <View style={styles.carouselWrapper}>
+                <ImageCarousel
+                  images={images}
+                  height={300}
+                  onPress={handleOpenPost}
+                />
+              </View>
+
+              {/* Heart overlay — positioned on the carousel */}
+              <View style={styles.heartOverlay}>
+                <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
+              </View>
+            </View>
+          </GestureDetector>
+
+          {/* Action buttons — horizontal row below image */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              onPress={handleLike}
+              onLongPress={handleLikeLongPress}
+              delayLongPress={400}
+              style={styles.actionGroup}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
+              <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
+            </TouchableOpacity>
+
+            <Animated.View style={commentAnimatedStyle}>
+              <TouchableOpacity
+                onPress={handleCommentWithAnimation}
+                style={styles.actionGroup}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
+                <Text style={styles.actionText}>
+                  {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <TouchableOpacity
+              onPress={handleRepost}
+              style={styles.actionGroup}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Feather
+                name="refresh-cw"
+                size={ACTION_ICON}
+                color={localReposted ? AppColors.primary : AppColors.iconMuted}
+                strokeWidth={2}
+              />
+              <Text style={styles.actionText}>
+                {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
               </Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.ellipsisBtn}
-            onPress={handleEllipsisPress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color={AppColors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {/* Image + Actions wrapper — enables absolute positioning */}
-      <View style={styles.imageContainer}>
-        {/* Image Area — double tap likes, single tap opens post detail */}
-        <GestureDetector gesture={tapGesture}>
-          <View>
-            {/* Instagram-style carousel: swipe, dots, carousel icon */}
-            <View style={styles.carouselWrapper}>
-              <ImageCarousel
-                images={images}
-                height={300}
-                onPress={handleOpenPost}
-              />
-            </View>
-
-            {/* Heart overlay — positioned on the carousel */}
-            <View style={styles.heartOverlay}>
-              <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
-            </View>
+            <Animated.View style={bookmarkAnimatedStyle}>
+              <TouchableOpacity
+                onPress={handleBookmarkWithAnimation}
+                style={styles.bookmarkGroup}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Feather
+                  name="bookmark"
+                  size={ACTION_ICON}
+                  color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
+                  fill={localBookmarked ? AppColors.primary : 'transparent'}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-        </GestureDetector>
-
-        {/* Action buttons — horizontal row below image */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            onPress={handleLike}
-            onLongPress={handleLikeLongPress}
-            delayLongPress={400}
-            style={styles.actionGroup}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
-            <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleCommentPress}
-            style={styles.actionGroup}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
-            <Text style={styles.actionText}>
-              {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleRepost}
-            style={styles.actionGroup}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Feather
-              name="refresh-cw"
-              size={ACTION_ICON}
-              color={localReposted ? AppColors.primary : AppColors.iconMuted}
-              strokeWidth={2}
-            />
-            <Text style={styles.actionText}>
-              {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleBookmark}
-            style={styles.bookmarkGroup}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Feather
-              name="bookmark"
-              size={ACTION_ICON}
-              color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
-              fill={localBookmarked ? AppColors.primary : 'transparent'}
-              strokeWidth={2}
-            />
-          </TouchableOpacity>
         </View>
+
+        <View style={styles.captionContainer}>
+            <Text style={styles.caption}>
+              <Text style={styles.captionUsername}>@{displayName}</Text>
+              {' '}
+              {post.caption}
+            </Text>
+        </View>
+
+        {(post.commentsCount ?? 0) > 0 && (
+          <TouchableOpacity onPress={handleCommentPress}>
+            <Text style={styles.viewComments}>View all {post.commentsCount} comments</Text>
+          </TouchableOpacity>
+        )}
+
+        <Text style={styles.timeAgo}>{formatTimeAgo(post.createdAt)}</Text>
+
+        {/* ── Action Sheets ── */}
+        <PostActionsSheet
+          visible={showActionsSheet}
+          postOwnerId={post.userId}
+          currentUserId={currentUserId}
+          postOwnerDisplayName={displayName}
+          onReportPost={() => setShowReportSheet(true)}
+          onBlockUser={handleBlockUser}
+          onDeletePost={handleDeletePost}
+          onClose={() => setShowActionsSheet(false)}
+        />
+
+        <ReportPostSheet
+          visible={showReportSheet}
+          postId={post.id}
+          postOwnerDisplayName={displayName}
+          onClose={() => setShowReportSheet(false)}
+          onReportSuccess={handleReportSuccess}
+        />
       </View>
-
-      <View style={styles.captionContainer}>
-          <Text style={styles.caption}>
-            <Text style={styles.captionUsername}>@{displayName}</Text>
-            {' '}
-            {post.caption}
-          </Text>
-      </View>
-
-      {(post.commentsCount ?? 0) > 0 && (
-        <TouchableOpacity onPress={handleCommentPress}>
-          <Text style={styles.viewComments}>View all {post.commentsCount} comments</Text>
-        </TouchableOpacity>
-      )}
-
-      <Text style={styles.timeAgo}>{formatTimeAgo(post.createdAt)}</Text>
-
-      {/* ── Action Sheets ── */}
-      <PostActionsSheet
-        visible={showActionsSheet}
-        postOwnerId={post.userId}
-        currentUserId={currentUserId}
-        postOwnerDisplayName={displayName}
-        onReportPost={() => setShowReportSheet(true)}
-        onBlockUser={handleBlockUser}
-        onDeletePost={handleDeletePost}
-        onClose={() => setShowActionsSheet(false)}
-      />
-
-      <ReportPostSheet
-        visible={showReportSheet}
-        postId={post.id}
-        postOwnerDisplayName={displayName}
-        onClose={() => setShowReportSheet(false)}
-        onReportSuccess={handleReportSuccess}
-      />
-    </View>
+    </SwipeableRow>
   );
 };
 
@@ -441,6 +513,7 @@ const styles = StyleSheet.create({
   bookmarkGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
     marginLeft: 'auto',
   },
   actionText: {

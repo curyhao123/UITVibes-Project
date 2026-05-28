@@ -13,6 +13,7 @@ import { HighlightBar } from '../../components/highlight';
 import { AppColors, layoutPadding, borderRadius } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { CompactHeader } from '../../components/StaticPremiumHeader';
 import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
 import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
 import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
@@ -152,7 +153,7 @@ export default function UserProfileScreen() {
     if (isBlocked) {
       return (
         <SafeAreaView style={styles.container} edges={['top']}>
-          <ScreenHeader title="Profile" onBack={() => router.back()} />
+          <CompactHeader title="Profile" showBack onBack={() => router.back()} />
           <View style={styles.blockedContainer}>
             <Feather name="slash" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
             <Text style={styles.blockedTitle}>Profile unavailable</Text>
@@ -166,7 +167,7 @@ export default function UserProfileScreen() {
 
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title="Profile" onBack={() => router.back()} />
+        <CompactHeader title="Profile" showBack onBack={() => router.back()} />
         <View style={styles.notFoundContainer}>
           <Feather name="user-x" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
           <Text style={styles.notFoundText}>User not found</Text>
@@ -178,8 +179,9 @@ export default function UserProfileScreen() {
   return (
     <>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <ScreenHeader
+        <CompactHeader
           title={user.username}
+          showBack
           onBack={() => router.back()}
           rightAction={
             <TouchableOpacity

@@ -224,8 +224,8 @@ export default function RegisterScreen() {
           {/* Terms */}
           <Text style={styles.termsText}>
             By creating an account, you agree to our{" "}
-            <Text style={styles.termsLink}>Terms of Service</Text> and{" "}
-            <Text style={styles.termsLink}>Privacy Policy</Text>.
+            <Text style={styles.termsLink} onPress={() => router.push("/terms")}>Terms of Service</Text> and{" "}
+            <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>Privacy Policy</Text>.
           </Text>
         </ScrollView>
 

@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { Avatar } from "../../components/Avatar";
-import { ScreenHeader } from "../../components/ScreenHeader";
+import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { getPostLikes } from "../../services/postService";
 import { BE_LikeDto } from "../../services/backendTypes";
 import { AppColors } from "../../constants/theme";
@@ -87,7 +87,7 @@ export default function PostLikesScreen() {
     </TouchableOpacity>
   );
 
-  const renderHeader = () => <ScreenHeader title="Likes" onBack={() => router.back()} />;
+  const renderHeader = () => <CompactHeader title="Likes" showBack onBack={() => router.back()} />;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

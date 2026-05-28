@@ -258,13 +258,19 @@ export default function LoginScreen() {
 
           {/* ── Social logins ── */}
           <View style={styles.socialSection}>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7} disabled>
               <Feather name="facebook" size={20} color={AppColors.text} />
               <Text style={styles.socialBtnText}>Continue with Facebook</Text>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Soon</Text>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7} disabled>
               <Feather name="smartphone" size={20} color={AppColors.text} />
               <Text style={styles.socialBtnText}>Continue with Phone</Text>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Soon</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -442,6 +448,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: AppColors.text,
     letterSpacing: -0.1,
+  },
+  comingSoonBadge: {
+    backgroundColor: `${AppColors.primary}15`,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: AppColors.primary,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
   },
   footer: {
     paddingHorizontal: 28,

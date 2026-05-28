@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Pressable, GestureResponderEv
 import { Avatar } from './Avatar';
 import { Comment } from '../data/mockData';
 import { Feather } from '@expo/vector-icons';
-import { AppColors } from '../constants/theme';
+import { AppColors, layoutPadding } from '../constants/theme';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

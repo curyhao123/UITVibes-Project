@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Header } from '../../components';
+import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
 import { useApp } from '../../context/AppContext';
 import { getTracks, toggleTrackLike, getMusicArtists, toggleMusicArtistFollow } from '../../services/api';
 import { Track, MusicArtist } from '../../data/mockData';
@@ -149,66 +150,63 @@ export default function MusicScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header
+      <StaticPremiumHeader
         title="Music"
+        showAvatar
         avatarUser={currentUser}
-        rightAction={
-          <View style={styles.searchIconWrap}>
-            <Feather name="search" size={20} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
-        }
-        bottomContent={
-          <>
-            <View style={styles.searchRow}>
-              <View style={styles.searchBar}>
-                <Feather name="search" size={17} color={AppColors.iconMuted} strokeWidth={2} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search tracks or artists"
-                  placeholderTextColor={AppColors.iconMuted}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Feather name="x" size={17} color={AppColors.iconMuted} strokeWidth={2} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'tracks' && styles.activeTab]}
-                onPress={() => setActiveTab('tracks')}
-              >
-                <Feather
-                  name="music"
-                  size={20}
-                  color={activeTab === 'tracks' ? AppColors.primary : AppColors.iconMuted}
-                  strokeWidth={2}
-                />
-                <Text style={[styles.tabText, activeTab === 'tracks' && styles.activeTabText]}>
-                  Tracks
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'artists' && styles.activeTab]}
-                onPress={() => setActiveTab('artists')}
-              >
-                <Feather
-                  name="users"
-                  size={20}
-                  color={activeTab === 'artists' ? AppColors.primary : AppColors.iconMuted}
-                  strokeWidth={2}
-                />
-                <Text style={[styles.tabText, activeTab === 'artists' && styles.activeTabText]}>
-                  Artists
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        }
+        largeTitle
       />
+
+      {/* Search Bar */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchBar}>
+          <Feather name="search" size={17} color={AppColors.iconMuted} strokeWidth={2} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search tracks or artists"
+            placeholderTextColor={AppColors.iconMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Feather name="x" size={17} color={AppColors.iconMuted} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'tracks' && styles.activeTab]}
+          onPress={() => setActiveTab('tracks')}
+        >
+          <Feather
+            name="music"
+            size={20}
+            color={activeTab === 'tracks' ? AppColors.primary : AppColors.iconMuted}
+            strokeWidth={2}
+          />
+          <Text style={[styles.tabText, activeTab === 'tracks' && styles.activeTabText]}>
+            Tracks
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'artists' && styles.activeTab]}
+          onPress={() => setActiveTab('artists')}
+        >
+          <Feather
+            name="users"
+            size={20}
+            color={activeTab === 'artists' ? AppColors.primary : AppColors.iconMuted}
+            strokeWidth={2}
+          />
+          <Text style={[styles.tabText, activeTab === 'artists' && styles.activeTabText]}>
+            Artists
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {activeTab === 'tracks' ? (
         <FlatList

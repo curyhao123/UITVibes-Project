@@ -46,7 +46,6 @@ export const EmptyPostsState: React.FC<EmptyPostsStateProps> = ({ isNewUser = fa
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
@@ -104,3 +103,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
 });
+

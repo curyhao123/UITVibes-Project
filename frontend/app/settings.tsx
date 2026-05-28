@@ -21,6 +21,7 @@ import { Typography } from '../constants/typography';
 import { useApp } from '../context/AppContext';
 import { ConfirmationModal, EditProfileModal } from '../components';
 import { SettingsSection, SettingsRow } from '../components/settings';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
 // ─── Profile Summary Card ────────────────────────────────────────────────────
@@ -222,17 +223,11 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => settingsRouter.back()}
-          style={styles.backBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="arrow-left" size={22} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <CompactHeader
+        title="Settings"
+        showBack
+        onBack={() => settingsRouter.back()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -257,7 +252,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="shield"
             label="Privacy & Security"
-            onPress={() => {}}
+            onPress={() => settingsRouter.push('/privacy' as any)}
           />
           <SettingsRow
             icon="user-x"
