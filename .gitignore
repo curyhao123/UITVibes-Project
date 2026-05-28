@@ -6,3 +6,5 @@
 /.vs
 /google-services.json
 /GoogleService-Info.plist
+frontend/google-services.json
+frontend/GoogleService-Info.plist
