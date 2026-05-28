@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  Animated,
 } from 'react-native';
 import { AppColors, borderRadius } from '../constants/theme';
 
@@ -31,23 +32,44 @@ export function Button({
   textStyle,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.base,
-        styles[variant],
-        styles[`${size}Size`],
-        isDisabled && styles.disabled,
-        style,
-      ]}
-      onPress={onPress}
-      disabled={isDisabled}
-      activeOpacity={0.75}
-    >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === 'primary' ? '#fff' : AppColors.primary}
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[
+          styles.base,
+          styles[variant],
+          styles[`${size}Size`],
+          isDisabled && styles.disabled,
+          style,
+        ]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        activeOpacity={0.9}
+      >
+        {loading ? (
+          <ActivityIndicator
+            color={variant === 'primary' ? '#fff' : AppColors.primary}
           size="small"
         />
       ) : (
@@ -63,9 +85,9 @@ export function Button({
         </Text>
       )}
     </TouchableOpacity>
+    </Animated.View>
   );
 }
-
 const styles = StyleSheet.create({
   base: {
     borderRadius: borderRadius.md,
@@ -112,3 +134,4 @@ const styles = StyleSheet.create({
   mdText: { fontSize: 16 },
   lgText: { fontSize: 17 },
 });
+

@@ -14,7 +14,7 @@ import { useApp } from '../context/AppContext';
 import { Notification } from '../data/mockData';
 import { AppColors } from '../constants/theme';
 import { formatDistanceToNow } from '../utils/time';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
 export default function NotificationsScreen() {
@@ -92,8 +92,9 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <ScreenHeader
+      <CompactHeader
         title="Notifications"
+        showBack
         onBack={() => router.back()}
         rightAction={
           unreadCount > 0 ? (

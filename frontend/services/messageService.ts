@@ -9,6 +9,21 @@ import { BE_ConversationResponse, BE_MessageResponse } from "./backendTypes";
 /** YARP gateway: /message/{**catch-all} → message-service:5240/api/{**catch-all} */
 const GW = "/message";
 
+type RawConversationMember = {
+  userId?: string;
+  UserId?: string;
+  username?: string;
+  displayName?: string | null;
+  DisplayName?: string | null;
+  nickname?: string | null;
+  Nickname?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  AvatarUrl?: string | null;
+  role?: string;
+  Role?: string;
+};
+
 function transformBEConversation(c: BE_ConversationResponse): Conversation {
   const raw = c as unknown as Record<string, any>;
   const name = c.name ?? raw.Name ?? null;
@@ -20,20 +35,30 @@ function transformBEConversation(c: BE_ConversationResponse): Conversation {
   const createdAt = c.createdAt ?? raw.CreatedAt;
   const updatedAt = c.updatedAt ?? raw.UpdatedAt ?? createdAt;
 
-  // Backend returns members array of { userId, username?, displayName, avatarUrl }
-  // and also a separate members (ConversationMemberDto) array when requesting single conv.
-  const memberArr = c.members ?? raw.Members ?? [];
+  // Backend returns members array of ConversationMemberDto, including role.
+  const memberArr = (c.members ?? raw.Members ?? []) as RawConversationMember[];
+  const adminIds =
+    c.adminIds ??
+    (raw.AdminIds as string[] | undefined) ??
+    memberArr
+      .filter((m) => (m.role ?? m.Role) === "Admin")
+      .map((m) => m.userId ?? m.UserId)
+      .filter((id): id is string => Boolean(id));
+
   return {
     id: c.id,
     type: c.type === "Private" ? "private" : "group",
     name: name ?? undefined,
     avatar: avatarUrl ?? undefined,
     members: memberArr.map((m) => ({
-      id: m.userId ?? m.UserId,
+      id: m.userId ?? m.UserId ?? "",
       username: m.username ?? m.UserId ?? "",
       displayName: m.displayName ?? m.nickname ?? m.Nickname ?? m.UserId ?? "User",
+      fullName: m.displayName ?? m.nickname ?? m.Nickname ?? "",
       avatar: m.avatarUrl ?? m.AvatarUrl ?? "",
+      coverImage: "",
       bio: "",
+      gender: "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -56,7 +81,7 @@ function transformBEConversation(c: BE_ConversationResponse): Conversation {
     isGroup: c.type === "Group",
     isMuted: c.isMuted,
     isPinned: c.isPinned,
-    adminIds: c.adminIds,
+    adminIds,
   };
 }
 
@@ -81,8 +106,11 @@ export function transformBEMessage(m: BE_MessageResponse, members: Conversation[
       id: senderId,
       username: sender?.username ?? senderId,
       displayName: sender?.displayName ?? sender?.username ?? "User",
+      fullName: sender?.fullName ?? sender?.displayName ?? "",
       avatar: sender?.avatar ?? "",
+      coverImage: "",
       bio: "",
+      gender: "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -186,22 +214,27 @@ export async function getMessages(
   // Members from the conversation list endpoint have { userId, username?, displayName, avatarUrl }
   // Build the member map using whichever shape the backend returned.
   const convRaw = convRes.data as unknown as Record<string, any>;
-  const rawMembers = convRes.data.members ?? convRaw.Members ?? [];
+  const rawMembers = (convRes.data.members ?? convRaw.Members ?? []) as RawConversationMember[];
   const members: Conversation["members"] = rawMembers.map((m) => ({
-    id: m.userId ?? m.UserId,
+    id: m.userId ?? m.UserId ?? "",
     username: "username" in m && typeof m.username === "string"
       ? m.username
       : m.UserId ?? m.userId ?? "",
     displayName: "displayName" in m && typeof m.displayName === "string"
       ? m.displayName
       : m.nickname ?? m.Nickname ?? m.UserId ?? m.userId ?? m.name ?? "User",
+    fullName: "displayName" in m && typeof m.displayName === "string"
+      ? m.displayName
+      : m.nickname ?? m.Nickname ?? "",
     avatar:
       "avatarUrl" in m && typeof m.avatarUrl === "string"
         ? m.avatarUrl
         : "AvatarUrl" in m && typeof (m as Record<string, any>).AvatarUrl === "string"
         ? (m as Record<string, any>).AvatarUrl
         : "",
+    coverImage: "",
     bio: "",
+    gender: "",
     followers: 0,
     following: 0,
     posts: 0,

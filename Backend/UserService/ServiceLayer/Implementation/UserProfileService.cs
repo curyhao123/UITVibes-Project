@@ -207,6 +207,13 @@ public class UserProfileService : IUserProfileService
             Website = profile.Website,
             FullName = profile.FullName,
             Gender = profile.Gender,
+            IsActive = true,
+            IsBanned = profile.IsBanned,
+            IsVerified = false,
+            CreatedAt = profile.CreatedAt,
+            FollowersCount = profile.FollowersCount,
+            FollowingCount = profile.FollowingCount,
+            PostsCount = 0,
             SocialLinks = profile.SocialLinks.Select(sl => new SocialLinkDto
             {
                 Id = sl.Id,

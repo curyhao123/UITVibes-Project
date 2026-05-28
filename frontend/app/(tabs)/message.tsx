@@ -25,14 +25,138 @@ import { Conversation, Message, User } from "../../data/mockData";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { Header } from "../../components";
+import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
 import { Avatar } from "../../components/Avatar";
 import { OnlineIndicator } from "../../components/OnlineIndicator";
 import { OnlineFriendsList } from "../../components/OnlineFriendsList";
+import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
+import { SwipeableRow } from "../../components/SwipeableRow";
 import { formatDistanceToNow } from "../../utils/time";
+
+// ─── Conversation Item Component (extracted to use hooks properly) ───────────
+
+interface ConversationItemProps {
+  item: Conversation;
+  convMembers: User[];
+  currentUserId: string | undefined;
+  isUserOnline: (userId: string) => boolean;
+  isCurrentUser: (userId: string) => boolean;
+  onPress: (conv: Conversation) => void;
+  onDelete: (convId: string) => void;
+  onMute: (convId: string, displayName: string) => void;
+}
+
+const ConversationItem: React.FC<ConversationItemProps> = ({
+  item,
+  convMembers,
+  currentUserId,
+  isUserOnline,
+  isCurrentUser,
+  onPress,
+  onDelete,
+  onMute,
+}) => {
+  const other = convMembers.find(m => item.members.some(convMember => convMember.id === m.id) && m.id !== currentUserId);
+  const hasUnread = item.unreadCount > 0;
+  const isGroup = item.isGroup;
+  const displayName = item.name || other?.displayName || "Chat";
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Conversation',
+      `Delete conversation with ${displayName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => onDelete(item.id),
+        },
+      ]
+    );
+  };
+
+  const handleMute = () => {
+    onMute(item.id, displayName);
+  };
+
+  return (
+    <SwipeableRow
+      rightAction={{
+        icon: 'trash-2',
+        color: '#FFFFFF',
+        backgroundColor: AppColors.error,
+        label: 'Delete',
+        onPress: handleDelete,
+      }}
+      leftAction={{
+        icon: 'bell-off',
+        color: '#FFFFFF',
+        backgroundColor: '#8B7355',
+        label: 'Mute',
+        onPress: handleMute,
+      }}
+    >
+      <TouchableOpacity
+        style={[styles.convItem, hasUnread && styles.convItemUnread]}
+        onPress={() => onPress(item)}
+        activeOpacity={0.7}
+      >
+        {isGroup ? (
+          <View style={styles.groupAvatar}>
+            <Feather name="users" size={22} color={AppColors.iconMuted} strokeWidth={2} />
+          </View>
+        ) : (
+          <View style={styles.avatarContainer}>
+            <Avatar
+              user={other ?? ({ id: '', username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as User)}
+              size="medium"
+              showOnlineIndicator={true}
+              isOnline={isUserOnline(other?.id ?? '')}
+            />
+          </View>
+        )}
+        <View style={styles.convContent}>
+          <View style={styles.convTop}>
+            <Text
+              style={[styles.convName, hasUnread && styles.convNameBold]}
+              numberOfLines={1}
+            >
+              {displayName}
+            </Text>
+            <Text style={styles.convTime}>
+              {item.lastMessage?.createdAt &&
+                formatDistanceToNow(new Date(item.lastMessage.createdAt))}
+            </Text>
+          </View>
+          <View style={styles.convBottom}>
+            <Text
+              style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
+              numberOfLines={1}
+            >
+              {isCurrentUser(item.lastMessage?.senderId ?? "")
+                ? "You: "
+                : ""}
+              {item.lastMessage?.text || "No messages yet"}
+            </Text>
+            {hasUnread && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadText}>
+                  {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </SwipeableRow>
+  );
+};
 
 export default function MessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const sheetContentBottomPadding = TAB_BAR_BOTTOM_OFFSET + Math.max(insets.bottom, 0) + 20;
   const {
     currentUser,
     conversations,
@@ -50,6 +174,7 @@ export default function MessageScreen() {
     markMessagesRead,
     markConversationAsRead,
     startConversation,
+    createGroup,
     suggestedUsers,
     fetchSuggestedUsers,
     isUserOnline,
@@ -68,6 +193,9 @@ export default function MessageScreen() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
+  const [groupFriends, setGroupFriends] = useState<User[]>([]);
+  const [groupFriendSearch, setGroupFriendSearch] = useState("");
+  const [isLoadingGroupFriends, setIsLoadingGroupFriends] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [startingConvUserId, setStartingConvUserId] = useState<string | null>(null);
@@ -249,6 +377,28 @@ export default function MessageScreen() {
   });
 
   // ── Initial conversation fetch on mount (fallback / double-fetch for reliability) ──
+  const loadGroupFriends = useCallback(async () => {
+    if (!currentUser?.id) return;
+    setIsLoadingGroupFriends(true);
+    try {
+      const friends = await api.getFriends(currentUser.id, 200);
+      setGroupFriends(friends.filter((friend) => friend.id !== currentUser.id));
+    } catch {
+      setGroupFriends([]);
+    } finally {
+      setIsLoadingGroupFriends(false);
+    }
+  }, [currentUser?.id]);
+
+  const groupFriendResults = groupFriends.filter((friend) => {
+    const query = groupFriendSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      friend.username?.toLowerCase().includes(query) ||
+      friend.displayName?.toLowerCase().includes(query)
+    );
+  });
+
   useEffect(() => {
     console.log("[MessageScreen] useEffect: initial conversation fetch on mount");
     refreshConversations().catch((err) => {
@@ -281,6 +431,10 @@ export default function MessageScreen() {
 
   const handleSend = useCallback(async () => {
     if (!messageText.trim()) return;
+    if (!activeConversation) {
+      Alert.alert("Error", "No conversation selected.");
+      return;
+    }
     const text = messageText.trim();
     setMessageText("");
     // Stop typing indicator immediately
@@ -290,10 +444,6 @@ export default function MessageScreen() {
       invokeHub("StopTyping", activeConversation.id).catch(() => {});
     }
     try {
-      if (!activeConversation) {
-        Alert.alert("Error", "No conversation selected.");
-        return;
-      }
       await sendMessage(activeConversation.id, text);
     } catch (err: any) {
       setMessageText(text);
@@ -319,7 +469,7 @@ export default function MessageScreen() {
   );
 
   // ─── Group Chat ────────────────────────────────────────────────────────────
-  const { createGroupConversation, addMemberToGroup, removeMemberFromGroup, leaveGroup } =
+  const { addMemberToGroup, removeMemberFromGroup, leaveGroup } =
     require("../../services/api");
 
   const handleCreateGroup = useCallback(async () => {
@@ -327,21 +477,23 @@ export default function MessageScreen() {
       Alert.alert("Error", "Please enter a group name.");
       return;
     }
-    if (selectedMembers.length === 0) {
-      Alert.alert("Error", "Please select at least one member.");
+    if (selectedMembers.length < 2) {
+      Alert.alert("Error", "Please select at least two friends.");
       return;
     }
     setIsCreatingGroup(true);
     try {
-      const newConv = await createGroupConversation(
+      const newConv = await createGroup(
         groupName.trim(),
         selectedMembers.map((m) => m.id)
       );
       setShowCreateGroup(false);
       setGroupName("");
       setSelectedMembers([]);
+      setGroupFriendSearch("");
       await refreshConversations();
       setActiveConversation(newConv);
+      router.push(`/message/chat/${newConv.id}`);
     } catch (err: any) {
       Alert.alert(
         "Error",
@@ -350,7 +502,7 @@ export default function MessageScreen() {
     } finally {
       setIsCreatingGroup(false);
     }
-  }, [groupName, selectedMembers, refreshConversations, setActiveConversation]);
+  }, [createGroup, groupName, router, selectedMembers, refreshConversations, setActiveConversation]);
 
   const handleRemoveMember = useCallback(
     async (member: User) => {
@@ -456,65 +608,23 @@ export default function MessageScreen() {
   }: {
     item: Conversation;
   }): React.JSX.Element => {
-    const other = getOtherMember(item);
-    const hasUnread = item.unreadCount > 0;
-    const isGroup = item.isGroup;
-    const displayName = item.name || other?.displayName || "Chat";
-    const avatarUri = other?.avatar || item.avatar;
-
     return (
-      <TouchableOpacity
-        style={[styles.convItem, hasUnread && styles.convItemUnread]}
-        onPress={() => handleConversationPress(item)}
-        activeOpacity={0.7}
-      >
-        {isGroup ? (
-          <View style={styles.groupAvatar}>
-            <Feather name="users" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
-        ) : (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              user={other ?? ({ id: '', username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as User)}
-              size="medium"
-              showOnlineIndicator={true}
-              isOnline={isUserOnline(other?.id ?? '')}
-            />
-          </View>
-        )}
-        <View style={styles.convContent}>
-          <View style={styles.convTop}>
-            <Text
-              style={[styles.convName, hasUnread && styles.convNameBold]}
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            <Text style={styles.convTime}>
-              {item.lastMessage?.createdAt &&
-                formatDistanceToNow(new Date(item.lastMessage.createdAt))}
-            </Text>
-          </View>
-          <View style={styles.convBottom}>
-            <Text
-              style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
-              numberOfLines={1}
-            >
-              {isCurrentUser(item.lastMessage?.senderId ?? "")
-                ? "You: "
-                : ""}
-              {item.lastMessage?.text || "No messages yet"}
-            </Text>
-            {hasUnread && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>
-                  {item.unreadCount > 99 ? "99+" : item.unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+      <ConversationItem
+        item={item}
+        convMembers={convMembers}
+        currentUserId={currentUser?.id}
+        isUserOnline={isUserOnline}
+        isCurrentUser={isCurrentUser}
+        onPress={handleConversationPress}
+        onDelete={async (convId) => {
+          console.log('Delete conversation:', convId);
+          await refreshConversations();
+        }}
+        onMute={(convId, displayName) => {
+          console.log('Mute conversation:', convId);
+          Alert.alert('Muted', `Notifications muted for ${displayName}`);
+        }}
+      />
     );
   };
 
@@ -607,9 +717,11 @@ export default function MessageScreen() {
   // ─── Inbox View ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Header
+      <StaticPremiumHeader
         title="Messages"
+        showAvatar
         avatarUser={currentUser}
+        largeTitle
         rightAction={
           <View style={styles.headerActionsRow}>
             <TouchableOpacity
@@ -630,6 +742,8 @@ export default function MessageScreen() {
               onPress={() => {
                 setSelectedMembers([]);
                 setGroupName("");
+                setGroupFriendSearch("");
+                loadGroupFriends();
                 setShowCreateGroup(true);
               }}
             >
@@ -637,26 +751,26 @@ export default function MessageScreen() {
             </TouchableOpacity>
           </View>
         }
-        bottomContent={
-          <View>
-            <View style={styles.searchContainer}>
-              <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search messages"
-                placeholderTextColor={AppColors.iconMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        }
       />
+
+      {/* Search Bar */}
+      <View>
+        <View style={styles.searchContainer}>
+          <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search messages"
+            placeholderTextColor={AppColors.iconMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {/* Error banner */}
       {conversationError && (
@@ -835,7 +949,7 @@ export default function MessageScreen() {
                   </Text>
                 )
               }
-              contentContainerStyle={{ paddingBottom: 16 }}
+              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
               showsVerticalScrollIndicator={false}
             />
           </View>
@@ -869,12 +983,21 @@ export default function MessageScreen() {
               />
             </View>
 
-            <Text style={styles.sectionLabel}>Select members</Text>
+            <Text style={styles.sectionLabel}>Select at least 2 friends</Text>
+
+            <View style={styles.newMsgSearchContainer}>
+              <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+              <TextInput
+                style={styles.newMsgSearchInput}
+                placeholder="Search friends..."
+                placeholderTextColor={AppColors.iconMuted}
+                value={groupFriendSearch}
+                onChangeText={setGroupFriendSearch}
+              />
+            </View>
 
             <FlatList
-              data={suggestedUsers.filter(
-                (u) => u.id !== currentUser?.id
-              )}
+              data={groupFriendResults}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => {
                 const selected = selectedMembers.some((m) => m.id === item.id);
@@ -916,32 +1039,39 @@ export default function MessageScreen() {
                 );
               }}
               ListEmptyComponent={
-                <TouchableOpacity
-                  style={styles.newMsgUserItem}
-                  onPress={() => {
-                    fetchSuggestedUsers();
-                  }}
-                >
-                  <View style={styles.newMsgAvatar}>
-                    <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
+                isLoadingGroupFriends ? (
+                  <View style={styles.newMsgEmpty}>
+                    <ActivityIndicator size="small" color={AppColors.primary} />
                   </View>
-                  <Text style={styles.newMsgUserInfo}>
-                    Tap to load suggested users
-                  </Text>
-                </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.newMsgUserItem}
+                    onPress={loadGroupFriends}
+                  >
+                    <View style={styles.newMsgAvatar}>
+                      <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
+                    </View>
+                    <Text style={styles.newMsgUserInfo}>
+                      {groupFriendSearch.trim()
+                        ? "No friends found"
+                        : "No friends available"}
+                    </Text>
+                  </TouchableOpacity>
+                )
               }
-              contentContainerStyle={{ paddingBottom: 16 }}
+              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
               showsVerticalScrollIndicator={false}
             />
 
             <TouchableOpacity
               style={[
                 styles.createGroupBtn,
-                (!groupName.trim() || selectedMembers.length === 0 || isCreatingGroup) &&
+                { marginBottom: sheetContentBottomPadding },
+                (!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup) &&
                   styles.createGroupBtnDisabled,
               ]}
               onPress={handleCreateGroup}
-              disabled={!groupName.trim() || selectedMembers.length === 0 || isCreatingGroup}
+              disabled={!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup}
             >
               {isCreatingGroup ? (
                 <ActivityIndicator size="small" color="white" />
@@ -983,7 +1113,7 @@ function GroupSettingsModal({
   onLeaveGroup,
   isRemovingMember,
 }: GroupSettingsModalProps): React.JSX.Element {
-  const { currentUser } = useApp();
+  const { currentUser, isUserOnline } = useApp();
   const isAdmin = conversation.adminIds?.includes(currentUser?.id ?? "") ?? false;
 
   return (
@@ -1072,12 +1202,34 @@ function AddMemberSheet({
   onAddMember,
   isAddingMember,
 }: AddMemberSheetProps): React.JSX.Element {
-  const { suggestedUsers, fetchSuggestedUsers } = useApp();
+  const { currentUser, isUserOnline } = useApp();
+  const [friends, setFriends] = useState<User[]>([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [search, setSearch] = useState("");
   const memberIds = currentMembers.map((m) => m.id);
 
-  const availableUsers = suggestedUsers.filter(
-    (u) => !memberIds.includes(u.id)
+  useEffect(() => {
+    let cancelled = false;
+    const loadFriends = async () => {
+      if (!currentUser?.id) return;
+      setIsLoadingFriends(true);
+      try {
+        const data = await api.getFriends(currentUser.id, 200);
+        if (!cancelled) setFriends(data);
+      } catch {
+        if (!cancelled) setFriends([]);
+      } finally {
+        if (!cancelled) setIsLoadingFriends(false);
+      }
+    };
+    loadFriends();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
+  const availableUsers = friends.filter(
+    (u) => u.id !== currentUser?.id && !memberIds.includes(u.id)
   );
 
   const filtered = search.length > 0
@@ -1145,13 +1297,19 @@ function AddMemberSheet({
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <Text style={styles.newMsgEmpty}>
-              {availableUsers.length === 0
-                ? "No users available to add"
-                : "No results"}
-            </Text>
+            isLoadingFriends ? (
+              <View style={styles.newMsgEmpty}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              </View>
+            ) : (
+              <Text style={styles.newMsgEmpty}>
+                {availableUsers.length === 0
+                  ? "No friends available to add"
+                  : "No results"}
+              </Text>
+            )
           }
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_BOTTOM_OFFSET + 20 }}
           showsVerticalScrollIndicator={false}
         />
       </View>

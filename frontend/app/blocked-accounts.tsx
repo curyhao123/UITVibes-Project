@@ -26,6 +26,7 @@ import {
 } from '../components/blocked-accounts';
 import type { BlockedUserItemData } from '../components/blocked-accounts';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { Text } from 'react-native';
@@ -170,7 +171,7 @@ export default function BlockedAccountsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
-        <ScreenHeader title="Blocked Accounts" onBack={() => router.back()} />
+        <CompactHeader title="Blocked Accounts" showBack onBack={() => router.back()} />
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -180,7 +181,7 @@ export default function BlockedAccountsScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title="Blocked Accounts" onBack={() => router.back()} />
+      <CompactHeader title="Blocked Accounts" showBack onBack={() => router.back()} />
 
       {/* Search bar */}
       <BlockedAccountsSearchBar

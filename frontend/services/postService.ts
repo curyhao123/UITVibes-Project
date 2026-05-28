@@ -797,7 +797,7 @@ export async function getReelById(id: string): Promise<Reel | undefined> {
 export async function toggleReelLike(reelId: string, isCurrentlyLiked: boolean): Promise<boolean> {
   try {
     if (isCurrentlyLiked) {
-      await apiClient.delete(`/post/reel/${reelId}/like`);
+      await apiClient.post(`/post/reel/${reelId}/unlike`);
       return false;
     }
     await apiClient.post(`/post/reel/${reelId}/like`);
@@ -822,18 +822,63 @@ export async function toggleReelBookmark(reelId: string): Promise<boolean> {
 
 // ─── Get Reel Comments ───────────────────────────────────────────────────────
 
+export interface BE_ReelCommentResponse {
+  id: string;
+  reelId: string;
+  userId: string;
+  userDisplayName: string;
+  userAvatarUrl?: string;
+  content: string;
+  likeCount: number;
+  isLiked: boolean;
+  isOwner: boolean;
+  replyCount?: number;
+  parentCommentId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+async function transformReelComment(
+  be: BE_ReelCommentResponse,
+): Promise<CommentType> {
+  const resolvedUser: User = {
+    id: be.userId,
+    username: be.userDisplayName?.toLowerCase().replace(/\s+/g, '_') || 'user',
+    displayName: be.userDisplayName || 'User',
+    fullName: be.userDisplayName || 'User',
+    avatar: be.userAvatarUrl || '',
+    coverImage: '',
+    bio: '',
+    gender: '',
+    followers: 0,
+    following: 0,
+    posts: 0,
+    isVerified: false,
+    isFollowing: false,
+  };
+
+  return {
+    id: be.id,
+    userId: be.userId,
+    user: resolvedUser,
+    text: be.content,
+    createdAt: be.createdAt,
+    likes: be.likeCount,
+    isLiked: be.isLiked,
+    replies: [],
+    parentId: be.parentCommentId,
+  };
+}
+
 export async function getReelComments(reelId: string): Promise<CommentType[]> {
   try {
-    const { data } = await apiClient.get<BE_CommentResponse[]>(
+    const { data } = await apiClient.get<BE_ReelCommentResponse[]>(
       `/post/reel/${reelId}/comments`,
     );
     if (!data || !Array.isArray(data)) return [];
 
     const comments = await Promise.all(
-      data.map(async (c) => {
-        const user = await fetchUserById(c.userId);
-        return await transformComment(c, user);
-      }),
+      data.map(async (c) => transformReelComment(c)),
     );
     return comments;
   } catch (error) {
@@ -854,12 +899,11 @@ export async function addReelComment(
     if (parentCommentId) {
       body.parentCommentId = parentCommentId;
     }
-    const { data } = await apiClient.post<BE_CommentResponse>(
+    const { data } = await apiClient.post<BE_ReelCommentResponse>(
       `/post/reel/${reelId}/comment`,
       body,
     );
-    const currentUser = await fetchUserById(data.userId);
-    const comment = await transformComment(data, currentUser || undefined);
+    const comment = transformReelComment(data);
     return { success: true, comment };
   } catch (error) {
     console.error("[addReelComment] API error:", error);
@@ -871,7 +915,7 @@ export async function addReelComment(
 
 export async function deleteReelComment(commentId: string): Promise<boolean> {
   try {
-    await apiClient.delete(`/post/comment/${commentId}`);
+    await apiClient.delete(`/post/reel/comment/${commentId}`);
     return true;
   } catch (error) {
     console.error("[deleteReelComment] API error:", error);
@@ -881,13 +925,20 @@ export async function deleteReelComment(commentId: string): Promise<boolean> {
 
 // ─── Toggle Reel Comment Like ─────────────────────────────────────────────────
 
-export async function toggleReelCommentLike(commentId: string): Promise<boolean> {
+export async function toggleReelCommentLike(
+  commentId: string,
+  isCurrentlyLiked: boolean,
+): Promise<boolean> {
   try {
+    if (isCurrentlyLiked) {
+      await apiClient.post(`/post/reel/comment/${commentId}/unlike`);
+      return false;
+    }
     await apiClient.post(`/post/reel/comment/${commentId}/like`);
     return true;
   } catch (error) {
     console.error("[toggleReelCommentLike] API error:", error);
-    return false;
+    return isCurrentlyLiked;
   }
 }
 

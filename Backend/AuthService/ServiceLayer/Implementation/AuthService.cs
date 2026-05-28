@@ -116,6 +116,11 @@ namespace AuthService.ServiceLayer.Implementation
                 throw new Exception("User account is inactive");
             }
 
+            if (user.IsBanned)
+            {
+                throw new Exception("IS_BANNED|User account is banned");
+            }
+
             // Generate tokens
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
@@ -159,6 +164,11 @@ namespace AuthService.ServiceLayer.Implementation
             if (token == null || token.IsRevoked || token.ExpiresAt < DateTime.UtcNow)
             {
                 throw new Exception("Invalid or expired refresh token");
+            }
+
+            if (token.User.IsBanned)
+            {
+                throw new Exception("IS_BANNED|User account is banned");
             }
 
             // Revoke old token
@@ -385,9 +395,39 @@ namespace AuthService.ServiceLayer.Implementation
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) throw new Exception("User not found");
-            user.IsActive = false;
+            user.IsBanned = true;
 
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _messagePublisher.PublishUserBannedAsync(userId, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to publish UserBanned event: {ex.Message}");
+            }
+
+            return true;
+        }
+
+        public async Task<bool> UnbanUserAsync(Guid userId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) throw new Exception("User not found");
+            user.IsBanned = false;
+
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _messagePublisher.PublishUserBannedAsync(userId, false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to publish UserBanned event: {ex.Message}");
+            }
+
             return true;
         }
     }

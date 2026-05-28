@@ -19,8 +19,9 @@ import { Image } from 'expo-image';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useApp } from '../context/AppContext';
-import { EditProfileModal } from '../components';
+import { ConfirmationModal, EditProfileModal } from '../components';
 import { SettingsSection, SettingsRow } from '../components/settings';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import defaultAvatar from '../assets/images/default-avatar.png';
 
 // ─── Profile Summary Card ────────────────────────────────────────────────────
@@ -222,17 +223,11 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => settingsRouter.back()}
-          style={styles.backBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="arrow-left" size={22} color={AppColors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <CompactHeader
+        title="Settings"
+        showBack
+        onBack={() => settingsRouter.back()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -257,7 +252,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="shield"
             label="Privacy & Security"
-            onPress={() => {}}
+            onPress={() => settingsRouter.push('/privacy' as any)}
           />
           <SettingsRow
             icon="user-x"
@@ -383,83 +378,30 @@ export default function SettingsScreen() {
         onClose={() => setShowEditModal(false)}
       />
 
-      {/* ── Logout confirmation ── */}
-      <Modal
+      {/* Logout confirmation */}
+      <ConfirmationModal
         visible={logoutConfirmVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => !logoutBusy && setLogoutConfirmVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalIconWrap}>
-              <Feather name="log-out" size={24} color={AppColors.primary} />
-            </View>
-            <Text style={styles.modalTitle}>Log out?</Text>
-            <Text style={styles.modalHint}>
-              Are you sure you want to log out of your account?
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalBtnSecondary}
-                onPress={() => !logoutBusy && setLogoutConfirmVisible(false)}
-                disabled={logoutBusy}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalBtnPrimary}
-                onPress={() => void performLogout()}
-                disabled={logoutBusy}
-                activeOpacity={0.8}
-              >
-                {logoutBusy ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalBtnPrimaryText}>Log out</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Log out?"
+        message="Are you sure you want to log out of your account?"
+        icon="log-out"
+        variant="primary"
+        confirmLabel="Log out"
+        busy={logoutBusy}
+        onCancel={() => setLogoutConfirmVisible(false)}
+        onConfirm={() => void performLogout()}
+      />
 
-      {/* ── Delete account — step 1: confirm ── */}
-      <Modal
+      {/* Delete account step 1: confirm */}
+      <ConfirmationModal
         visible={deleteConfirmVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setDeleteConfirmVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalIconWrap, { backgroundColor: `${AppColors.error}15` }]}>
-              <Feather name="trash-2" size={24} color={AppColors.error} />
-            </View>
-            <Text style={styles.modalTitle}>Delete account?</Text>
-            <Text style={styles.modalHint}>
-              This cannot be undone. You'll need to enter your password on the next step.
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalBtnSecondary}
-                onPress={() => setDeleteConfirmVisible(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalBtnDanger}
-                onPress={openDeletePasswordModal}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalBtnDangerText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Delete account?"
+        message="This cannot be undone. You'll need to enter your password on the next step."
+        icon="trash-2"
+        variant="danger"
+        confirmLabel="Continue"
+        onCancel={() => setDeleteConfirmVisible(false)}
+        onConfirm={openDeletePasswordModal}
+      />
 
       {/* ── Delete account — step 2: password ── */}
       <Modal

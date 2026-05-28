@@ -30,6 +30,7 @@ import {
   BE_UpdateBioRequest,
   BE_SearchUserProfileDto,
   BE_FollowerListDto,
+  BE_FriendListDto,
   normalizeAvatarUrlFromProfile,
   normalizeCoverUrlFromProfile,
 } from "./backendTypes";
@@ -516,6 +517,37 @@ export async function getFollowing(userId: string): Promise<User[]> {
 /**
  * PUT /user/userprofile/me/bio — chỉ cập nhật bio (khớp API trong spec).
  */
+export async function getFriends(userId: string, take = 200): Promise<User[]> {
+  try {
+    const targetId = userId === "current" ? getCurrentUserId() : userId;
+    if (!targetId || targetId === "current") return [];
+
+    const { data } = await apiClient.get<BE_FriendListDto[]>(
+      `/user/follow/${targetId}/friends`,
+      { params: { skip: 0, take } },
+    );
+
+    return data.map((p) => ({
+      id: p.userId,
+      username: "",
+      displayName: p.displayName,
+      fullName: p.displayName,
+      avatar: p.avatarUrl || "",
+      coverImage: "",
+      bio: "",
+      gender: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isFollowing: true,
+      isVerified: false,
+    }));
+  } catch {
+    await delay(300);
+    return [];
+  }
+}
+
 export async function updateMyBio(bio: string | null): Promise<User> {
   try {
     const { data } = await apiClient.put<BE_UserProfile>(
