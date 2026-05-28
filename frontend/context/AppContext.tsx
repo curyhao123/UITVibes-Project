@@ -129,6 +129,10 @@ interface AppContextType {
   markMessagesRead: (conversationId: string) => Promise<void>;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   startConversation: (userId: string) => Promise<Conversation | null>;
+  createGroup: (name: string, memberUserIds: string[]) => Promise<Conversation>;
+  addGroupMember: (conversationId: string, targetUserId: string) => Promise<Conversation | null>;
+  removeGroupMember: (conversationId: string, targetUserId: string) => Promise<Conversation | null>;
+  leaveGroupConversation: (conversationId: string) => Promise<void>;
 
   // Typing
   partnerTyping: boolean;
@@ -902,7 +906,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       try {
         await api.editMessage(conversationId, messageId, text);
         setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, text, isEdited: true } : m))
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, text, editedAt: new Date().toISOString() }
+              : m,
+          )
         );
       } catch (error: any) {
         const msg = error?.response?.data?.message ?? "Failed to edit message.";
@@ -995,6 +1003,66 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 );
 
   // ─── Notifications ───────────────────────────────────────
+  const createGroup = useCallback(
+    async (name: string, memberUserIds: string[]) => {
+      const conv = await api.createGroupConversation(name, memberUserIds);
+      setConversations((prev) => {
+        const withoutExisting = prev.filter((c) => c.id !== conv.id);
+        return [conv, ...withoutExisting];
+      });
+      setActiveConversation(conv);
+      return conv;
+    },
+    [],
+  );
+
+  const addGroupMember = useCallback(
+    async (conversationId: string, targetUserId: string) => {
+      await api.addMemberToGroup(conversationId, targetUserId);
+      const updated = await api.getConversationById(conversationId);
+      if (!updated) return null;
+
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === conversationId ? updated : conv)),
+      );
+      setActiveConversation((prev) =>
+        prev?.id === conversationId ? updated : prev,
+      );
+      setConversationMembers(updated.members);
+      return updated;
+    },
+    [],
+  );
+
+  const removeGroupMember = useCallback(
+    async (conversationId: string, targetUserId: string) => {
+      await api.removeMemberFromGroup(conversationId, targetUserId);
+      const updated = await api.getConversationById(conversationId);
+      if (!updated) return null;
+
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === conversationId ? updated : conv)),
+      );
+      setActiveConversation((prev) =>
+        prev?.id === conversationId ? updated : prev,
+      );
+      setConversationMembers(updated.members);
+      return updated;
+    },
+    [],
+  );
+
+  const leaveGroupConversation = useCallback(
+    async (conversationId: string) => {
+      await api.leaveGroup(conversationId);
+      setConversations((prev) => prev.filter((conv) => conv.id !== conversationId));
+      setActiveConversation((prev) => (prev?.id === conversationId ? null : prev));
+      setConversationMembers([]);
+      setMessages([]);
+    },
+    [],
+  );
+
   const refreshNotifications = useCallback(async () => {
     try {
       const [notifs, count] = await Promise.all([
@@ -1202,6 +1270,101 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     };
   }, [currentUser]); // only re-register when currentUser changes (login/logout)
 
+  useEffect(() => {
+    const connection = getConnection();
+    if (!connection) return;
+
+    const editedHandler = (messageData: BE_MessageResponse) => {
+      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
+      const messageId = messageData.id ?? (messageData as any).Id;
+      const content = messageData.content ?? (messageData as any).Content ?? "";
+      const editedAt =
+        messageData.editedAt ?? (messageData as any).EditedAt ?? new Date().toISOString();
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId ? { ...message, text: content, editedAt } : message,
+        ),
+      );
+
+      setConversations((prev) =>
+        prev.map((conversation) => {
+          if (conversation.id !== messageConvId) return conversation;
+          if (conversation.lastMessage?.id !== messageId) return conversation;
+          return {
+            ...conversation,
+            lastMessage: conversation.lastMessage
+              ? { ...conversation.lastMessage, text: content, editedAt }
+              : conversation.lastMessage,
+          };
+        }),
+      );
+    };
+
+    const deletedHandler = (data: {
+      conversationId?: string;
+      ConversationId?: string;
+      messageId?: string;
+      MessageId?: string;
+    }) => {
+      const conversationId = data.conversationId ?? data.ConversationId;
+      const messageId = data.messageId ?? data.MessageId;
+      if (!messageId) return;
+
+      setMessages((prev) => prev.filter((message) => message.id !== messageId));
+
+      setConversations((prev) =>
+        prev.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          if (conversation.lastMessage?.id !== messageId) return conversation;
+          return { ...conversation, lastMessage: undefined };
+        }),
+      );
+    };
+
+    const readHandler = (data: {
+      conversationId?: string;
+      ConversationId?: string;
+      userId?: string;
+      UserId?: string;
+      messageId?: string;
+      MessageId?: string;
+    }) => {
+      const conversationId = data.conversationId ?? data.ConversationId;
+      const readerId = data.userId ?? data.UserId;
+      const messageId = data.messageId ?? data.MessageId;
+      if (!conversationId || !readerId || !messageId) return;
+
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          conversation.id === conversationId && readerId === currentUser?.id
+            ? { ...conversation, unreadCount: 0 }
+            : conversation,
+        ),
+      );
+
+      if (readerId === currentUser?.id) return;
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId && message.senderId === currentUser?.id
+            ? { ...message, isRead: true }
+            : message,
+        ),
+      );
+    };
+
+    connection.on("MessageEdited", editedHandler);
+    connection.on("MessageDeleted", deletedHandler);
+    connection.on("MessagesRead", readHandler);
+
+    return () => {
+      connection.off("MessageEdited", editedHandler);
+      connection.off("MessageDeleted", deletedHandler);
+      connection.off("MessagesRead", readHandler);
+    };
+  }, [currentUser?.id]);
+
   // ─── Listen to SignalR UserTyping events ──────────────────
   useEffect(() => {
     const connection = getConnection();
@@ -1303,6 +1466,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         markMessagesRead,
         markConversationAsRead,
         startConversation,
+        createGroup,
+        addGroupMember,
+        removeGroupMember,
+        leaveGroupConversation,
         partnerTyping,
         notifications,
         unreadCount,

@@ -28,11 +28,13 @@ import { Header } from "../../components";
 import { Avatar } from "../../components/Avatar";
 import { OnlineIndicator } from "../../components/OnlineIndicator";
 import { OnlineFriendsList } from "../../components/OnlineFriendsList";
+import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
 import { formatDistanceToNow } from "../../utils/time";
 
 export default function MessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const sheetContentBottomPadding = TAB_BAR_BOTTOM_OFFSET + Math.max(insets.bottom, 0) + 20;
   const {
     currentUser,
     conversations,
@@ -50,6 +52,7 @@ export default function MessageScreen() {
     markMessagesRead,
     markConversationAsRead,
     startConversation,
+    createGroup,
     suggestedUsers,
     fetchSuggestedUsers,
     isUserOnline,
@@ -68,6 +71,9 @@ export default function MessageScreen() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
+  const [groupFriends, setGroupFriends] = useState<User[]>([]);
+  const [groupFriendSearch, setGroupFriendSearch] = useState("");
+  const [isLoadingGroupFriends, setIsLoadingGroupFriends] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [startingConvUserId, setStartingConvUserId] = useState<string | null>(null);
@@ -249,6 +255,28 @@ export default function MessageScreen() {
   });
 
   // ── Initial conversation fetch on mount (fallback / double-fetch for reliability) ──
+  const loadGroupFriends = useCallback(async () => {
+    if (!currentUser?.id) return;
+    setIsLoadingGroupFriends(true);
+    try {
+      const friends = await api.getFriends(currentUser.id, 200);
+      setGroupFriends(friends.filter((friend) => friend.id !== currentUser.id));
+    } catch {
+      setGroupFriends([]);
+    } finally {
+      setIsLoadingGroupFriends(false);
+    }
+  }, [currentUser?.id]);
+
+  const groupFriendResults = groupFriends.filter((friend) => {
+    const query = groupFriendSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      friend.username?.toLowerCase().includes(query) ||
+      friend.displayName?.toLowerCase().includes(query)
+    );
+  });
+
   useEffect(() => {
     console.log("[MessageScreen] useEffect: initial conversation fetch on mount");
     refreshConversations().catch((err) => {
@@ -281,6 +309,10 @@ export default function MessageScreen() {
 
   const handleSend = useCallback(async () => {
     if (!messageText.trim()) return;
+    if (!activeConversation) {
+      Alert.alert("Error", "No conversation selected.");
+      return;
+    }
     const text = messageText.trim();
     setMessageText("");
     // Stop typing indicator immediately
@@ -290,10 +322,6 @@ export default function MessageScreen() {
       invokeHub("StopTyping", activeConversation.id).catch(() => {});
     }
     try {
-      if (!activeConversation) {
-        Alert.alert("Error", "No conversation selected.");
-        return;
-      }
       await sendMessage(activeConversation.id, text);
     } catch (err: any) {
       setMessageText(text);
@@ -319,7 +347,7 @@ export default function MessageScreen() {
   );
 
   // ─── Group Chat ────────────────────────────────────────────────────────────
-  const { createGroupConversation, addMemberToGroup, removeMemberFromGroup, leaveGroup } =
+  const { addMemberToGroup, removeMemberFromGroup, leaveGroup } =
     require("../../services/api");
 
   const handleCreateGroup = useCallback(async () => {
@@ -327,21 +355,23 @@ export default function MessageScreen() {
       Alert.alert("Error", "Please enter a group name.");
       return;
     }
-    if (selectedMembers.length === 0) {
-      Alert.alert("Error", "Please select at least one member.");
+    if (selectedMembers.length < 2) {
+      Alert.alert("Error", "Please select at least two friends.");
       return;
     }
     setIsCreatingGroup(true);
     try {
-      const newConv = await createGroupConversation(
+      const newConv = await createGroup(
         groupName.trim(),
         selectedMembers.map((m) => m.id)
       );
       setShowCreateGroup(false);
       setGroupName("");
       setSelectedMembers([]);
+      setGroupFriendSearch("");
       await refreshConversations();
       setActiveConversation(newConv);
+      router.push(`/message/chat/${newConv.id}`);
     } catch (err: any) {
       Alert.alert(
         "Error",
@@ -350,7 +380,7 @@ export default function MessageScreen() {
     } finally {
       setIsCreatingGroup(false);
     }
-  }, [groupName, selectedMembers, refreshConversations, setActiveConversation]);
+  }, [createGroup, groupName, router, selectedMembers, refreshConversations, setActiveConversation]);
 
   const handleRemoveMember = useCallback(
     async (member: User) => {
@@ -630,6 +660,8 @@ export default function MessageScreen() {
               onPress={() => {
                 setSelectedMembers([]);
                 setGroupName("");
+                setGroupFriendSearch("");
+                loadGroupFriends();
                 setShowCreateGroup(true);
               }}
             >
@@ -835,7 +867,7 @@ export default function MessageScreen() {
                   </Text>
                 )
               }
-              contentContainerStyle={{ paddingBottom: 16 }}
+              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
               showsVerticalScrollIndicator={false}
             />
           </View>
@@ -869,12 +901,21 @@ export default function MessageScreen() {
               />
             </View>
 
-            <Text style={styles.sectionLabel}>Select members</Text>
+            <Text style={styles.sectionLabel}>Select at least 2 friends</Text>
+
+            <View style={styles.newMsgSearchContainer}>
+              <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+              <TextInput
+                style={styles.newMsgSearchInput}
+                placeholder="Search friends..."
+                placeholderTextColor={AppColors.iconMuted}
+                value={groupFriendSearch}
+                onChangeText={setGroupFriendSearch}
+              />
+            </View>
 
             <FlatList
-              data={suggestedUsers.filter(
-                (u) => u.id !== currentUser?.id
-              )}
+              data={groupFriendResults}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => {
                 const selected = selectedMembers.some((m) => m.id === item.id);
@@ -916,32 +957,39 @@ export default function MessageScreen() {
                 );
               }}
               ListEmptyComponent={
-                <TouchableOpacity
-                  style={styles.newMsgUserItem}
-                  onPress={() => {
-                    fetchSuggestedUsers();
-                  }}
-                >
-                  <View style={styles.newMsgAvatar}>
-                    <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
+                isLoadingGroupFriends ? (
+                  <View style={styles.newMsgEmpty}>
+                    <ActivityIndicator size="small" color={AppColors.primary} />
                   </View>
-                  <Text style={styles.newMsgUserInfo}>
-                    Tap to load suggested users
-                  </Text>
-                </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.newMsgUserItem}
+                    onPress={loadGroupFriends}
+                  >
+                    <View style={styles.newMsgAvatar}>
+                      <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
+                    </View>
+                    <Text style={styles.newMsgUserInfo}>
+                      {groupFriendSearch.trim()
+                        ? "No friends found"
+                        : "No friends available"}
+                    </Text>
+                  </TouchableOpacity>
+                )
               }
-              contentContainerStyle={{ paddingBottom: 16 }}
+              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
               showsVerticalScrollIndicator={false}
             />
 
             <TouchableOpacity
               style={[
                 styles.createGroupBtn,
-                (!groupName.trim() || selectedMembers.length === 0 || isCreatingGroup) &&
+                { marginBottom: sheetContentBottomPadding },
+                (!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup) &&
                   styles.createGroupBtnDisabled,
               ]}
               onPress={handleCreateGroup}
-              disabled={!groupName.trim() || selectedMembers.length === 0 || isCreatingGroup}
+              disabled={!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup}
             >
               {isCreatingGroup ? (
                 <ActivityIndicator size="small" color="white" />
@@ -983,7 +1031,7 @@ function GroupSettingsModal({
   onLeaveGroup,
   isRemovingMember,
 }: GroupSettingsModalProps): React.JSX.Element {
-  const { currentUser } = useApp();
+  const { currentUser, isUserOnline } = useApp();
   const isAdmin = conversation.adminIds?.includes(currentUser?.id ?? "") ?? false;
 
   return (
@@ -1072,12 +1120,34 @@ function AddMemberSheet({
   onAddMember,
   isAddingMember,
 }: AddMemberSheetProps): React.JSX.Element {
-  const { suggestedUsers, fetchSuggestedUsers } = useApp();
+  const { currentUser, isUserOnline } = useApp();
+  const [friends, setFriends] = useState<User[]>([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [search, setSearch] = useState("");
   const memberIds = currentMembers.map((m) => m.id);
 
-  const availableUsers = suggestedUsers.filter(
-    (u) => !memberIds.includes(u.id)
+  useEffect(() => {
+    let cancelled = false;
+    const loadFriends = async () => {
+      if (!currentUser?.id) return;
+      setIsLoadingFriends(true);
+      try {
+        const data = await api.getFriends(currentUser.id, 200);
+        if (!cancelled) setFriends(data);
+      } catch {
+        if (!cancelled) setFriends([]);
+      } finally {
+        if (!cancelled) setIsLoadingFriends(false);
+      }
+    };
+    loadFriends();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
+  const availableUsers = friends.filter(
+    (u) => u.id !== currentUser?.id && !memberIds.includes(u.id)
   );
 
   const filtered = search.length > 0
@@ -1145,13 +1215,19 @@ function AddMemberSheet({
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <Text style={styles.newMsgEmpty}>
-              {availableUsers.length === 0
-                ? "No users available to add"
-                : "No results"}
-            </Text>
+            isLoadingFriends ? (
+              <View style={styles.newMsgEmpty}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+              </View>
+            ) : (
+              <Text style={styles.newMsgEmpty}>
+                {availableUsers.length === 0
+                  ? "No friends available to add"
+                  : "No results"}
+              </Text>
+            )
           }
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_BOTTOM_OFFSET + 20 }}
           showsVerticalScrollIndicator={false}
         />
       </View>

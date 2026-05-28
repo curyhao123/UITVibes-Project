@@ -200,6 +200,17 @@ public class ChatHub : Hub
     }
 
     /// <summary>
+    /// Refresh online presence TTL for the current SignalR connection.
+    /// </summary>
+    public async Task RefreshOnline()
+    {
+        var userId = GetUserId();
+        if (userId == Guid.Empty) return;
+
+        await _onlineTrackingService.RefreshOnlineAsync(userId);
+    }
+
+    /// <summary>
     /// Join a new conversation group (after being added)
     /// </summary>
     public async Task JoinConversation(Guid conversationId)
