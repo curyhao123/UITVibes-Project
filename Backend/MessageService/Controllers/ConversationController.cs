@@ -31,6 +31,7 @@ public class ConversationController : ControllerBase
             return Ok(conversation);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating private conversation");
@@ -50,6 +51,7 @@ public class ConversationController : ControllerBase
             return Ok(conversation);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating group conversation");
@@ -97,6 +99,7 @@ public class ConversationController : ControllerBase
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 

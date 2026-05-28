@@ -5,7 +5,6 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -13,6 +12,7 @@ import { Post, User } from "../data/mockData";
 import { AppColors } from "../constants/theme";
 import defaultAvatar from "../assets/images/default-avatar.png";
 import { useRouter } from "expo-router";
+import { ConfirmationModal } from "./ConfirmationModal";
 
 export const PostGrid: React.FC<{
   posts: Post[];
@@ -92,99 +92,20 @@ export const PostGrid: React.FC<{
         ))}
       </View>
 
-      <Modal
+      <ConfirmationModal
         visible={deleteModalVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setDeleteModalVisible(false)}
-      >
-        <View style={deleteStyles.backdrop}>
-          <View style={deleteStyles.card}>
-            <Text style={deleteStyles.title}>Delete post?</Text>
-            <Text style={deleteStyles.body}>
-              This post will be permanently deleted. This action cannot be
-              undone.
-            </Text>
-            <TouchableOpacity
-              style={deleteStyles.deleteBtn}
-              onPress={() => void handleDelete()}
-              disabled={isDeleting}
-            >
-              <Text style={deleteStyles.deleteBtnText}>
-                {isDeleting ? "Deleting…" : "Delete"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={deleteStyles.cancelBtn}
-              onPress={() => setDeleteModalVisible(false)}
-              disabled={isDeleting}
-            >
-              <Text style={deleteStyles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        title="Delete post?"
+        message="This post will be permanently deleted. This action cannot be undone."
+        icon="trash-2"
+        variant="danger"
+        confirmLabel="Delete"
+        busy={isDeleting}
+        onCancel={() => setDeleteModalVisible(false)}
+        onConfirm={() => void handleDelete()}
+      />
     </>
   );
 };
-
-const deleteStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  card: {
-    backgroundColor: AppColors.surfaceElevated,
-    borderRadius: 14,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    width: "100%",
-    maxWidth: 320,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: AppColors.text,
-    marginBottom: 8,
-  },
-  body: {
-    fontSize: 14,
-    color: AppColors.textMuted,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 18,
-  },
-  deleteBtn: {
-    width: "100%",
-    backgroundColor: AppColors.error,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  deleteBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelBtn: {
-    width: "100%",
-    backgroundColor: AppColors.border,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  cancelBtnText: {
-    color: AppColors.text,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
 
 export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({
   user,

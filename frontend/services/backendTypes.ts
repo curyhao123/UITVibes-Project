@@ -105,6 +105,12 @@ export interface BE_FollowerListDto {
   followedAt: string;
 }
 
+export interface BE_FriendListDto {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 export interface BE_FollowStats {
   userId: string;
   displayName: string;

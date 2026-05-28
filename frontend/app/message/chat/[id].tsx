@@ -26,6 +26,8 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -35,14 +37,13 @@ import { useApp } from '../../../context/AppContext';
 import * as api from '../../../services/api';
 import { invokeHub } from '../../../services/signalrService';
 import { Avatar } from '../../../components/Avatar';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
 import { OnlineIndicator } from '../../../components/OnlineIndicator';
 import { MessageContextMenu } from '../../../components/MessageContextMenu';
 import { EditMessageModal } from '../../../components/EditMessageModal';
 import { formatDistanceToNow } from '../../../utils/time';
 import { AppColors, layoutPadding } from '../../../constants/theme';
 import { Typography } from '../../../constants/typography';
-
-const { createGroupConversation, addMemberToGroup, removeMemberFromGroup, leaveGroup } = api;
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -63,6 +64,10 @@ export default function ChatScreen() {
     isUserOnline,
     editMessage,
     deleteMessage,
+    addGroupMember,
+    removeGroupMember,
+    leaveGroupConversation,
+    refreshConversations,
   } = useApp();
 
   const [messageText, setMessageText] = useState('');
@@ -82,6 +87,21 @@ export default function ChatScreen() {
     messageId: '',
     text: '',
   });
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [friendSearch, setFriendSearch] = useState('');
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+  const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    | { type: 'remove'; member: any }
+    | { type: 'leave' }
+    | { type: 'deleteMessage'; messageId: string }
+    | null
+  >(null);
 
   // Find the conversation from the global list by id
   const conversation = conversations.find((c) => c.id === id) ?? null;
@@ -105,6 +125,16 @@ export default function ChatScreen() {
   const otherUser = !isGroup ? other : null;
   const isAdmin =
     conversation?.adminIds?.includes(currentUser?.id ?? '') ?? false;
+  const memberIds = new Set(convMembers.map((member) => member.id));
+  const addableFriends = friends.filter((friend) => {
+    if (friend.id === currentUser?.id || memberIds.has(friend.id)) return false;
+    const query = friendSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      friend.username?.toLowerCase().includes(query) ||
+      friend.displayName?.toLowerCase().includes(query)
+    );
+  });
 
   // ── Load messages on mount ─────────────────────────────────────────────
   useEffect(() => {
@@ -117,6 +147,26 @@ export default function ChatScreen() {
       })
       .catch(() => {});
   }, [id, conversation?.id]);
+
+  useEffect(() => {
+    if (!showAddMember || !currentUser?.id) return;
+    let cancelled = false;
+    const loadFriends = async () => {
+      setIsLoadingFriends(true);
+      try {
+        const data = await api.getFriends(currentUser.id, 200);
+        if (!cancelled) setFriends(data);
+      } catch {
+        if (!cancelled) setFriends([]);
+      } finally {
+        if (!cancelled) setIsLoadingFriends(false);
+      }
+    };
+    loadFriends();
+    return () => {
+      cancelled = true;
+    };
+  }, [showAddMember, currentUser?.id]);
 
   // ── Scroll helpers ─────────────────────────────────────────────────────
   const userScrolledUpRef = useRef(false);
@@ -155,6 +205,79 @@ export default function ChatScreen() {
       isSendingRef.current = false;
     }
   }, [messageText, conversation, sendMessage]);
+
+  const handleAddMember = useCallback(
+    async (userId: string) => {
+      if (!conversation) return;
+      setAddingMemberId(userId);
+      try {
+        const updated = await addGroupMember(conversation.id, userId);
+        if (updated) setConvMembers(updated.members);
+        await refreshConversations();
+        setShowAddMember(false);
+        setFriendSearch('');
+      } catch (err: any) {
+        Alert.alert(
+          'Error',
+          err?.response?.data?.message ?? err?.message ?? 'Failed to add member.',
+        );
+      } finally {
+        setAddingMemberId(null);
+      }
+    },
+    [addGroupMember, conversation, refreshConversations],
+  );
+
+  const handleRemoveMember = useCallback(
+    (member: any) => {
+      setConfirmAction({ type: 'remove', member });
+    },
+    [],
+  );
+
+  const performRemoveMember = useCallback(
+    async (member: any) => {
+      if (!conversation) return;
+      setRemovingMemberId(member.id);
+      try {
+        const updated = await removeGroupMember(conversation.id, member.id);
+        if (updated) setConvMembers(updated.members);
+        await refreshConversations();
+        setConfirmAction(null);
+      } catch (err: any) {
+        Alert.alert(
+          'Error',
+          err?.response?.data?.message ?? err?.message ?? 'Failed to remove member.',
+        );
+      } finally {
+        setRemovingMemberId(null);
+      }
+    },
+    [conversation, refreshConversations, removeGroupMember],
+  );
+
+  const handleLeaveGroup = useCallback(() => {
+    setConfirmAction({ type: 'leave' });
+  }, []);
+
+  const performLeaveGroup = useCallback(async () => {
+    if (!conversation) return;
+    setIsLeavingGroup(true);
+    try {
+      await leaveGroupConversation(conversation.id);
+      await refreshConversations();
+      setConfirmAction(null);
+      setShowGroupSettings(false);
+      router.back();
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err?.response?.data?.message ?? err?.message ?? 'Failed to leave group.',
+      );
+    } finally {
+      setIsLeavingGroup(false);
+    }
+  }, [conversation, leaveGroupConversation, refreshConversations, router]);
 
   const handleSendDirect = useCallback(
     async (text: string) => {
@@ -245,6 +368,7 @@ export default function ChatScreen() {
           </View>
           <View style={[styles.msgMeta, mine && styles.msgMetaMine]}>
             <Text style={styles.msgTime}>
+              {item.editedAt ? 'Edited - ' : ''}
               {formatDistanceToNow(new Date(item.createdAt))}
             </Text>
           </View>
@@ -259,20 +383,71 @@ export default function ChatScreen() {
 
   const handleContextDelete = () => {
     const msgId = contextMenu.messageId;
-    Alert.alert(
-      'Delete message?',
-      'This message will be permanently deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteMessage(conversation!.id, msgId);
-          },
-        },
-      ],
-    );
+    setContextMenu((p) => ({ ...p, visible: false }));
+    setConfirmAction({ type: 'deleteMessage', messageId: msgId });
+  };
+
+  const performDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!conversation) return;
+      setDeletingMessageId(messageId);
+      try {
+        await deleteMessage(conversation.id, messageId);
+        setConfirmAction(null);
+      } catch (err: any) {
+        Alert.alert(
+          'Error',
+          err?.response?.data?.message ?? err?.message ?? 'Failed to delete message.',
+        );
+      } finally {
+        setDeletingMessageId(null);
+      }
+    },
+    [conversation, deleteMessage],
+  );
+
+  const confirmTitle =
+    confirmAction?.type === 'remove'
+      ? 'Remove member?'
+      : confirmAction?.type === 'deleteMessage'
+        ? 'Delete message?'
+        : 'Leave group?';
+  const confirmMessage =
+    confirmAction?.type === 'remove'
+      ? `Remove ${
+          confirmAction.member.displayName ||
+          confirmAction.member.username ||
+          'this member'
+        } from this group?`
+      : confirmAction?.type === 'deleteMessage'
+        ? 'This message will be permanently deleted.'
+        : 'You will stop receiving messages from this group.';
+  const confirmIcon =
+    confirmAction?.type === 'remove'
+      ? 'user-minus'
+      : confirmAction?.type === 'deleteMessage'
+        ? 'trash-2'
+        : 'log-out';
+  const confirmLabel =
+    confirmAction?.type === 'remove'
+      ? 'Remove'
+      : confirmAction?.type === 'deleteMessage'
+        ? 'Delete'
+        : 'Leave';
+  const confirmationBusy =
+    removingMemberId != null || isLeavingGroup || deletingMessageId != null;
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'remove') {
+      void performRemoveMember(confirmAction.member);
+      return;
+    }
+    if (confirmAction.type === 'deleteMessage') {
+      void performDeleteMessage(confirmAction.messageId);
+      return;
+    }
+    void performLeaveGroup();
   };
 
   const handleEditSave = async (text: string) => {
@@ -335,7 +510,12 @@ export default function ChatScreen() {
               )}
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerAction}>
+          <TouchableOpacity
+            style={styles.headerAction}
+            onPress={() => {
+              if (isGroup) setShowGroupSettings(true);
+            }}
+          >
             <Feather
               name={isGroup && isAdmin ? 'settings' : 'info'}
               size={22}
@@ -463,6 +643,181 @@ export default function ChatScreen() {
         onSave={handleEditSave}
         onCancel={() => setEditModal({ visible: false, messageId: '', text: '' })}
       />
+
+      {conversation && (
+        <Modal
+          visible={showGroupSettings}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowGroupSettings(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.settingsSheet}>
+              <View style={styles.settingsSheetHeader}>
+                <Text style={styles.settingsSheetTitle}>{headerName}</Text>
+                <TouchableOpacity onPress={() => setShowGroupSettings(false)}>
+                  <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.settingsContent}>
+                <Text style={styles.sectionLabel}>Members ({convMembers.length})</Text>
+                {convMembers.map((member) => {
+                  const memberIsAdmin = conversation.adminIds?.includes(member.id) ?? false;
+                  const isSelf = member.id === currentUser?.id;
+                  const canRemoveMember = isAdmin && !isSelf;
+                  const isRemoving = removingMemberId === member.id;
+                  return (
+                    <View key={member.id} style={styles.memberRow}>
+                      <Avatar
+                        user={member}
+                        size="small"
+                        showOnlineIndicator={true}
+                        isOnline={isUserOnline(member.id)}
+                      />
+                      <View style={styles.memberInfo}>
+                        <Text style={styles.memberName}>
+                          {member.displayName || member.username || 'User'}
+                          {isSelf ? <Text style={styles.memberMeta}> (You)</Text> : null}
+                          {memberIsAdmin ? <Text style={styles.memberAdmin}> - Admin</Text> : null}
+                        </Text>
+                      </View>
+                      {canRemoveMember && (
+                        <TouchableOpacity
+                          style={styles.removeMemberBtn}
+                          onPress={() => handleRemoveMember(member)}
+                          disabled={removingMemberId != null || isLeavingGroup}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          {isRemoving ? (
+                            <ActivityIndicator size="small" color="#dc3545" />
+                          ) : (
+                            <Feather name="user-minus" size={20} color="#dc3545" strokeWidth={2} />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+                <View style={styles.settingsActions}>
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.actionRow}
+                      onPress={() => {
+                        setFriendSearch('');
+                        setShowAddMember(true);
+                      }}
+                      disabled={isLeavingGroup}
+                    >
+                      <Feather name="user-plus" size={20} color={AppColors.text} strokeWidth={2} />
+                      <Text style={styles.actionText}>Add member</Text>
+                      <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.actionRow}
+                    onPress={handleLeaveGroup}
+                    disabled={isLeavingGroup || removingMemberId != null}
+                  >
+                    {isLeavingGroup ? (
+                      <ActivityIndicator size="small" color="#dc3545" />
+                    ) : (
+                      <Feather name="log-out" size={20} color="#dc3545" strokeWidth={2} />
+                    )}
+                    <Text style={styles.leaveGroupText}>Leave group</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {conversation && (
+        <Modal
+          visible={showAddMember}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAddMember(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.settingsSheet}>
+              <View style={styles.settingsSheetHeader}>
+                <Text style={styles.settingsSheetTitle}>Add Member</Text>
+                <TouchableOpacity onPress={() => setShowAddMember(false)}>
+                  <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.friendSearchContainer}>
+                <Feather name="search" size={16} color={AppColors.textMuted} strokeWidth={2} />
+                <TextInput
+                  style={styles.friendSearchInput}
+                  placeholder="Search friends..."
+                  placeholderTextColor={AppColors.textMuted}
+                  value={friendSearch}
+                  onChangeText={setFriendSearch}
+                  autoFocus
+                />
+              </View>
+              <FlatList
+                data={addableFriends}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => {
+                  const isAdding = addingMemberId === item.id;
+                  return (
+                    <TouchableOpacity
+                      style={styles.memberRow}
+                      activeOpacity={0.7}
+                      onPress={() => handleAddMember(item.id)}
+                      disabled={addingMemberId != null}
+                    >
+                      <Avatar
+                        user={item}
+                        size="small"
+                        showOnlineIndicator={true}
+                        isOnline={isUserOnline(item.id)}
+                      />
+                      <View style={styles.memberInfo}>
+                        <Text style={styles.memberName}>
+                          {item.displayName || item.username || 'User'}
+                        </Text>
+                      </View>
+                      {isAdding ? (
+                        <ActivityIndicator size="small" color={AppColors.primary} />
+                      ) : (
+                        <Feather name="user-plus" size={20} color={AppColors.primary} strokeWidth={2} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+                ListEmptyComponent={
+                  isLoadingFriends ? (
+                    <View style={styles.emptyFriends}>
+                      <ActivityIndicator size="small" color={AppColors.primary} />
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyFriends}>
+                      {friendSearch.trim() ? 'No friends found' : 'No friends available to add'}
+                    </Text>
+                  )
+                }
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      <ConfirmationModal
+        visible={confirmAction != null}
+        title={confirmTitle}
+        message={confirmMessage}
+        icon={confirmIcon}
+        variant="danger"
+        confirmLabel={confirmLabel}
+        busy={confirmationBusy}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+      />
     </>
   );
 }
@@ -507,7 +862,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chatName: {
-    ...Typography.subhead,
+    ...Typography.bodySemibold,
     fontWeight: '600',
     color: AppColors.text,
   },
@@ -517,6 +872,116 @@ const styles = StyleSheet.create({
   },
   headerAction: {
     padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  settingsSheet: {
+    backgroundColor: AppColors.background,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    maxHeight: '72%',
+    paddingBottom: 20,
+  },
+  settingsSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  settingsSheetTitle: {
+    ...Typography.bodySemibold,
+    fontWeight: '600',
+    color: AppColors.text,
+    flex: 1,
+  },
+  settingsContent: {
+    paddingBottom: 20,
+  },
+  sectionLabel: {
+    ...Typography.caption,
+    color: AppColors.textMuted,
+    fontWeight: '600',
+    paddingHorizontal: layoutPadding,
+    paddingTop: 16,
+    paddingBottom: 8,
+    textTransform: 'uppercase',
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: layoutPadding,
+    paddingVertical: 11,
+    gap: 12,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    ...Typography.body,
+    color: AppColors.text,
+    fontWeight: '500',
+  },
+  memberMeta: {
+    color: AppColors.textMuted,
+    fontWeight: '400',
+  },
+  memberAdmin: {
+    color: AppColors.primary,
+    fontWeight: '400',
+  },
+  removeMemberBtn: {
+    padding: 8,
+  },
+  settingsActions: {
+    marginTop: 12,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: layoutPadding,
+    paddingVertical: 14,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+  },
+  actionText: {
+    ...Typography.body,
+    flex: 1,
+    color: AppColors.text,
+  },
+  leaveGroupText: {
+    ...Typography.body,
+    flex: 1,
+    color: '#dc3545',
+  },
+  friendSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: layoutPadding,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: AppColors.surfaceElevated,
+    borderRadius: 10,
+    gap: 8,
+  },
+  friendSearchInput: {
+    ...Typography.body,
+    flex: 1,
+    color: AppColors.text,
+    padding: 0,
+  },
+  emptyFriends: {
+    ...Typography.body,
+    color: AppColors.textMuted,
+    textAlign: 'center',
+    paddingVertical: 32,
   },
   centerState: {
     flex: 1,
@@ -531,7 +996,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyChatTitle: {
-    ...Typography.subhead,
+    ...Typography.bodySemibold,
     color: AppColors.textMuted,
   },
   emptyChatSubtitle: {

@@ -18,6 +18,7 @@ import { useApp } from '../context/AppContext';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { ConfirmationModal } from './ConfirmationModal';
 
 type GenderOption = { label: string; value: string };
 const GENDER_OPTIONS: GenderOption[] = [
@@ -292,35 +293,16 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
       </SafeAreaView>
 
       {/* Remove photo confirmation */}
-      <Modal
+      <ConfirmationModal
         visible={removeConfirmVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setRemoveConfirmVisible(false)}
-      >
-        <View style={styles.removeConfirmBackdrop}>
-          <View style={styles.removeConfirmCard}>
-            <Text style={styles.removeConfirmTitle}>Remove photo?</Text>
-            <Text style={styles.removeConfirmBody}>
-              Your profile picture will be removed when you tap Save. Cancel discards this change.
-            </Text>
-            <View style={styles.removeConfirmActions}>
-              <TouchableOpacity
-                style={styles.removeConfirmBtnGhost}
-                onPress={() => setRemoveConfirmVisible(false)}
-              >
-                <Text style={styles.removeConfirmBtnGhostText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.removeConfirmBtnDanger}
-                onPress={() => void confirmRemovePhoto()}
-              >
-                <Text style={styles.removeConfirmBtnDangerText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Remove photo?"
+        message="Your profile picture will be removed when you tap Save. Cancel discards this change."
+        icon="trash-2"
+        variant="danger"
+        confirmLabel="Remove"
+        onCancel={() => setRemoveConfirmVisible(false)}
+        onConfirm={() => void confirmRemovePhoto()}
+      />
     </Modal>
   );
 }
@@ -468,54 +450,5 @@ const styles = StyleSheet.create({
   genderOptionTextSelected: {
     color: '#fff',
     fontWeight: '600',
-  },
-  removeConfirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  removeConfirmCard: {
-    backgroundColor: AppColors.surfaceElevated,
-    borderRadius: 14,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-  },
-  removeConfirmTitle: {
-    ...Typography.bodySemibold,
-    fontSize: 18,
-    color: AppColors.text,
-    marginBottom: 8,
-  },
-  removeConfirmBody: {
-    ...Typography.caption,
-    fontSize: 14,
-    color: AppColors.textMuted,
-    lineHeight: 20,
-    marginBottom: 18,
-  },
-  removeConfirmActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  removeConfirmBtnGhost: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  removeConfirmBtnGhostText: {
-    ...Typography.bodySemibold,
-    color: AppColors.textMuted,
-  },
-  removeConfirmBtnDanger: {
-    backgroundColor: AppColors.error,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-  },
-  removeConfirmBtnDangerText: {
-    ...Typography.bodySemibold,
-    color: '#fff',
   },
 });

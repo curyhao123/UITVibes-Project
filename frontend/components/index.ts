@@ -13,6 +13,7 @@ export { default as EditProfileModal } from './EditProfileModal';
 export { PrivacySection } from './privacy/PrivacySection';
 export { HighlightCard } from './privacy/HighlightCard';
 export { CommentContextMenu } from './CommentContextMenu';
+export { ConfirmationModal } from './ConfirmationModal';
 export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { ReportUserSheet } from './profile/ReportUserSheet';
 export { PostActionsSheet } from './PostActionsSheet';
