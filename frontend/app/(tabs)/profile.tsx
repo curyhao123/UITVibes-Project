@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useApp } from '../../context/AppContext';
-import { Avatar, PostGrid, Header, EmptyPostsState, EditProfileModal } from '../../components';
+import { Avatar, PostGrid, EmptyPostsState, EditProfileModal } from '../../components';
+import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
 import { HighlightBar } from '../../components/highlight';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
@@ -127,19 +128,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header
+      <StaticPremiumHeader
         title={currentUser.displayName}
+        showAvatar
         avatarUser={currentUser}
-        rightAction={
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.settingsBtn}
-            onPress={() => router.push('/settings' as any)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="settings" size={22} color={AppColors.text} strokeWidth={2} />
-          </TouchableOpacity>
-        }
+        onNotificationPress={() => router.push('/notifications')}
       />
 
       <ScrollView

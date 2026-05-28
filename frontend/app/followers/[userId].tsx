@@ -21,7 +21,7 @@ import {
   isFollowing,
 } from "../../services/api";
 import { AppColors } from "../../constants/theme";
-import { ScreenHeader } from "../../components/ScreenHeader";
+import { CompactHeader } from "../../components/StaticPremiumHeader";
 import defaultAvatar from "../../assets/images/default-avatar.png";
 
 export default function FollowersScreen() {
@@ -159,8 +159,9 @@ export default function FollowersScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader
+      <CompactHeader
         title={profileDisplayName || "Followers"}
+        showBack
         onBack={() => router.back()}
       />
 

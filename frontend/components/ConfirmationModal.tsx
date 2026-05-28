@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius } from '../constants/theme';
@@ -42,6 +43,40 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onCancel,
   onConfirm,
 }) => {
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0.8,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
   const actionColor = variant === 'danger' ? AppColors.error : AppColors.primary;
   const resolvedIconColor = iconColor ?? actionColor;
   const resolvedIconBackgroundColor =
@@ -50,15 +85,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType="none"
       transparent
       statusBarTranslucent
       onRequestClose={() => {
         if (!busy) onCancel();
       }}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
+        <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
           <View
             style={[
               styles.iconWrap,
@@ -93,8 +128,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };

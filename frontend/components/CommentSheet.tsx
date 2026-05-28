@@ -14,6 +14,7 @@ import {
   Platform,
   Image,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
@@ -25,7 +26,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppColors } from '../constants/theme';
 import { SPRING_SOFT, SPRING_PRESS, TIMING_FAST } from '../animations/spring';
-import { Comment } from '../data/mockData';
+import { Comment, User } from '../data/mockData';
+import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
@@ -38,6 +40,9 @@ interface CommentSheetProps {
   onPostComment: (text: string) => void;
   onLikeComment: (commentId: string) => void;
   onReply: (commentId: string) => void;
+  onDeleteComment?: (commentId: string) => void;
+  isLoading?: boolean;
+  currentUser?: User | null;
 }
 
 interface CommentItemProps {
@@ -163,24 +168,31 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
   onPostComment,
   onLikeComment,
   onReply,
+  onDeleteComment,
+  isLoading = false,
+  currentUser,
 }) => {
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
-  const translateY = useSharedValue(SHEET_HEIGHT);
+  const translateY = useSharedValue(0);
+  const sheetOpacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
 
   React.useEffect(() => {
     if (visible) {
       translateY.value = withSpring(0, SPRING_SOFT);
+      sheetOpacity.value = withTiming(1, TIMING_FAST);
       backdropOpacity.value = withTiming(1, TIMING_FAST);
     } else {
-      translateY.value = withSpring(SHEET_HEIGHT, SPRING_SOFT);
+      translateY.value = withSpring(50, SPRING_SOFT);
+      sheetOpacity.value = withTiming(0, TIMING_FAST);
       backdropOpacity.value = withTiming(0, TIMING_FAST);
     }
-  }, [visible]);
+  }, [visible, translateY, sheetOpacity, backdropOpacity]);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    opacity: sheetOpacity.value,
   }));
 
   const backdropStyle = useAnimatedStyle(() => ({
@@ -216,6 +228,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
         style={styles.keyboardView}
       >
         <Animated.View style={[styles.sheet, sheetStyle]}>
@@ -251,14 +264,28 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
             style={styles.commentsList}
             contentContainerStyle={styles.commentsListContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Feather name="message-circle" size={48} color={AppColors.iconMuted} />
-                <Text style={styles.emptyText}>No comments yet</Text>
-                <Text style={styles.emptySubtext}>
-                  Be the first to share your thoughts
-                </Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                ) : (
+                  <>
+                    <Feather name="message-circle" size={48} color={AppColors.iconMuted} />
+                    <Text style={styles.emptyText}>No comments yet</Text>
+                    <Text style={styles.emptySubtext}>
+                      Be the first to share your thoughts
+                    </Text>
+                  </>
+                )}
               </View>
+            }
+            ListFooterComponent={
+              isLoading && comments.length > 0 ? (
+                <View style={styles.loadingMoreContainer}>
+                  <ActivityIndicator size="small" color={AppColors.primary} />
+                </View>
+              ) : null
             }
           />
 
@@ -276,7 +303,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
             )}
             <View style={styles.inputRow}>
               <Image
-                source={{ uri: 'https://i.pravatar.cc/150?img=33' }}
+                source={{ uri: currentUser?.avatar || 'https://i.pravatar.cc/150?img=33' }}
                 style={styles.inputAvatar}
               />
               <TextInput
@@ -327,11 +354,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: SHEET_HEIGHT,
     backgroundColor: AppColors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    overflow: 'hidden',
+    paddingBottom: TAB_BAR_BOTTOM_OFFSET,
   },
   handleContainer: {
     alignItems: 'center',
@@ -454,6 +485,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppColors.textMuted,
     marginTop: 4,
+  },
+  loadingMoreContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   inputContainer: {
     borderTopWidth: 1,

@@ -1,142 +1,142 @@
--- Script thêm dữ liệu mẫu cho PostDb (PostgreSQL) - Bảng Posts
--- Các UserId lấy từ AuthDb/UserDb:
+-- Sample data seeder for PostDb (PostgreSQL) - Posts table
+-- UserIds reference from AuthDb/UserDb:
 -- Ted: 22222222-2222-2222-2222-222222222222
 -- cury_hao: 33333333-3333-3333-3333-333333333333
 -- Muller25: 44444444-4444-4444-4444-444444444444
 -- HaiQQ: 55555555-5555-5555-5555-555555555555
 
--- Dữ liệu Posts
+-- Posts data
 INSERT INTO "Posts" (
-    "Id", 
-    "UserId", 
-    "Content", 
-    "Visibility", 
-    "Location", 
-    "PostType", 
-    "LikesCount", 
-    "CommentsCount", 
-    "SharesCount", 
-    "ViewsCount", 
-    "IsDeleted", 
-    "RepostCount", 
-    "CreatedAt", 
+    "Id",
+    "UserId",
+    "Content",
+    "Visibility",
+    "Location",
+    "PostType",
+    "LikesCount",
+    "CommentsCount",
+    "SharesCount",
+    "ViewsCount",
+    "IsDeleted",
+    "RepostCount",
+    "CreatedAt",
     "UpdatedAt"
-) 
-VALUES 
--- 1. Post của Ted (Visibility = 0: Public, PostType = 0: Original)
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '22222222-2222-2222-2222-222222222222', 'Hôm nay trời đẹp quá! Cùng nhau ra ngoài tận hưởng không khí nào 😍', 0, 'Hà Nội, Việt Nam', 0, 0, 0, 0, 15, false, 0, CURRENT_TIMESTAMP - INTERVAL '5 hours', CURRENT_TIMESTAMP - INTERVAL '5 hours'),
+)
+VALUES
+-- 1. Ted's post (Visibility = 0: Public, PostType = 0: Original)
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '22222222-2222-2222-2222-222222222222', 'Beautiful day today! Lets go out and enjoy the weather @cury_hao #uitvibes #sunny', 0, 'Hanoi, Vietnam', 0, 0, 0, 0, 15, false, 0, CURRENT_TIMESTAMP - INTERVAL '5 hours', CURRENT_TIMESTAMP - INTERVAL '5 hours'),
 
--- 2. Post của cury_hao về mèo nhỏ
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '33333333-3333-3333-3333-333333333333', 'Boss nhà mình lại ngủ gật trên bàn làm việc, quá đáng yêu! 🐈', 0, 'Đà Nẵng, Việt Nam', 0, 0, 0, 0, 30, false, 0, CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+-- 2. cury_hao's post about cute cat
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', '33333333-3333-3333-3333-333333333333', 'My cat is sleeping at the desk again, so cute! #uitvibes #cats', 0, 'Da Nang, Vietnam', 0, 0, 0, 0, 30, false, 0, CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
 
--- 3. Post của Muller25 khoe ảnh bóng đá
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', '44444444-4444-4444-4444-444444444444', 'Sẵn sàng cho trận đấu cuối tuần này cùng FC Bayern! Mia San Mia 🔴⚪', 0, 'Allianz Arena, Munich', 0, 0, 0, 0, 1500, false, 0, CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+-- 3. Muller25's post about football
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', '44444444-4444-4444-4444-444444444444', 'Ready for the weekend match with FC Bayern! @admin_uit Mia San Mia #bayern #football', 0, 'Allianz Arena, Munich', 0, 0, 0, 0, 1500, false, 0, CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
 
--- 4. Post của HaiQQ
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', '55555555-5555-5555-5555-555555555555', 'Kết thúc một tuần làm việc đầy mệt mỏi! Cuối tuần vui vẻ nhé mọi người 🍻', 0, 'TP Hồ Chí Minh', 0, 0, 0, 0, 12, false, 0, CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '3 days'),
+-- 4. HaiQQ's post
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', '55555555-5555-5555-5555-555555555555', 'Finished a tiring work week! Have a great weekend everyone #uitvibes #weekend', 0, 'Ho Chi Minh City', 0, 0, 0, 0, 12, false, 0, CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '3 days'),
 
--- 5. Post chia sẻ (Repost) của Ted từ bài viết của Muller25 (PostType = 1: Share)
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5', '22222222-2222-2222-2222-222222222222', 'Trận đấu này hứa hẹn sẽ rất kịch tính! 🔥', 0, NULL, 1, 0, 0, 0, 5, false, 0, CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+-- 5. Ted's repost from Muller25's post (PostType = 1: Share)
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5', '22222222-2222-2222-2222-222222222222', 'This match is going to be exciting!', 0, NULL, 1, 0, 0, 0, 5, false, 0, CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
 
--- 6. Post ngắn của cury_hao
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', '33333333-3333-3333-3333-333333333333', 'Có ai biết quán cà phê nào yên tĩnh để đọc sách ở khu vực Cẩm Lệ không? ☕', 0, NULL, 0, 0, 0, 0, 45, false, 0, CURRENT_TIMESTAMP - INTERVAL '4 hours', CURRENT_TIMESTAMP - INTERVAL '4 hours');
+-- 6. Short post by cury_hao
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', '33333333-3333-3333-3333-333333333333', 'Anyone know a quiet cafe for reading in Cam Le area? @HaiQQ #coffee', 0, NULL, 0, 0, 0, 0, 45, false, 0, CURRENT_TIMESTAMP - INTERVAL '4 hours', CURRENT_TIMESTAMP - INTERVAL '4 hours');
 
--- (Tùy chọn) Cập nhật OriginalPostId cho bài số 5 (bài Share) dựa trên Id của bài số 3
+-- (Optional) Update OriginalPostId for post #5 (Share post) based on post #3
 UPDATE "Posts" SET "OriginalPostId" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3' WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa5';
--- Tăng bộ đếm RepostCount của bài gốc
+-- Increase RepostCount of the original post
 UPDATE "Posts" SET "RepostCount" = 1, "SharesCount" = 1 WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3';
 
--- Script thêm dữ liệu mẫu cho PostMedia (PostDb)
+-- Sample data seeder for PostMedia (PostDb)
 
 INSERT INTO "PostMedia" (
-    "Id", 
-    "PostId", 
-    "Url", 
-    "PublicId", 
-    "Type", 
-    "DisplayOrder", 
-    "ThumbnailUrl", 
-    "Width", 
+    "Id",
+    "PostId",
+    "Url",
+    "PublicId",
+    "Type",
+    "DisplayOrder",
+    "ThumbnailUrl",
+    "Width",
     "Height",
     "CreatedAt"
-) 
-VALUES 
--- Post 1 (Sở hữu bởi Ted) có 2 hình ảnh
+)
+VALUES
+-- Post 1 (Owned by Ted) has 2 images
 (
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1779892001/uitvibes/posts/vr8wmrgczcwxqm3i62ar.jpg', 
-    'uitvibes/posts/vr8wmrgczcwxqm3i62ar', 
-    0, 
-    0, 
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1779892001/uitvibes/posts/vr8wmrgczcwxqm3i62ar.jpg',
+    'uitvibes/posts/vr8wmrgczcwxqm3i62ar',
+    0,
+    0,
     NULL, NULL, NULL,
     CURRENT_TIMESTAMP
 ),
 (
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1779892001/uitvibes/posts/pm8xurk4ul8oxdnu0xvl.jpg', 
-    'uitvibes/posts/pm8xurk4ul8oxdnu0xvl', 
-    0, 
-    1, 
-    NULL, NULL, NULL,
-    CURRENT_TIMESTAMP
-),
-
--- Post 2 (Sở hữu bởi cury_hao) có 1 hình ảnh
-(
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1779941272/images_zsn4tg.jpg', 
-    'images_zsn4tg', 
-    0, 
-    0, 
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1779892001/uitvibes/posts/pm8xurk4ul8oxdnu0xvl.jpg',
+    'uitvibes/posts/pm8xurk4ul8oxdnu0xvl',
+    0,
+    1,
     NULL, NULL, NULL,
     CURRENT_TIMESTAMP
 ),
 
--- Post 3 (Sở hữu bởi Muller25) có 1 hình ảnh
+-- Post 2 (Owned by cury_hao) has 1 image
 (
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1779941425/495737458_672963165486722_678386295520353197_n_z54c1y.jpg', 
-    '495737458_672963165486722_678386295520353197_n_z54c1y', 
-    0, 
-    0, 
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1779941272/images_zsn4tg.jpg',
+    'images_zsn4tg',
+    0,
+    0,
     NULL, NULL, NULL,
     CURRENT_TIMESTAMP
 ),
 
--- Post 4 (Sở hữu bởi HaiQQ) có 2 hình ảnh
+-- Post 3 (Owned by Muller25) has 1 image
 (
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1778851532/uitvibes/posts/n6ytsdpk88ywqcbj6ks8.jpg', 
-    'uitvibes/posts/n6ytsdpk88ywqcbj6ks8', 
-    0, 
-    0, 
-    NULL, NULL, NULL,
-    CURRENT_TIMESTAMP
-),
-(
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1779692922/uitvibes/posts/iixv4x1pwvvqtk0fjymr.jpg', 
-    'uitvibes/posts/iixv4x1pwvvqtk0fjymr', 
-    0, 
-    1, 
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1779941425/495737458_672963165486722_678386295520353197_n_z54c1y.jpg',
+    '495737458_672963165486722_678386295520353197_n_z54c1y',
+    0,
+    0,
     NULL, NULL, NULL,
     CURRENT_TIMESTAMP
 ),
 
--- Post 6 (Sở hữu bởi cury_hao) có 1 hình ảnh (Post 5 là Share post nên không có Media gốc)
+-- Post 4 (Owned by HaiQQ) has 2 images
 (
-    gen_random_uuid(), 
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', 
-    'https://res.cloudinary.com/dexpreywg/image/upload/v1778845619/uitvibes/posts/rf3kmdhjcg8imwbyjci9.jpg', 
-    'uitvibes/posts/rf3kmdhjcg8imwbyjci9', 
-    0, 
-    0, 
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1778851532/uitvibes/posts/n6ytsdpk88ywqcbj6ks8.jpg',
+    'uitvibes/posts/n6ytsdpk88ywqcbj6ks8',
+    0,
+    0,
+    NULL, NULL, NULL,
+    CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1779692922/uitvibes/posts/iixv4x1pwvvqtk0fjymr.jpg',
+    'uitvibes/posts/iixv4x1pwvvqtk0fjymr',
+    0,
+    1,
+    NULL, NULL, NULL,
+    CURRENT_TIMESTAMP
+),
+
+-- Post 6 (Owned by cury_hao) has 1 image (Post 5 is a Share post so no original Media)
+(
+    gen_random_uuid(),
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6',
+    'https://res.cloudinary.com/dexpreywg/image/upload/v1778845619/uitvibes/posts/rf3kmdhjcg8imwbyjci9.jpg',
+    'uitvibes/posts/rf3kmdhjcg8imwbyjci9',
+    0,
+    0,
     NULL, NULL, NULL,
     CURRENT_TIMESTAMP
 );
@@ -162,7 +162,7 @@ VALUES
     'cccccccc-cccc-cccc-cccc-ccccccccccc1',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
     '33333333-3333-3333-3333-333333333333',
-    'Ảnh đẹp quá!',
+    'Beautiful photos!',
     NULL,
     2,
     1,
@@ -174,7 +174,7 @@ VALUES
     'cccccccc-cccc-cccc-cccc-ccccccccccc2',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
     '44444444-4444-4444-4444-444444444444',
-    'Tuyệt vời!',
+    'Amazing!',
     NULL,
     1,
     0,
@@ -182,12 +182,12 @@ VALUES
     CURRENT_TIMESTAMP - INTERVAL '3 hours',
     CURRENT_TIMESTAMP - INTERVAL '3 hours'
 ),
--- Reply (ParentCommentId luôn trỏ về root)
+-- Reply (ParentCommentId always points to root)
 (
     'cccccccc-cccc-cccc-cccc-ccccccccccc3',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
     '22222222-2222-2222-2222-222222222222',
-    'Cảm ơn bạn nhé!',
+    'Thanks!',
     'cccccccc-cccc-cccc-cccc-ccccccccccc1',
     1,
     0,
@@ -201,7 +201,7 @@ VALUES
     'cccccccc-cccc-cccc-cccc-ccccccccccc4',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
     '55555555-5555-5555-5555-555555555555',
-    'Boss đáng yêu quá!',
+    'So cute!',
     NULL,
     0,
     0,
@@ -215,7 +215,7 @@ VALUES
     'cccccccc-cccc-cccc-cccc-ccccccccccc5',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
     '22222222-2222-2222-2222-222222222222',
-    'Mia San Mia 🔴⚪',
+    'Mia San Mia',
     NULL,
     2,
     0,
@@ -229,7 +229,7 @@ VALUES
     'cccccccc-cccc-cccc-cccc-ccccccccccc6',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4',
     '11111111-1111-1111-1111-111111111111',
-    'Cuối tuần thật chill!',
+    'Have a chill weekend!',
     NULL,
     0,
     0,
@@ -378,23 +378,23 @@ INSERT INTO "PostHashtags" (
 )
 VALUES
 -- Post 1
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '5 hours'), -- #uitvibes
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', CURRENT_TIMESTAMP - INTERVAL '5 hours'), -- #sunny
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '5 hours'),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', CURRENT_TIMESTAMP - INTERVAL '5 hours'),
 
 -- Post 2
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '1 day'), -- #uitvibes
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', CURRENT_TIMESTAMP - INTERVAL '1 day'), -- #cats
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', CURRENT_TIMESTAMP - INTERVAL '1 day'),
 
 -- Post 3
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', CURRENT_TIMESTAMP - INTERVAL '2 days'), -- #bayern
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb5', CURRENT_TIMESTAMP - INTERVAL '2 days'), -- #football
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb5', CURRENT_TIMESTAMP - INTERVAL '2 days'),
 
 -- Post 4
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '3 days'), -- #uitvibes
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb6', CURRENT_TIMESTAMP - INTERVAL '3 days'), -- #weekend
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', CURRENT_TIMESTAMP - INTERVAL '3 days'),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb6', CURRENT_TIMESTAMP - INTERVAL '3 days'),
 
 -- Post 6
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb7', CURRENT_TIMESTAMP - INTERVAL '4 hours')  -- #coffee
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb7', CURRENT_TIMESTAMP - INTERVAL '4 hours')
 ON CONFLICT ("PostId", "HashtagId") DO NOTHING;
 
 -- ================================
@@ -420,30 +420,7 @@ VALUES
 ON CONFLICT ("Id") DO NOTHING;
 
 -- ================================
--- Update Post.Content to include hashtags + mentions
--- ================================
-UPDATE "Posts"
-SET "Content" = 'Hôm nay trời đẹp quá! @cury_hao Cùng nhau ra ngoài tận hưởng không khí nào 😍 #uitvibes #sunny'
-WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1';
-
-UPDATE "Posts"
-SET "Content" = 'Boss nhà mình lại ngủ gật trên bàn làm việc, quá đáng yêu! 🐈 #uitvibes #cats'
-WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2';
-
-UPDATE "Posts"
-SET "Content" = 'Sẵn sàng cho trận đấu cuối tuần này cùng FC Bayern! @admin_uit Mia San Mia 🔴⚪ #bayern #football'
-WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3';
-
-UPDATE "Posts"
-SET "Content" = 'Kết thúc một tuần làm việc đầy mệt mỏi! Cuối tuần vui vẻ nhé mọi người 🍻 #uitvibes #weekend'
-WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4';
-
-UPDATE "Posts"
-SET "Content" = 'Có ai biết quán cà phê nào yên tĩnh để đọc sách ở khu vực Cẩm Lệ không? @HaiQQ ☕ #coffee'
-WHERE "Id" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa6';
-
--- ================================
--- Seed Reels (3 items) - UPDATED VIDEO URL/PUBLIC ID
+-- Seed Reels (3 items)
 -- ================================
 INSERT INTO "Reels" (
     "Id",
@@ -466,7 +443,7 @@ VALUES
     'reels/rzcewekhw8tek3htqjie',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1779000001/uitvibes/reels/ted_day.jpg',
     'uitvibes/reels/ted_day',
-    'Một ngày thật đẹp ở Hà Nội 🌤️',
+    'A beautiful day in Hanoi',
     18,
     120,
     CURRENT_TIMESTAMP - INTERVAL '1 day',
@@ -479,7 +456,7 @@ VALUES
     'reels/rzcewekhw8tek3htqjie',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1779000002/uitvibes/reels/cat_sleep.jpg',
     'uitvibes/reels/cat_sleep',
-    'Boss lại ngủ gật 🐈',
+    'Cat sleeping again',
     12,
     340,
     CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -492,7 +469,7 @@ VALUES
     'reels/zshv75zjjauksnqkxxwm',
     'https://res.cloudinary.com/dexpreywg/image/upload/v1779000003/uitvibes/reels/bayern.jpg',
     'uitvibes/reels/bayern',
-    'Mia San Mia 🔴⚪',
+    'Mia San Mia',
     20,
     980,
     CURRENT_TIMESTAMP - INTERVAL '3 days',
@@ -519,7 +496,7 @@ VALUES
     'f1111111-1111-1111-1111-111111111111',
     'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1',
     '33333333-3333-3333-3333-333333333333',
-    'Cảnh đẹp quá!',
+    'Beautiful scenery!',
     0,
     0,
     NULL,
@@ -530,7 +507,7 @@ VALUES
     'f1111111-1111-1111-1111-111111111112',
     'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1',
     '55555555-5555-5555-5555-555555555555',
-    'Reel này chill ghê 😍',
+    'This reel is so chill',
     0,
     0,
     NULL,
@@ -543,7 +520,7 @@ VALUES
     'f2222222-2222-2222-2222-222222222221',
     'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2',
     '22222222-2222-2222-2222-222222222222',
-    'Boss dễ thương quá!',
+    'So cute!',
     0,
     0,
     NULL,
@@ -556,7 +533,7 @@ VALUES
     'f3333333-3333-3333-3333-333333333331',
     'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3',
     '11111111-1111-1111-1111-111111111111',
-    'Bayern mãi đỉnh!',
+    'Bayern forever!',
     0,
     0,
     NULL,
@@ -738,8 +715,8 @@ VALUES
     'eeeeeeee-1111-1111-1111-111111111111',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
     '22222222-2222-2222-2222-222222222222',
-    'Nội dung không phù hợp',
-    'Caption có thể gây hiểu lầm.',
+    'Inappropriate content',
+    'Caption may be misleading.',
     0,
     NULL,
     CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -749,10 +726,10 @@ VALUES
     'eeeeeeee-2222-2222-2222-222222222222',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4',
     '33333333-3333-3333-3333-333333333333',
-    'Spam hoặc lừa đảo',
-    'Bài đăng lặp lại nhiều lần.',
+    'Spam or fraud',
+    'Repeated posting.',
     1,
-    'Đã nhắc nhở người đăng.',
+    'User has been notified.',
     CURRENT_TIMESTAMP - INTERVAL '4 days',
     CURRENT_TIMESTAMP - INTERVAL '3 days'
 ),
@@ -760,10 +737,10 @@ VALUES
     'eeeeeeee-3333-3333-3333-333333333333',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
     '55555555-5555-5555-5555-555555555555',
-    'Ngôn từ gây hấn hoặc thù ghét',
-    'Ngôn từ trong bài gây khó chịu.',
+    'Hateful or harassing language',
+    'Language in the post is offensive.',
     2,
-    'Không đủ cơ sở vi phạm.',
+    'Insufficient evidence of violation.',
     CURRENT_TIMESTAMP - INTERVAL '5 days',
     CURRENT_TIMESTAMP - INTERVAL '4 days'
 );

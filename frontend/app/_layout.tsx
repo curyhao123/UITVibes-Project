@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppProvider } from '@/context/AppContext';
 import { AppColors } from '@/constants/theme';
 import { useApp } from '@/context/AppContext';
+import { ToastProvider } from '@/components/EnhancedToast';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -66,7 +67,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AppProvider>
+      <AppProvider>
+        <ToastProvider>
           <AuthGuard />
           <Stack
           screenOptions={{
@@ -102,7 +104,8 @@ export default function RootLayout() {
           <Stack.Screen name="admin/users" options={{ headerShown: false }} />
           <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
+        </ToastProvider>
       </AppProvider>
     </ThemeProvider>
     </GestureHandlerRootView>

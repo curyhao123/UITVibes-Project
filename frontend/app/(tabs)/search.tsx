@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Header } from "../../components";
+import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
 import { useApp } from "../../context/AppContext";
 import {
   searchUsers,
@@ -507,85 +507,77 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Header
+      <StaticPremiumHeader
         title="Search"
+        showAvatar
         avatarUser={currentUser}
-        rightAction={
-          <View style={styles.searchIconWrap}>
-            <Feather
-              name="search"
-              size={20}
-              color={AppColors.iconMuted}
-              strokeWidth={2}
-            />
-          </View>
-        }
-        bottomContent={
-          <>
-            <View style={styles.searchRow}>
-              <View style={styles.searchContainer}>
-                <Feather
-                  name="search"
-                  size={18}
-                  color={AppColors.iconMuted}
-                  strokeWidth={2}
-                />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search"
-                  placeholderTextColor={AppColors.iconMuted}
-                  value={searchQuery}
-                  onChangeText={handleSearch}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => handleSearch("")}>
-                    <Feather
-                      name="x"
-                      size={18}
-                      color={AppColors.iconMuted}
-                      strokeWidth={2}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === "posts" && styles.activeTab]}
-                onPress={() => setActiveTab("posts")}
-              >
-                <Feather
-                  name="grid"
-                  size={22}
-                  color={
-                    activeTab === "posts"
-                      ? AppColors.primary
-                      : AppColors.iconMuted
-                  }
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === "users" && styles.activeTab]}
-                onPress={() => setActiveTab("users")}
-              >
-                <Feather
-                  name="users"
-                  size={22}
-                  color={
-                    activeTab === "users"
-                      ? AppColors.primary
-                      : AppColors.iconMuted
-                  }
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
-            </View>
-          </>
-        }
+        largeTitle
       />
+
+      {/* Search Bar */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchContainer}>
+          <Feather
+            name="search"
+            size={18}
+            color={AppColors.iconMuted}
+            strokeWidth={2}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search"
+            placeholderTextColor={AppColors.iconMuted}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch("")}>
+              <Feather
+                name="x"
+                size={18}
+                color={AppColors.iconMuted}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "posts" && styles.activeTab]}
+          onPress={() => setActiveTab("posts")}
+        >
+          <Feather
+            name="grid"
+            size={22}
+            color={
+              activeTab === "posts"
+                ? AppColors.primary
+                : AppColors.iconMuted
+            }
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "users" && styles.activeTab]}
+          onPress={() => setActiveTab("users")}
+        >
+          <Feather
+            name="users"
+            size={22}
+            color={
+              activeTab === "users"
+                ? AppColors.primary
+                : AppColors.iconMuted
+            }
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
+      </View>
 
       {activeTab === "posts" ? (
         <View key="posts-tab">{renderPostsContent()}</View>

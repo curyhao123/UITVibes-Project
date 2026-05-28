@@ -12,6 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import { FormInput } from '../components/FormInput';
 import { getCurrentUserEmail } from '../services/session';
 import { sendChangePasswordOtp } from '../services/authService';
@@ -90,7 +91,7 @@ export default function ChangePasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Change Password" onBack={() => router.back()} />
+      <CompactHeader title="Change Password" showBack onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={styles.content}

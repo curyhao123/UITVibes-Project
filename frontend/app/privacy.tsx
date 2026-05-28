@@ -31,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
 import { HighlightCard } from '../components/privacy/HighlightCard';
 import { InfoCard } from '../components/help/InfoCard';
@@ -221,8 +222,9 @@ export default function PrivacyPolicyScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <ScreenHeader
+      <CompactHeader
         title="Privacy Policy"
+        showBack
         onBack={() => router.back()}
       />
 

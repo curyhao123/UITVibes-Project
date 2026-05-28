@@ -31,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { CompactHeader } from '../components/StaticPremiumHeader';
 import { TermsSection, type TermsSectionData } from '../components/help/TermsSection';
 import { InfoCard } from '../components/help/InfoCard';
 import { SectionHeader } from '../components/help/SectionHeader';
@@ -120,8 +121,9 @@ export default function TermsOfServiceScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <ScreenHeader
+      <CompactHeader
         title="Terms of Service"
+        showBack
         onBack={() => router.back()}
       />
 

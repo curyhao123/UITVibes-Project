@@ -31,15 +31,17 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { Header } from '../../components';
+import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
 import { ReelCard, ReelDisplayData } from '../../components/ReelCard';
 import { CommentSheet } from '../../components/CommentSheet';
 import { ShareSheet } from '../../components/ShareSheet';
+import { Avatar } from '../../components/Avatar';
 import { useApp } from '../../context/AppContext';
-import { mockComments } from '../../data/mockData';
 import type { Comment as CommentType } from '../../data/mockData';
 import { fetchUserById } from '../../services/userService';
 import { User } from '../../data/mockData';
 import type { Reel as APIReel } from '../../services/postService';
+import { getReelComments, addReelComment, deleteReelComment, toggleReelCommentLike } from '../../services/postService';
 import { TAB_BAR_BOTTOM_OFFSET } from '../../components/ModernTabBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -128,11 +130,12 @@ export default function ReelsScreen() {
   const [commentVisible, setCommentVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
   const [selectedReel, setSelectedReel] = useState<ReelDisplayData | null>(null);
-  const [reelComments] = useState<CommentType[]>(mockComments);
+  const [reelComments, setReelComments] = useState<CommentType[]>([]);
   const [reelUsers, setReelUsers] = useState<Map<string, User>>(new Map());
   const [displayReels, setDisplayReels] = useState<ReelDisplayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const scrollY = useSharedValue(0);
@@ -244,24 +247,126 @@ export default function ReelsScreen() {
   }, [toggleReelBookmark]);
 
   // ── Comment handlers ─────────────────────────────────────────────────────────
-  const handleOpenComments = useCallback((reel: ReelDisplayData) => {
+  const handleOpenComments = useCallback(async (reel: ReelDisplayData) => {
     setSelectedReel(reel);
     setCommentVisible(true);
+    setIsLoadingComments(true);
+
+    try {
+      const comments = await getReelComments(reel.id);
+      setReelComments(comments);
+    } catch (error) {
+      console.error('[Reels] Failed to load comments:', error);
+      setReelComments([]);
+    } finally {
+      setIsLoadingComments(false);
+    }
   }, []);
 
   const handleCloseComments = useCallback(() => {
     setCommentVisible(false);
+    setReelComments([]);
   }, []);
 
-  const handlePostComment = useCallback((text: string) => {
-    if (selectedReel) {
-      addReelComment(selectedReel.id, text);
-    }
-  }, [selectedReel, addReelComment]);
+  // Optimistic update: generate temp ID
+const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  const handleLikeComment = useCallback((commentId: string) => {
-    toggleReelCommentLike(commentId);
-  }, [toggleReelCommentLike]);
+const handlePostComment = useCallback(async (text: string) => {
+  if (selectedReel) {
+    // Optimistic: create temp comment immediately
+    const optimisticComment: CommentType = {
+      id: tempId,
+      userId: currentUser?.id || '',
+      user: currentUser || {
+        id: '',
+        username: 'You',
+        displayName: 'You',
+        fullName: 'You',
+        avatar: '',
+        coverImage: '',
+        bio: '',
+        gender: '',
+        followers: 0,
+        following: 0,
+        posts: 0,
+        isVerified: false,
+        isFollowing: false,
+      },
+      text,
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      isLiked: false,
+      replies: [],
+    };
+
+    setReelComments((prev) => [optimisticComment, ...prev]);
+
+    try {
+      const result = await addReelComment(selectedReel.id, text);
+      if (result && result.success && result.comment) {
+        // Replace temp comment with real one
+        setReelComments((prev) =>
+          prev.map((c) => (c.id === tempId ? result.comment! : c))
+        );
+      } else {
+        // Remove temp comment if failed
+        setReelComments((prev) => prev.filter((c) => c.id !== tempId));
+      }
+    } catch (error) {
+      console.error('[Reels] Failed to post comment:', error);
+      // Rollback: remove temp comment
+      setReelComments((prev) => prev.filter((c) => c.id !== tempId));
+    }
+  }
+}, [selectedReel, currentUser]);
+
+  const handleLikeComment = useCallback(async (commentId: string) => {
+    const comment = reelComments.find((c) => c.id === commentId);
+    if (!comment) return;
+
+    // Optimistic: toggle immediately
+    const newLikedState = !comment.isLiked;
+    setReelComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, isLiked: newLikedState, likes: newLikedState ? c.likes + 1 : c.likes - 1 }
+          : c
+      )
+    );
+
+    try {
+      await toggleReelCommentLike(commentId, comment.isLiked);
+    } catch (error) {
+      console.error('[Reels] Failed to like comment:', error);
+      // Rollback on error
+      setReelComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, isLiked: comment.isLiked, likes: comment.likes }
+            : c
+        )
+      );
+    }
+  }, [reelComments]);
+
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    // Store original for rollback
+    const originalComment = reelComments.find((c) => c.id === commentId);
+    if (!originalComment) return;
+
+    // Optimistic: remove immediately
+    setReelComments((prev) => prev.filter((c) => c.id !== commentId));
+
+    try {
+      await deleteReelComment(commentId);
+    } catch (error) {
+      console.error('[Reels] Failed to delete comment:', error);
+      // Rollback: restore comment
+      if (originalComment) {
+        setReelComments((prev) => [originalComment, ...prev]);
+      }
+    }
+  }, [reelComments]);
 
   // ── Share handlers ──────────────────────────────────────────────────────────
   const handleOpenShare = useCallback((reel: ReelDisplayData) => {
@@ -329,24 +434,24 @@ export default function ReelsScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="dark" backgroundColor="#000" />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header */}
-        <Header
-          title="Reels"
-          avatarUser={currentUser}
-          rightAction={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.cameraButton}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Feather name="camera" size={22} color="white" strokeWidth={2} />
-            </TouchableOpacity>
-          }
-          headerStyle={styles.header}
-          titleStyle={styles.headerTitle}
-        />
+        {/* Header - để trong suốt vì nền reels là đen */}
+        <View style={styles.reelsHeader}>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/profile')}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+          >
+            {currentUser ? (
+              <Avatar user={currentUser} size="small" />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.reelsTitle}>Reels</Text>
+          <View style={styles.reelsHeaderRight} />
+        </View>
 
         {/* Reels Feed */}
         <Animated.FlatList<ReelDisplayData>
@@ -392,6 +497,9 @@ export default function ReelsScreen() {
         onPostComment={handlePostComment}
         onLikeComment={handleLikeComment}
         onReply={(commentId) => console.log('Reply to:', commentId)}
+        onDeleteComment={handleDeleteComment}
+        isLoading={isLoadingComments}
+        currentUser={currentUser}
       />
 
       {/* Share Sheet */}
@@ -415,6 +523,28 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  reelsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  reelsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  reelsHeaderRight: {
+    width: 40,
+  },
+  avatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   header: {
     backgroundColor: 'transparent',
