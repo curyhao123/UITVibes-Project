@@ -291,3 +291,8 @@ export async function markMessagesRead(
     `${GW}/conversations/${conversationId}/message/${messageId}/read`,
   );
 }
+
+/** DELETE /conversations/{id} — delete (soft-delete) a conversation */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await apiClient.delete(`${GW}/conversations/${conversationId}`);
+}

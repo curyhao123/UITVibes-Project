@@ -343,6 +343,14 @@ export default function PostDetailScreen() {
     });
   };
 
+  const getVisibilityMeta = (visibility?: string) => {
+    const normalized = (visibility ?? "").toLowerCase();
+    if (normalized === "followers") return { label: "Followers", icon: "users" as const };
+    if (normalized === "private") return { label: "Private", icon: "lock" as const };
+    if (normalized === "hidden") return { label: "Hidden", icon: "eye-off" as const };
+    return { label: "Public", icon: "globe" as const };
+  };
+
   const handleBookmarkToggle = async () => {
     try {
       if (isBookmarked) {
@@ -376,7 +384,20 @@ export default function PostDetailScreen() {
             <Text style={styles.username}>
               {post.user.fullName || post.user.displayName}
             </Text>
-            <Text style={styles.userHandle}>@{post.user.username}</Text>
+            <Text style={styles.userHandle}>@{post.user.displayName || post.user.username}</Text>
+            <View style={styles.metaRow}>
+              {(() => {
+                const visibilityMeta = getVisibilityMeta(post.visibility);
+                return (
+                  <>
+                    <Feather name={visibilityMeta.icon} size={12} color={AppColors.textSecondary} />
+                    <Text style={styles.visibilityText}>{visibilityMeta.label}</Text>
+                  </>
+                );
+              })()}
+              <Text style={styles.metaSeparator}>•</Text>
+              <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
+            </View>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
@@ -454,7 +475,6 @@ export default function PostDetailScreen() {
           </Text>{" "}
           {post.caption}
         </Text>
-        <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
       </View>
 
       {/* Comments Header */}
@@ -598,6 +618,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   caption: {
     fontSize: 14,
     lineHeight: 20,
@@ -606,6 +631,15 @@ const styles = StyleSheet.create({
   },
   captionUsername: {
     fontWeight: "600",
+  },
+  visibilityText: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+  },
+  metaSeparator: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+    marginHorizontal: 4,
   },
   timestamp: {
     fontSize: 12,

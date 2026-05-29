@@ -91,9 +91,9 @@ export const SwipeableRow: React.FC<SwipeableRowProps> = ({
 
       // Clamp values based on available actions
       if (hasLeftActions && !hasRightActions) {
-        translateX.value = Math.min(0, newTranslate);
-      } else if (hasRightActions && !hasLeftActions) {
         translateX.value = Math.max(0, newTranslate);
+      } else if (hasRightActions && !hasLeftActions) {
+        translateX.value = Math.min(0, newTranslate);
       } else {
         translateX.value = Math.max(-MAX_TRANSLATE, Math.min(MAX_TRANSLATE, newTranslate));
       }
@@ -102,15 +102,34 @@ export const SwipeableRow: React.FC<SwipeableRowProps> = ({
       isSwiping.value = false;
       const threshold = MAX_TRANSLATE * SNAP_THRESHOLD;
 
-      // Determine snap position based on velocity and position
-      if (translateX.value < -threshold || event.velocityX < -300) {
-        translateX.value = withSpring(-ACTION_WIDTH, SPRING_CONFIG);
-        runOnJS(triggerHaptic)();
-      } else if (translateX.value > threshold || event.velocityX > 300) {
-        translateX.value = withSpring(ACTION_WIDTH, SPRING_CONFIG);
-        runOnJS(triggerHaptic)();
+      // Only swipe left to reveal rightAction, only swipe right to reveal leftAction
+      if (hasRightActions && !hasLeftActions) {
+        // Swipe left reveals rightAction
+        if (translateX.value < -threshold || event.velocityX < -300) {
+          translateX.value = withSpring(-ACTION_WIDTH, SPRING_CONFIG);
+          runOnJS(triggerHaptic)();
+        } else {
+          translateX.value = withSpring(0, SPRING_CONFIG);
+        }
+      } else if (hasLeftActions && !hasRightActions) {
+        // Swipe right reveals leftAction
+        if (translateX.value > threshold || event.velocityX > 300) {
+          translateX.value = withSpring(ACTION_WIDTH, SPRING_CONFIG);
+          runOnJS(triggerHaptic)();
+        } else {
+          translateX.value = withSpring(0, SPRING_CONFIG);
+        }
       } else {
-        translateX.value = withSpring(0, SPRING_CONFIG);
+        // Both actions available
+        if (translateX.value < -threshold || event.velocityX < -300) {
+          translateX.value = withSpring(-ACTION_WIDTH, SPRING_CONFIG);
+          runOnJS(triggerHaptic)();
+        } else if (translateX.value > threshold || event.velocityX > 300) {
+          translateX.value = withSpring(ACTION_WIDTH, SPRING_CONFIG);
+          runOnJS(triggerHaptic)();
+        } else {
+          translateX.value = withSpring(0, SPRING_CONFIG);
+        }
       }
     });
 

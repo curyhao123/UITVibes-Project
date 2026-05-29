@@ -168,6 +168,7 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     image: allImages[0] ?? "",
     images: allImages,
     caption: post.content,
+    visibility: post.visibility ?? undefined,
     likes: post.likesCount,
     comments: [],
     createdAt: post.createdAt,

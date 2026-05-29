@@ -26,7 +26,9 @@ namespace MessageService.ServiceLayer.Implementation
 
         public async Task AddMemberToGroupAsync(Guid conversationId, Guid userId, Guid targetUserId)
         {
+            // Load conversation just for validation, then detach to avoid EF tracking conflicts
             var conversation = await _context.Conversations
+                .AsNoTracking()
                 .Include(c => c.Members)
                 .FirstOrDefaultAsync(c => c.Id == conversationId && !c.IsDeleted);
 
@@ -48,17 +50,53 @@ namespace MessageService.ServiceLayer.Implementation
 
             await EnsureFriendsAsync(userId, new[] { targetUserId });
 
-            conversation.Members.Add(new ConversationMember
-            {
-                Id = Guid.NewGuid(),
-                ConversationId = conversationId,
-                UserId = targetUserId,
-                Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow,
-                LastReadAt = DateTime.UtcNow,
-            });
+            // Detach conversation so EF won't try to UPDATE it when we add a member
+            _context.Entry(conversation).State = EntityState.Detached;
 
-            await _context.SaveChangesAsync();
+            // Check if user is already an active member
+            var existingMember = await _context.ConversationMembers
+                .FirstOrDefaultAsync(m => m.ConversationId == conversationId && m.UserId == targetUserId);
+
+            if (existingMember != null)
+            {
+                if (existingMember.LeftAt == null)
+                {
+                    throw new InvalidOperationException("User is already a member");
+                }
+                // Re-add a previously removed member
+                existingMember.LeftAt = null;
+                existingMember.JoinedAt = DateTime.UtcNow;
+                existingMember.Role = MemberRole.Member;
+                existingMember.LastReadAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // New member - create fresh record
+                var newMember = new ConversationMember
+                {
+                    Id = Guid.NewGuid(),
+                    ConversationId = conversationId,
+                    UserId = targetUserId,
+                    Role = MemberRole.Member,
+                    JoinedAt = DateTime.UtcNow,
+                    LastReadAt = DateTime.UtcNow,
+                };
+                _context.ConversationMembers.Add(newMember);
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new InvalidOperationException("Failed to add member due to a conflict. Please try again.");
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
+                                              ex.InnerException?.Message.Contains("unique") == true)
+            {
+                throw new InvalidOperationException("Failed to add member due to a conflict. Please try again.");
+            }
 
             _logger.LogInformation("User {TargetUserId} added to conversation {ConversationId} by {UserId}",
                 targetUserId, conversationId, userId);
@@ -259,6 +297,33 @@ namespace MessageService.ServiceLayer.Implementation
             _logger.LogInformation("User {UserId} left conversation {ConversationId}", userId, conversationId);
         }
 
+        public async Task DeleteConversationAsync(Guid conversationId, Guid userId)
+        {
+            var conversation = await _context.Conversations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == conversationId && !c.IsDeleted);
+
+            if (conversation == null)
+                throw new KeyNotFoundException("Conversation not found");
+
+            var member = await _context.ConversationMembers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.ConversationId == conversationId && m.UserId == userId && m.LeftAt == null);
+
+            if (member == null)
+                throw new UnauthorizedAccessException("You are not a member of this conversation");
+
+            var conversationToDelete = await _context.Conversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId);
+            if (conversationToDelete != null)
+            {
+                conversationToDelete.IsDeleted = true;
+                await _context.SaveChangesAsync();
+            }
+
+            _logger.LogInformation("Conversation {ConversationId} deleted by user {UserId}", conversationId, userId);
+        }
+
         public async Task RemoveMemberFromGroupAsync(Guid conversationId, Guid userId, Guid targetUserId)
         {
             var conversation = await _context.Conversations
@@ -294,6 +359,11 @@ namespace MessageService.ServiceLayer.Implementation
             if (requestedIds.Count == 0) return;
 
             var friends = await _friendListRpcClient.GetFriendListAsync(userId, 0, 5000);
+            if (friends == null)
+            {
+                _logger.LogWarning("Friend list RPC returned null for user {UserId}, assuming no friends", userId);
+                throw new UnauthorizedAccessException("Unable to verify friend status. Please try again.");
+            }
             var friendIds = friends.Select(f => f.UserId).ToHashSet();
             var nonFriendIds = requestedIds.Where(id => !friendIds.Contains(id)).ToList();
 
