@@ -343,7 +343,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
+    zIndex: 998,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,

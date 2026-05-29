@@ -138,4 +138,20 @@ public class ConversationController : ControllerBase
         var header = Request.Headers["X-User-Id"].FirstOrDefault();
         return !string.IsNullOrEmpty(header) && Guid.TryParse(header, out var id) ? id : Guid.Empty;
     }
+
+    [HttpDelete("{conversationId}")]
+    public async Task<IActionResult> DeleteConversation(Guid conversationId)
+    {
+        var userId = GetUserId();
+        if (userId == Guid.Empty) return Unauthorized(new { message = "User ID not found" });
+
+        try
+        {
+            await _conversationService.DeleteConversationAsync(conversationId, userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
 }

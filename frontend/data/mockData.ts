@@ -41,6 +41,7 @@ export interface Post {
   image: string;         // first image (backwards-compatible)
   images?: string[];     // all images for multi-image posts
   caption: string;
+  visibility?: string;
   likes: number;
   comments: Comment[];
   createdAt: string;

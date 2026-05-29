@@ -219,10 +219,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const displayName = post.user.displayName || post.user.username;
 
   // Swipe action handlers
-  const handleSwipeBookmark = () => {
-    handleBookmarkWithAnimation();
-  };
-
   const handleSwipeDelete = () => {
     if (isOwner) {
       handleDeletePost();
@@ -234,19 +230,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   return (
     <SwipeableRow
       rightAction={{
-        icon: localBookmarked ? 'bookmark' : 'bookmark',
-        color: localBookmarked ? AppColors.primary : AppColors.textMuted,
-        backgroundColor: localBookmarked ? `${AppColors.primary}20` : AppColors.borderLight,
-        label: localBookmarked ? 'Saved' : 'Save',
-        onPress: handleSwipeBookmark,
-      }}
-      leftAction={isOwner ? {
         icon: 'trash-2',
         color: '#FFFFFF',
         backgroundColor: AppColors.error,
         label: 'Delete',
         onPress: handleSwipeDelete,
-      } : undefined}
+      }}
       testID={`swipeable-post-${post.id}`}
     >
       <View style={styles.container}>

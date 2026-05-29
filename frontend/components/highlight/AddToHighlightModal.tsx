@@ -20,8 +20,13 @@ import {
   Image,
   StyleSheet,
   Alert,
+  Platform,
+  Dimensions,
+  KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../context/AppContext";
 import {
   HighlightGroup,
@@ -46,6 +51,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
   onSuccess,
 }) => {
   const { currentUser } = useApp();
+  const insets = useSafeAreaInsets();
   const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -123,23 +129,33 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
       animationType="slide"
       transparent
       onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <View style={styles.backdrop}>
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-              <Feather name="x" size={22} color={AppColors.text} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={styles.title}>Add to Highlight</Text>
-            <View style={styles.placeholder} />
-          </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={Keyboard.dismiss}
+        >
+          <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <Text style={styles.title}>Add to Highlight</Text>
+              <View style={styles.placeholder} />
+            </View>
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
             {/* Existing highlights */}
             {isLoading && !showCreateForm ? (
               <ActivityIndicator
@@ -241,14 +257,20 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
             )}
           </ScrollView>
         </View>
-      </View>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
-  backdrop: {
+  keyboardView: {
     flex: 1,
+  },
+  backdrop: {
+    flexGrow: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
@@ -256,7 +278,9 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.surfaceElevated,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    maxHeight: "70%",
+    maxHeight: SCREEN_HEIGHT * 0.75,
+    minHeight: 400,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   header: {
     flexDirection: "row",
@@ -288,7 +312,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: layoutPadding,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
   loader: {
     paddingVertical: 40,

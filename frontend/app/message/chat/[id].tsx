@@ -35,6 +35,12 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../../context/AppContext';
 import * as api from '../../../services/api';
+import {
+  addMemberToGroup,
+  removeMemberFromGroup,
+  leaveGroup,
+  getConversationById,
+} from '../../../services/messageService';
 import { invokeHub } from '../../../services/signalrService';
 import { Avatar } from '../../../components/Avatar';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
@@ -64,9 +70,6 @@ export default function ChatScreen() {
     isUserOnline,
     editMessage,
     deleteMessage,
-    addGroupMember,
-    removeGroupMember,
-    leaveGroupConversation,
     refreshConversations,
   } = useApp();
 
@@ -100,6 +103,11 @@ export default function ChatScreen() {
     | { type: 'remove'; member: any }
     | { type: 'leave' }
     | { type: 'deleteMessage'; messageId: string }
+    | null
+  >(null);
+  const [localConfirmAction, setLocalConfirmAction] = useState<
+    | { type: 'remove'; member: any }
+    | { type: 'leave' }
     | null
   >(null);
 
@@ -211,9 +219,13 @@ export default function ChatScreen() {
       if (!conversation) return;
       setAddingMemberId(userId);
       try {
-        const updated = await addGroupMember(conversation.id, userId);
-        if (updated) setConvMembers(updated.members);
+        await addMemberToGroup(conversation.id, userId);
         await refreshConversations();
+        // Reload conversation to get updated members list
+        const updated = await getConversationById(conversation.id);
+        if (updated) {
+          setConvMembers(updated.members);
+        }
         setShowAddMember(false);
         setFriendSearch('');
       } catch (err: any) {
@@ -225,12 +237,12 @@ export default function ChatScreen() {
         setAddingMemberId(null);
       }
     },
-    [addGroupMember, conversation, refreshConversations],
+    [conversation, refreshConversations],
   );
 
   const handleRemoveMember = useCallback(
     (member: any) => {
-      setConfirmAction({ type: 'remove', member });
+      setLocalConfirmAction({ type: 'remove', member });
     },
     [],
   );
@@ -240,10 +252,14 @@ export default function ChatScreen() {
       if (!conversation) return;
       setRemovingMemberId(member.id);
       try {
-        const updated = await removeGroupMember(conversation.id, member.id);
-        if (updated) setConvMembers(updated.members);
+        await removeMemberFromGroup(conversation.id, member.id);
         await refreshConversations();
-        setConfirmAction(null);
+        // Reload conversation to get updated members list
+        const updated = await getConversationById(conversation.id);
+        if (updated) {
+          setConvMembers(updated.members);
+        }
+        setLocalConfirmAction(null);
       } catch (err: any) {
         Alert.alert(
           'Error',
@@ -253,20 +269,20 @@ export default function ChatScreen() {
         setRemovingMemberId(null);
       }
     },
-    [conversation, refreshConversations, removeGroupMember],
+    [conversation, refreshConversations],
   );
 
   const handleLeaveGroup = useCallback(() => {
-    setConfirmAction({ type: 'leave' });
+    setLocalConfirmAction({ type: 'leave' });
   }, []);
 
   const performLeaveGroup = useCallback(async () => {
     if (!conversation) return;
     setIsLeavingGroup(true);
     try {
-      await leaveGroupConversation(conversation.id);
+      await leaveGroup(conversation.id);
       await refreshConversations();
-      setConfirmAction(null);
+      setLocalConfirmAction(null);
       setShowGroupSettings(false);
       router.back();
     } catch (err: any) {
@@ -277,7 +293,7 @@ export default function ChatScreen() {
     } finally {
       setIsLeavingGroup(false);
     }
-  }, [conversation, leaveGroupConversation, refreshConversations, router]);
+  }, [conversation, refreshConversations, router]);
 
   const handleSendDirect = useCallback(
     async (text: string) => {
@@ -406,48 +422,18 @@ export default function ChatScreen() {
     [conversation, deleteMessage],
   );
 
-  const confirmTitle =
-    confirmAction?.type === 'remove'
-      ? 'Remove member?'
-      : confirmAction?.type === 'deleteMessage'
-        ? 'Delete message?'
-        : 'Leave group?';
-  const confirmMessage =
-    confirmAction?.type === 'remove'
-      ? `Remove ${
-          confirmAction.member.displayName ||
-          confirmAction.member.username ||
-          'this member'
-        } from this group?`
-      : confirmAction?.type === 'deleteMessage'
-        ? 'This message will be permanently deleted.'
-        : 'You will stop receiving messages from this group.';
-  const confirmIcon =
-    confirmAction?.type === 'remove'
-      ? 'user-minus'
-      : confirmAction?.type === 'deleteMessage'
-        ? 'trash-2'
-        : 'log-out';
-  const confirmLabel =
-    confirmAction?.type === 'remove'
-      ? 'Remove'
-      : confirmAction?.type === 'deleteMessage'
-        ? 'Delete'
-        : 'Leave';
-  const confirmationBusy =
-    removingMemberId != null || isLeavingGroup || deletingMessageId != null;
+  const confirmTitle = 'Delete message?';
+  const confirmMessage = 'This message will be permanently deleted.';
+  const confirmIcon = 'trash-2';
+  const confirmLabel = 'Delete';
+  const confirmationBusy = deletingMessageId != null;
 
   const handleConfirmAction = () => {
     if (!confirmAction) return;
-    if (confirmAction.type === 'remove') {
-      void performRemoveMember(confirmAction.member);
-      return;
-    }
     if (confirmAction.type === 'deleteMessage') {
       void performDeleteMessage(confirmAction.messageId);
       return;
     }
-    void performLeaveGroup();
   };
 
   const handleEditSave = async (text: string) => {
@@ -458,7 +444,6 @@ export default function ChatScreen() {
   if (!conversation) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.centerState}>
           <Text style={styles.emptyChatTitle}>Conversation not found</Text>
           <TouchableOpacity onPress={() => router.back()}>
@@ -471,7 +456,6 @@ export default function ChatScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Chat Header */}
         <View style={styles.chatHeader}>
@@ -651,15 +635,29 @@ export default function ChatScreen() {
           animationType="slide"
           onRequestClose={() => setShowGroupSettings(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.settingsSheet}>
-              <View style={styles.settingsSheetHeader}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowGroupSettings(false)}
+          >
+            <View
+              style={styles.settingsSheet}
+              onStartShouldSetResponder={() => true}
+            >
+              <TouchableOpacity
+                style={styles.settingsSheetHeader}
+                onPress={() => setShowGroupSettings(false)}
+                activeOpacity={0.9}
+              >
                 <Text style={styles.settingsSheetTitle}>{headerName}</Text>
-                <TouchableOpacity onPress={() => setShowGroupSettings(false)}>
-                  <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.settingsContent}>
+                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+              </TouchableOpacity>
+
+              <ScrollView
+                style={styles.settingsContent}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.settingsContentContainer}
+              >
                 <Text style={styles.sectionLabel}>Members ({convMembers.length})</Text>
                 {convMembers.map((member) => {
                   const memberIsAdmin = conversation.adminIds?.includes(member.id) ?? false;
@@ -698,49 +696,85 @@ export default function ChatScreen() {
                     </View>
                   );
                 })}
-                <View style={styles.settingsActions}>
-                  {isAdmin && (
-                    <TouchableOpacity
-                      style={styles.actionRow}
-                      onPress={() => {
-                        setFriendSearch('');
-                        setShowAddMember(true);
-                      }}
-                      disabled={isLeavingGroup}
-                    >
-                      <Feather name="user-plus" size={20} color={AppColors.text} strokeWidth={2} />
-                      <Text style={styles.actionText}>Add member</Text>
-                      <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
-                    </TouchableOpacity>
-                  )}
+              </ScrollView>
 
+              <View style={styles.settingsActions}>
+                {isAdmin && (
                   <TouchableOpacity
                     style={styles.actionRow}
-                    onPress={handleLeaveGroup}
-                    disabled={isLeavingGroup || removingMemberId != null}
+                    onPress={() => {
+                      setFriendSearch('');
+                      setShowGroupSettings(false);
+                      setTimeout(() => setShowAddMember(true), 50);
+                    }}
+                    disabled={isLeavingGroup}
+                    activeOpacity={0.7}
                   >
-                    {isLeavingGroup ? (
-                      <ActivityIndicator size="small" color="#dc3545" />
-                    ) : (
-                      <Feather name="log-out" size={20} color="#dc3545" strokeWidth={2} />
-                    )}
-                    <Text style={styles.leaveGroupText}>Leave group</Text>
+                    <Feather name="user-plus" size={20} color={AppColors.text} strokeWidth={2} />
+                    <Text style={styles.actionText}>Add member</Text>
+                    <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
                   </TouchableOpacity>
-                </View>
-              </ScrollView>
+                )}
+
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={handleLeaveGroup}
+                  disabled={isLeavingGroup || removingMemberId != null}
+                  activeOpacity={0.7}
+                >
+                  {isLeavingGroup ? (
+                    <ActivityIndicator size="small" color="#dc3545" />
+                  ) : (
+                    <Feather name="log-out" size={20} color="#dc3545" strokeWidth={2} />
+                  )}
+                  <Text style={styles.leaveGroupText}>Leave group</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
+
+          {/* Local confirmation modal for remove member / leave group — rendered at Modal root level */}
+          {localConfirmAction && (
+            <ConfirmationModal
+              visible={localConfirmAction != null}
+              title={localConfirmAction.type === 'remove' ? 'Remove member?' : 'Leave group?'}
+              message={
+                localConfirmAction.type === 'remove'
+                  ? `Remove ${
+                      localConfirmAction.member.displayName ||
+                      localConfirmAction.member.username ||
+                      'this member'
+                    } from this group?`
+                  : 'You will stop receiving messages from this group.'
+              }
+              icon={localConfirmAction.type === 'remove' ? 'user-minus' : 'log-out'}
+              variant="danger"
+              confirmLabel={localConfirmAction.type === 'remove' ? 'Remove' : 'Leave'}
+              busy={removingMemberId != null || isLeavingGroup}
+              onCancel={() => setLocalConfirmAction(null)}
+              onConfirm={() => {
+                if (localConfirmAction.type === 'remove') {
+                  void performRemoveMember(localConfirmAction.member);
+                } else {
+                  void performLeaveGroup();
+                }
+              }}
+            />
+          )}
         </Modal>
       )}
 
-      {conversation && (
+      {conversation && !showGroupSettings && (
         <Modal
           visible={showAddMember}
           transparent
           animationType="slide"
           onRequestClose={() => setShowAddMember(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
             <View style={styles.settingsSheet}>
               <View style={styles.settingsSheetHeader}>
                 <Text style={styles.settingsSheetTitle}>Add Member</Text>
@@ -762,6 +796,7 @@ export default function ChatScreen() {
               <FlatList
                 data={addableFriends}
                 keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {
                   const isAdding = addingMemberId === item.id;
                   return (
@@ -803,7 +838,7 @@ export default function ChatScreen() {
                 }
               />
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 
@@ -882,8 +917,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
-    maxHeight: '72%',
-    paddingBottom: 20,
+    maxHeight: '85%',
   },
   settingsSheetHeader: {
     flexDirection: 'row',
@@ -901,7 +935,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingsContent: {
-    paddingBottom: 20,
+    flexGrow: 1,
+  },
+  settingsContentContainer: {
+    paddingBottom: 8,
   },
   sectionLabel: {
     ...Typography.caption,
@@ -940,6 +977,7 @@ const styles = StyleSheet.create({
   },
   settingsActions: {
     marginTop: 12,
+    paddingBottom: 20,
   },
   actionRow: {
     flexDirection: 'row',
@@ -949,6 +987,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: AppColors.border,
+    minHeight: 50,
   },
   actionText: {
     ...Typography.body,

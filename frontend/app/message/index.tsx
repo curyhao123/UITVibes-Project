@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -20,11 +20,11 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../context/AppContext";
 import * as api from "../../services/api";
+import { deleteConversation } from "../../services/messageService";
 import { invokeHub } from "../../services/signalrService";
 import { Conversation, Message, User } from "../../data/mockData";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
-import { Header } from "../../components";
 import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
 import { Avatar } from "../../components/Avatar";
 import { OnlineIndicator } from "../../components/OnlineIndicator";
@@ -37,26 +37,22 @@ import { formatDistanceToNow } from "../../utils/time";
 
 interface ConversationItemProps {
   item: Conversation;
-  convMembers: User[];
   currentUserId: string | undefined;
   isUserOnline: (userId: string) => boolean;
   isCurrentUser: (userId: string) => boolean;
   onPress: (conv: Conversation) => void;
   onDelete: (convId: string) => void;
-  onMute: (convId: string, displayName: string) => void;
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({
   item,
-  convMembers,
   currentUserId,
   isUserOnline,
   isCurrentUser,
   onPress,
   onDelete,
-  onMute,
 }) => {
-  const other = convMembers.find(m => item.members.some(convMember => convMember.id === m.id) && m.id !== currentUserId);
+  const other = item.members.find((m) => m.id !== currentUserId);
   const hasUnread = item.unreadCount > 0;
   const isGroup = item.isGroup;
   const displayName = item.name || other?.displayName || "Chat";
@@ -76,10 +72,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     );
   };
 
-  const handleMute = () => {
-    onMute(item.id, displayName);
-  };
-
   return (
     <SwipeableRow
       rightAction={{
@@ -88,13 +80,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         backgroundColor: AppColors.error,
         label: 'Delete',
         onPress: handleDelete,
-      }}
-      leftAction={{
-        icon: 'bell-off',
-        color: '#FFFFFF',
-        backgroundColor: '#8B7355',
-        label: 'Mute',
-        onPress: handleMute,
       }}
     >
       <TouchableOpacity
@@ -611,18 +596,18 @@ export default function MessageScreen() {
     return (
       <ConversationItem
         item={item}
-        convMembers={convMembers}
         currentUserId={currentUser?.id}
         isUserOnline={isUserOnline}
         isCurrentUser={isCurrentUser}
         onPress={handleConversationPress}
         onDelete={async (convId) => {
-          console.log('Delete conversation:', convId);
-          await refreshConversations();
-        }}
-        onMute={(convId, displayName) => {
-          console.log('Mute conversation:', convId);
-          Alert.alert('Muted', `Notifications muted for ${displayName}`);
+          try {
+            await deleteConversation(convId);
+            await refreshConversations();
+          } catch (error) {
+            console.error('Failed to delete conversation:', error);
+            Alert.alert('Error', 'Failed to delete conversation');
+          }
         }}
       />
     );
@@ -748,6 +733,14 @@ export default function MessageScreen() {
               }}
             >
               <Feather name="users" size={20} color={AppColors.text} strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.headerAction}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => router.back()}
+            >
+              <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         }

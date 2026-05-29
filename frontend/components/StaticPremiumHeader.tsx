@@ -154,14 +154,14 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
                 </TouchableOpacity>
               )}
 
-              {/* Settings button */}
+              {/* Message button */}
               <TouchableOpacity
-                onPress={() => router.push('/settings')}
+                onPress={() => router.push('/message')}
                 style={styles.iconButton}
                 hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Feather name="settings" size={20} color={AppColors.text} />
+                <Feather name="message-circle" size={20} color={AppColors.text} />
               </TouchableOpacity>
             </View>
           )}
