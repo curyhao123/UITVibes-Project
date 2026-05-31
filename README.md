@@ -83,7 +83,8 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 
 ## 🛠️ Tech Stack
 ## Sơ đồ:
-<img width="968" height="522" alt="download" src="https://github.com/user-attachments/assets/959277fa-078f-4e84-9f5d-8c31eb8a00e7" />
+<img width="1779" height="960" alt="TechStack_UITVibes - Page 1" src="https://github.com/user-attachments/assets/b4ec8ba3-ceac-4217-8797-637e4cf88af6" />
+
 
 ### Frontend
 | Công Nghệ | Mục Đích |
@@ -102,7 +103,6 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 | **.NET 8 & ASP.NET Core** | Framework cho tất cả microservices |
 | **.NET Aspire** | Orchestration phát triển địa phương |
 | **Entity Framework Core** | ORM cho truy cập dữ liệu |
-| **MediatR** | CQRS & domain events |
 | **FluentValidation** | Xác thực đầu vào |
 | **JWT Bearer** | Xác thực không trạng thái |
 
