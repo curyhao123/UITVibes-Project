@@ -11,6 +11,7 @@ import { AppProvider, useApp } from '@/context/AppContext';
 import { AppColors } from '@/constants/theme';
 import { ToastProvider } from '@/components/EnhancedToast';
 import messaging from '@react-native-firebase/messaging';
+import * as Notifications from 'expo-notifications';
 import { handleNotificationTap } from '@/utils/notificationRouter';
 
 // MUST be outside component — called when app is in background/killed
@@ -83,6 +84,22 @@ function RootLayoutNav() {
     });
     return unsubscribe;
   }, [router]);
+
+  // Foreground notifications: show a local notification when a push arrives
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: remoteMessage.notification?.title ?? 'UITVibes',
+          body: remoteMessage.notification?.body ?? '',
+          data: remoteMessage.data,
+        },
+        trigger: null,
+      });
+    });
+    return unsubscribe;
+  }, []);
 
   // Notification tap: app was killed, user tapped notification to open it
   useEffect(() => {

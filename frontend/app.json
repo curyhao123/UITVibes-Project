@@ -15,6 +15,7 @@
     },
     "android": {
       "package": "com.uitvibes.app",
+      "permissions": ["POST_NOTIFICATIONS"],
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

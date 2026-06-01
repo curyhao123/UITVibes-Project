@@ -23,6 +23,7 @@ FirebaseApp.Create(new AppOptions
 });
 
 builder.Services.AddScoped<IFcmPushSender, FcmPushSender>();
+builder.Services.AddScoped<FcmPushSender>();
 builder.Services.AddScoped<NotificationService.ServiceLayer.Interface.INotificationService, NotificationService.ServiceLayer.Implementation.NotificationService>();
 builder.Services.AddScoped<IUserNotificationSettingService, UserNotificationSettingService>();
 builder.Services.AddScoped<OutboxService>();
