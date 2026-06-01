@@ -99,6 +99,8 @@ export default function ChatScreen() {
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [showScrollToBottomButton, setShowScrollToBottomButton] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
     | { type: 'remove'; member: any }
     | { type: 'leave' }
@@ -149,9 +151,9 @@ export default function ChatScreen() {
     if (!conversation) return;
     setConvMembers(conversation.members);
     loadMessages(conversation.id)
-      .then(async () => {
-        await new Promise((r) => setTimeout(r, 0));
-        await markMessagesRead(conversation.id);
+      .then(async (loadedMessages) => {
+        const lastMessage = loadedMessages[loadedMessages.length - 1];
+        await markMessagesRead(conversation.id, lastMessage?.id);
       })
       .catch(() => {});
   }, [id, conversation?.id]);
@@ -179,6 +181,9 @@ export default function ChatScreen() {
   // ── Scroll helpers ─────────────────────────────────────────────────────
   const userScrolledUpRef = useRef(false);
   const initialScrollDoneRef = useRef(false);
+  const pendingOwnMessageScrollRef = useRef(false);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const scrollToBottomThreshold = 240;
 
   const scrollToBottom = useCallback((animated = true) => {
     if (flatListRef.current) {
@@ -186,17 +191,69 @@ export default function ChatScreen() {
     }
   }, []);
 
+  const markAtBottom = useCallback(() => {
+    userScrolledUpRef.current = false;
+    setShowScrollToBottomButton(false);
+  }, []);
+
+  const scheduleScrollToBottom = useCallback(
+    (animated = true) => {
+      requestAnimationFrame(() => {
+        scrollToBottom(animated);
+        markAtBottom();
+      });
+    },
+    [markAtBottom, scrollToBottom],
+  );
+
   useEffect(() => {
     userScrolledUpRef.current = false;
     initialScrollDoneRef.current = false;
+    pendingOwnMessageScrollRef.current = false;
+    lastMessageIdRef.current = null;
+    setShowScrollToBottomButton(false);
   }, [id]);
 
   useEffect(() => {
     if (messages.length > 0 && !initialScrollDoneRef.current) {
       scrollToBottom(false);
       initialScrollDoneRef.current = true;
+      markAtBottom();
     }
-  }, [messages.length, scrollToBottom, id]);
+  }, [messages.length, markAtBottom, scrollToBottom, id]);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage) return;
+
+    const isNewLastMessage = lastMessage.id !== lastMessageIdRef.current;
+    lastMessageIdRef.current = lastMessage.id;
+
+    if (
+      isNewLastMessage &&
+      pendingOwnMessageScrollRef.current &&
+      lastMessage.senderId === currentUser?.id
+    ) {
+      pendingOwnMessageScrollRef.current = false;
+      scheduleScrollToBottom(true);
+    }
+  }, [currentUser?.id, messages, scheduleScrollToBottom]);
+
+  const handleMessagesScroll = useCallback((event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    const shouldShowButton = distanceFromBottom > scrollToBottomThreshold;
+
+    userScrolledUpRef.current = shouldShowButton;
+    setShowScrollToBottomButton((current) =>
+      current === shouldShowButton ? current : shouldShowButton,
+    );
+  }, [scrollToBottomThreshold]);
+
+  const handleScrollToBottomPress = useCallback(() => {
+    scheduleScrollToBottom(true);
+  }, [scheduleScrollToBottom]);
 
   // ── Send ───────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
@@ -204,9 +261,11 @@ export default function ChatScreen() {
     isSendingRef.current = true;
     const text = messageText.trim();
     setMessageText('');
+    pendingOwnMessageScrollRef.current = true;
     try {
       await sendMessage(conversation.id, text);
     } catch (err: any) {
+      pendingOwnMessageScrollRef.current = false;
       setMessageText(text);
       Alert.alert('Error', err?.message ?? 'Failed to send message.');
     } finally {
@@ -299,9 +358,11 @@ export default function ChatScreen() {
     async (text: string) => {
       if (!conversation || isSendingRef.current) return;
       isSendingRef.current = true;
+      pendingOwnMessageScrollRef.current = true;
       try {
         await sendMessage(conversation.id, text);
       } catch (err: any) {
+        pendingOwnMessageScrollRef.current = false;
         Alert.alert('Error', err?.message ?? 'Failed to send message.');
       } finally {
         isSendingRef.current = false;
@@ -318,6 +379,47 @@ export default function ChatScreen() {
     return conversation.members.find((m: any) => m.id === senderId);
   };
 
+  const shouldShowTimeDivider = (currentMessage: any, previousMessage?: any) => {
+    if (!currentMessage?.createdAt) return false;
+    const currentTime = new Date(currentMessage.createdAt).getTime();
+    if (Number.isNaN(currentTime)) return false;
+
+    if (!previousMessage?.createdAt) return true;
+
+    const previousTime = new Date(previousMessage.createdAt).getTime();
+
+    if (Number.isNaN(previousTime)) return false;
+
+    return currentTime - previousTime >= 30 * 60 * 1000;
+  };
+
+  const isSameCalendarDay = (left: Date, right: Date) =>
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate();
+
+  const formatMessageClockTime = (date: Date) =>
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const formatMessageSectionTime = (createdAt: string) => {
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    if (isSameCalendarDay(date, today)) {
+      return `Today, ${formatMessageClockTime(date)}`;
+    }
+
+    if (isSameCalendarDay(date, yesterday)) {
+      return `Yesterday, ${formatMessageClockTime(date)}`;
+    }
+
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${formatMessageClockTime(date)}`;
+  };
+
   // ── Render: Message Bubble ────────────────────────────────────────────────
   const renderMessageBubble = ({
     item,
@@ -327,11 +429,36 @@ export default function ChatScreen() {
     index: number;
   }): React.JSX.Element => {
     const mine = isCurrentUser(item.senderId);
+    const previousMessage = messages[index - 1];
+    const nextMessage = messages[index + 1];
+    const showTimeDivider = shouldShowTimeDivider(item, previousMessage);
+    const nextHasTimeDivider = nextMessage
+      ? shouldShowTimeDivider(nextMessage, item)
+      : false;
+    const groupedWithPrevious =
+      !showTimeDivider && previousMessage?.senderId === item.senderId;
+    const groupedWithNext =
+      !nextHasTimeDivider && nextMessage?.senderId === item.senderId;
+    const startsSenderGroup = !groupedWithPrevious;
+    const showMessageTime = selectedMessageId === item.id;
     const senderFromMembers = getSenderFromMembers(item.senderId);
     const sender = senderFromMembers ?? item.sender;
-    const showAvatar =
-      !mine &&
-      (index === 0 || messages[index - 1]?.senderId !== item.senderId);
+    const showAvatar = !mine && startsSenderGroup;
+    const bubbleGroupStyle = mine
+      ? groupedWithPrevious && groupedWithNext
+        ? styles.bubbleMineMiddle
+        : groupedWithNext
+          ? styles.bubbleMineFirst
+          : groupedWithPrevious
+            ? styles.bubbleMineLast
+            : styles.bubbleMineSingle
+      : groupedWithPrevious && groupedWithNext
+        ? styles.bubbleTheirsMiddle
+        : groupedWithNext
+          ? styles.bubbleTheirsFirst
+          : groupedWithPrevious
+            ? styles.bubbleTheirsLast
+            : styles.bubbleTheirsSingle;
 
     const handleLongPress = () => {
       if (mine) {
@@ -340,55 +467,84 @@ export default function ChatScreen() {
     };
 
     return (
-      <View style={[styles.messageRow, mine && styles.messageRowMine]}>
-        {!mine && (
-          <View style={styles.msgAvatarContainer}>
-            {showAvatar ? (
-              <Avatar
-                user={sender ?? ({ id: item.senderId, username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as any)}
-                size="tiny"
-                showOnlineIndicator={true}
-                isOnline={isUserOnline(item.senderId)}
-              />
-            ) : (
-              <View style={styles.msgAvatarPlaceholder} />
-            )}
+      <View>
+        {showTimeDivider && (
+          <View style={styles.timeDivider}>
+            <View style={styles.timeDividerPill}>
+              <Text style={styles.timeDividerText}>
+                {formatMessageSectionTime(item.createdAt)}
+              </Text>
+            </View>
           </View>
         )}
-        <Pressable
-          onLongPress={handleLongPress}
-          delayLongPress={500}
-          style={({ pressed }) => [
-            styles.bubbleContainer,
-            mine ? styles.bubbleContainerMine : styles.bubbleContainerTheirs,
-            pressed && styles.bubblePressed,
+        <View
+          style={[
+            styles.messageRow,
+            mine && styles.messageRowMine,
+            groupedWithPrevious && styles.messageRowGrouped,
+            showTimeDivider && styles.messageRowAfterDivider,
           ]}
         >
-          {!mine && showAvatar && (
-            <Text style={styles.senderName}>
-              {sender?.displayName || sender?.username || 'User'}
-            </Text>
+          {!mine && (
+            <View style={styles.msgAvatarContainer}>
+              {showAvatar ? (
+                <Avatar
+                  user={sender ?? ({ id: item.senderId, username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as any)}
+                  size="tiny"
+                  showOnlineIndicator={true}
+                  isOnline={isUserOnline(item.senderId)}
+                />
+              ) : (
+                <View style={styles.msgAvatarPlaceholder} />
+              )}
+            </View>
           )}
-          <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-            {item.text ? (
-              <Text style={[styles.messageText, mine && styles.messageTextMine]}>
-                {item.text}
+          <Pressable
+            onPress={() => {
+              setSelectedMessageId((current) => (current === item.id ? null : item.id));
+            }}
+            onLongPress={handleLongPress}
+            delayLongPress={500}
+            style={({ pressed }) => [
+              styles.bubbleContainer,
+              mine ? styles.bubbleContainerMine : styles.bubbleContainerTheirs,
+              pressed && styles.bubblePressed,
+            ]}
+          >
+            {!mine && showAvatar && (
+              <Text style={styles.senderName}>
+                {sender?.displayName || sender?.username || 'User'}
               </Text>
-            ) : item.image ? (
-              <Image
-                source={{ uri: item.image }}
-                style={styles.messageImage}
-                resizeMode="cover"
-              />
-            ) : null}
-          </View>
-          <View style={[styles.msgMeta, mine && styles.msgMetaMine]}>
-            <Text style={styles.msgTime}>
-              {item.editedAt ? 'Edited - ' : ''}
-              {formatDistanceToNow(new Date(item.createdAt))}
-            </Text>
-          </View>
-        </Pressable>
+            )}
+            <View
+              style={[
+                styles.bubble,
+                mine ? styles.bubbleMine : styles.bubbleTheirs,
+                bubbleGroupStyle,
+              ]}
+            >
+              {item.text ? (
+                <Text style={[styles.messageText, mine && styles.messageTextMine]}>
+                  {item.text}
+                </Text>
+              ) : item.image ? (
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.messageImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+            </View>
+            {showMessageTime && (
+              <View style={[styles.msgMeta, mine && styles.msgMetaMine]}>
+                <Text style={styles.msgTime}>
+                  {item.editedAt ? 'Edited - ' : ''}
+                  {formatDistanceToNow(new Date(item.createdAt))}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
     );
   };
@@ -523,14 +679,8 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={() => {
-              userScrolledUpRef.current = true;
-            }}
-            onContentSizeChange={() => {
-              if (!userScrolledUpRef.current) {
-                scrollToBottom(true);
-              }
-            }}
+            onScroll={handleMessagesScroll}
+            scrollEventThrottle={16}
             ListEmptyComponent={
               <View style={styles.centerState}>
                 <Feather name="message-circle" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
@@ -551,6 +701,19 @@ export default function ChatScreen() {
               {otherUser ? otherUser.displayName : 'Someone'} is typing...
             </Text>
           </View>
+        )}
+
+        {showScrollToBottomButton && (
+          <TouchableOpacity
+            style={[
+              styles.scrollToBottomButton,
+              { bottom: Math.max(insets.bottom, 10) + 74 },
+            ]}
+            onPress={handleScrollToBottomPress}
+            activeOpacity={0.8}
+          >
+            <Feather name="arrow-down" size={20} color={AppColors.text} strokeWidth={2.4} />
+          </TouchableOpacity>
         )}
 
         {/* Message Input */}
@@ -865,6 +1028,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
+    position: 'relative',
   },
   chatHeader: {
     flexDirection: 'row',
@@ -1048,10 +1212,31 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     flexGrow: 1,
   },
+  timeDivider: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  timeDividerPill: {
+    backgroundColor: AppColors.surfaceElevated,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  timeDividerText: {
+    ...Typography.caption,
+    color: AppColors.textMuted,
+    fontSize: 11,
+  },
   messageRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 2,
     alignItems: 'flex-end',
+  },
+  messageRowGrouped: {
+    marginBottom: 1,
+  },
+  messageRowAfterDivider: {
+    marginTop: 2,
   },
   messageRowMine: {
     flexDirection: 'row-reverse',
@@ -1086,15 +1271,35 @@ const styles = StyleSheet.create({
   bubble: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: 16,
   },
   bubbleMine: {
     backgroundColor: AppColors.primary,
+  },
+  bubbleMineSingle: {},
+  bubbleMineFirst: {
     borderBottomRightRadius: 4,
+  },
+  bubbleMineMiddle: {
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  bubbleMineLast: {
+    borderTopRightRadius: 4,
   },
   bubbleTheirs: {
     backgroundColor: AppColors.surfaceElevated,
+  },
+  bubbleTheirsSingle: {},
+  bubbleTheirsFirst: {
     borderBottomLeftRadius: 4,
+  },
+  bubbleTheirsMiddle: {
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 4,
+  },
+  bubbleTheirsLast: {
+    borderTopLeftRadius: 4,
   },
   messageText: {
     ...Typography.body,
@@ -1111,7 +1316,7 @@ const styles = StyleSheet.create({
   msgMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 4,
     gap: 4,
   },
   msgMetaMine: {
@@ -1130,6 +1335,23 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: AppColors.textMuted,
     fontStyle: 'italic',
+  },
+  scrollToBottomButton: {
+    position: 'absolute',
+    left: '50%',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppColors.background,
+    transform: [{ translateX: -21 }],
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 20,
   },
   keyboardAvoid: {
     // Wraps input so it sits flush against the keyboard

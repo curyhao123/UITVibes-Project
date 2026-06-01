@@ -45,12 +45,10 @@ import { User } from '../../data/mockData';
 import type { Reel as APIReel } from '../../services/postService';
 import { getReelComments, addReelComment, deleteReelComment, toggleReelCommentLike } from '../../services/postService';
 import { TAB_BAR_BOTTOM_OFFSET } from '../../components/ModernTabBar';
+import { reelsUserCache, clearReelsUserCache } from '../../context/reelsUserCache';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
-
-// ─── User data cache ─────────────────────────────────────────────────────────
-const userCache: Map<string, User> = new Map();
 
 // ─── Transform API Reel to Display Data ───────────────────────────────────────
 
@@ -136,12 +134,12 @@ export default function ReelsScreen() {
   const [reelComments, setReelComments] = useState<CommentType[]>([]);
   const [reelUsers, setReelUsers] = useState<Map<string, User>>(new Map());
   const [displayReels, setDisplayReels] = useState<ReelDisplayData[]>([]);
-  // Use ref to track if we've already shuffled - won't cause re-render when changed
-  const hasShuffledRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Track shuffled order by reel IDs - use ref to avoid dependency issues
+  const shuffledReelIdsRef = useRef<string[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const scrollY = useSharedValue(0);
@@ -179,11 +177,11 @@ export default function ReelsScreen() {
 
       // Fetch user data for reels that don't have cached users
       for (const reel of reels) {
-        if (!userCache.has(reel.userId)) {
+        if (!reelsUserCache.has(reel.userId)) {
           try {
             const user = await fetchUserById(reel.userId);
             if (user) {
-              userCache.set(reel.userId, user);
+              reelsUserCache.set(reel.userId, user);
               newUsers.set(reel.userId, user);
             }
           } catch (error) {
@@ -193,7 +191,7 @@ export default function ReelsScreen() {
       }
 
       // Merge with existing users in cache
-      for (const [userId, user] of userCache) {
+      for (const [userId, user] of reelsUserCache) {
         if (!newUsers.has(userId)) {
           newUsers.set(userId, user);
         }
@@ -204,10 +202,19 @@ export default function ReelsScreen() {
       // Transform reels for display
       let transformed = reels.map((reel) => transformReelForDisplay(reel, newUsers));
 
-      // Only shuffle once on initial load, not on every state update
-      if (!hasShuffledRef.current) {
+      // Only shuffle once on initial load - if we have existing shuffled order, use it
+      if (shuffledReelIdsRef.current.length === 0) {
+        // First load - shuffle and save the order
         transformed = shuffleArray(transformed);
-        hasShuffledRef.current = true;
+        shuffledReelIdsRef.current = transformed.map((r) => r.id);
+      } else {
+        // Subsequent loads - maintain the shuffled order based on reel IDs
+        const orderMap = new Map(shuffledReelIdsRef.current.map((id, index) => [id, index]));
+        transformed.sort((a, b) => {
+          const indexA = orderMap.get(a.id) ?? reels.length;
+          const indexB = orderMap.get(b.id) ?? reels.length;
+          return indexA - indexB;
+        });
       }
 
       setDisplayReels(transformed);
@@ -399,7 +406,7 @@ const handlePostComment = useCallback(async (text: string) => {
   // ── Refresh handler ─────────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    hasShuffledRef.current = false; // Re-shuffle on refresh
+    // Only shuffle once on initial load - do NOT reshuffle on refresh
     await refreshReels();
     setIsRefreshing(false);
   }, [refreshReels]);
@@ -539,6 +546,13 @@ const handlePostComment = useCallback(async (text: string) => {
 }
 
 import { AppColors, layoutPadding } from '../../constants/theme';
+
+// ─── Exported function to clear user cache ──────────────────────────────────
+// Called by AppContext when user follows/unfollows someone to ensure
+// reels display the correct follow button state
+export { clearReelsUserCache } from '../../context/reelsUserCache';
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {

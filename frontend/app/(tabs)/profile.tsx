@@ -133,6 +133,16 @@ export default function ProfileScreen() {
         showAvatar
         avatarUser={currentUser}
         onNotificationPress={() => router.push('/notifications')}
+        rightAction={
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            style={styles.settingsBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <Feather name="settings" size={20} color={AppColors.text} />
+          </TouchableOpacity>
+        }
       />
 
       <ScrollView

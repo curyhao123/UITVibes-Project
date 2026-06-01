@@ -18,6 +18,7 @@ import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
 import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
 import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
 import { Toast } from '../../components/Toast';
+import { useApp } from '../../context/AppContext';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -28,6 +29,9 @@ export default function UserProfileScreen() {
   const [profileTab, setProfileTab] = useState<'posts' | 'reposts'>('posts');
   const [reposts, setReposts] = useState<Post[]>([]);
   const [isLoadingReposts, setIsLoadingReposts] = useState(false);
+
+  // App context
+  const { currentUser } = useApp();
 
   // Highlights state
   const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
@@ -176,6 +180,8 @@ export default function UserProfileScreen() {
     );
   }
 
+  const isOwnProfile = currentUser?.id === id;
+
   return (
     <>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -187,10 +193,10 @@ export default function UserProfileScreen() {
             <TouchableOpacity
               style={styles.moreBtn}
               activeOpacity={0.7}
-              onPress={() => setActionsSheetVisible(true)}
+              onPress={() => router.push('/settings')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Feather name="more-horizontal" size={22} color={AppColors.text} strokeWidth={2.5} />
+              <Feather name="settings" size={22} color={AppColors.text} strokeWidth={2} />
             </TouchableOpacity>
           }
         />

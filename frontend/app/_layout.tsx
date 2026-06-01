@@ -1,3 +1,9 @@
+/**
+ * Logger - disables all console logs in production
+ * Must be imported first before any other modules that log
+ */
+import '@/utils/logger';
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

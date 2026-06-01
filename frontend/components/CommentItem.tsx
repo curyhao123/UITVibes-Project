@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { CommentContextMenu } from './CommentContextMenu';
 import { SPRING_BOUNCE, SPRING_GENTLE } from '../animations/spring';
+import { MentionText } from './MentionText';
 
 interface CommentItemProps {
   comment: Comment;
@@ -142,10 +143,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               @{(comment.user.displayName || comment.user.username)}
             </Text>
 
-            {/* Comment text */}
-            <Text style={styles.text} numberOfLines={undefined}>
-              {comment.text}
-            </Text>
+            {/* Comment text with @mention highlighting */}
+            <MentionText
+              text={comment.text}
+            />
 
             {/* Meta row: time · likes · reply */}
             <View style={styles.meta}>
