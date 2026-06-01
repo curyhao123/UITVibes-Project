@@ -21,6 +21,7 @@ import { getConnection } from '../services/signalrService';
 import type { BE_MessageResponse } from '../services/backendTypes';
 import { transformBEMessage } from '../services/messageService';
 import type { Reel as APIReel } from '../services/postService';
+import { clearReelsUserCache } from '../context/reelsUserCache';
 
 interface AppContextType {
   // Auth / User
@@ -120,13 +121,13 @@ interface AppContextType {
   conversationError: string | null;
   messageError: string | null;
   refreshConversations: () => Promise<void>;
-  loadMessages: (conversationId: string) => Promise<void>;
+  loadMessages: (conversationId: string) => Promise<Message[]>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
   editMessage: (conversationId: string, messageId: string, text: string) => Promise<void>;
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
   setActiveConversation: (conv: Conversation | null) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  markMessagesRead: (conversationId: string) => Promise<void>;
+  markMessagesRead: (conversationId: string, lastMessageId?: string) => Promise<void>;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   startConversation: (userId: string) => Promise<Conversation | null>;
   createGroup: (name: string, memberUserIds: string[]) => Promise<Conversation>;
@@ -386,6 +387,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Ref to store current conversationMembers without triggering effect re-runs
   const conversationMembersRef = useRef<Conversation["members"]>([]);
+  const locallyReadConversationIdsRef = useRef<Set<string>>(new Set());
   // Ref to track activeConversation for use in closures without stale values
   const activeConversationRef = useRef<Conversation | null>(null);
   activeConversationRef.current = activeConversation;
@@ -746,11 +748,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.toggleFollow(userId);
         await refreshUser();
         await refreshPosts();
+        await refreshReels();
+        // Clear reels user cache so the follow button state refreshes correctly
+        clearReelsUserCache();
       } catch (error) {
         console.error("Failed to toggle follow:", error);
       }
     },
-    [refreshUser, refreshPosts],
+    [refreshUser, refreshPosts, refreshReels],
   );
 
   const updateProfile = useCallback(
@@ -835,15 +840,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (data.length > 0) {
         console.log("[AppContext] refreshConversations: first conv id:", data[0].id, "members:", data[0].members.length);
       }
-      // Merge server data with local unread counts to preserve optimistic updates from SignalR
       setConversations((prev) => {
-        if (prev.length === 0) return data;
-        const localUnreadMap = new Map(prev.map((c) => [c.id, c.unreadCount ?? 0]));
+        const previousIds = new Set(prev.map((c) => c.id));
         return data.map((conv) => ({
           ...conv,
-          unreadCount: localUnreadMap.has(conv.id)
-            ? localUnreadMap.get(conv.id)!
-            : conv.unreadCount,
+          unreadCount:
+            previousIds.has(conv.id) &&
+            locallyReadConversationIdsRef.current.has(conv.id)
+              ? 0
+              : conv.unreadCount,
         }));
       });
     } catch (error: any) {
@@ -862,12 +867,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       const { messages: msgs, members } = await api.getMessages(conversationId);
       // API trả về: tin mới nhất ở đầu → cần đảo để có thứ tự Cũ→Mới (đúng cho FlatList)
-      setMessages([...msgs].reverse());
+      const orderedMessages = [...msgs].reverse();
+      setMessages(orderedMessages);
       setConversationMembers(members);
+      return orderedMessages;
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? "Failed to load messages.";
       setMessageError(msg);
       console.error("[AppContext] loadMessages:", msg, error);
+      return [];
     } finally {
       setIsLoadingMessages(false);
     }
@@ -876,11 +884,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const sendMessageFn = useCallback(
     async (conversationId: string, text: string) => {
       try {
-        const newMsg = await api.sendMessage(conversationId, text);
-        // Attach sender info from cached members
-        const sender = conversationMembers.find((m) => m.id === newMsg.senderId);
-        if (sender) {
-          newMsg.sender = sender;
+        const newMsg = await api.sendMessage(
+          conversationId,
+          text,
+          conversationMembersRef.current,
+        );
+        if (newMsg.senderId === currentUser?.id && !newMsg.sender?.displayName) {
+          newMsg.sender = currentUser;
         }
         console.log("[AppContext] sendMessage: Adding message optimistically - ID:", newMsg.id);
         setMessages((prev) => {
@@ -898,7 +908,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error(msg);
       }
     },
-    [refreshConversations, conversationMembers],
+    [currentUser, refreshConversations],
   );
 
   const editMessage = useCallback(
@@ -936,14 +946,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 
   const markMessagesRead = useCallback(
-    async (conversationId: string) => {
+    async (conversationId: string, lastMessageId?: string) => {
       try {
-        // Find last message id to pass as lastMessageId
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg) {
-          await api.markMessagesRead(conversationId, lastMsg.id);
+        const fallbackLastMsg = messages[messages.length - 1];
+        const messageIdToRead = lastMessageId ?? fallbackLastMsg?.id;
+        if (messageIdToRead) {
+          await api.markMessagesRead(conversationId, messageIdToRead);
         }
-        // Update local state instead of refreshConversations to avoid overwriting unreadCount=0
+        locallyReadConversationIdsRef.current.add(conversationId);
         setConversations((prev) =>
           prev.map((conv) =>
             conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
@@ -961,6 +971,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const markConversationAsRead = useCallback(
   async (conversationId: string) => {
     console.log("[AppContext] markConversationAsRead: marking conv as read:", conversationId);
+    locallyReadConversationIdsRef.current.add(conversationId);
     setConversations((prev) =>
       prev.map((conv) =>
         conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
@@ -1170,6 +1181,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Listen to SignalR ReceiveMessage events ──────────────
   useEffect(() => {
     if (!activeConversation) return;
+    if (!onlineSignalRConnected) return;
 
     const connection = getConnection();
     if (!connection) {
@@ -1215,12 +1227,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       console.log(`[AppContext] Unregistering ReceiveMessage listener for conversation: ${activeConversation.id}`);
       connection.off("ReceiveMessage", messageHandler);
     };
-  }, [activeConversation]);
+  }, [activeConversation, onlineSignalRConnected]);
 
   // ─── Update conversations list when a new message arrives (any conversation) ──
   // This listener runs independently of activeConversation so the ChatList updates
   // in real-time even when no conversation is open.
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
@@ -1229,6 +1243,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const senderId = messageData.senderId ?? (messageData as any).SenderId;
       const content = messageData.content ?? (messageData as any).Content ?? "";
       const createdAt = messageData.createdAt ?? (messageData as any).CreatedAt;
+      if (!messageConvId) return;
 
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c.id === messageConvId);
@@ -1250,6 +1265,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         // Use ref to avoid stale closure
         const isActive = activeConversationRef.current?.id === messageConvId;
         conv.unreadCount = isActive ? 0 : (conv.unreadCount ?? 0) + 1;
+        if (!isActive) {
+          locallyReadConversationIdsRef.current.delete(messageConvId);
+        }
 
         // Move conversation to top
         updated.splice(idx, 1);
@@ -1267,9 +1285,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return () => {
       connection.off("ReceiveMessage", convListHandler);
     };
-  }, [currentUser]); // only re-register when currentUser changes (login/logout)
+  }, [currentUser, onlineSignalRConnected]);
 
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
@@ -1341,6 +1361,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             : conversation,
         ),
       );
+      if (readerId === currentUser?.id) {
+        locallyReadConversationIdsRef.current.add(conversationId);
+      }
 
       if (readerId === currentUser?.id) return;
 
@@ -1362,10 +1385,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       connection.off("MessageDeleted", deletedHandler);
       connection.off("MessagesRead", readHandler);
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, onlineSignalRConnected]);
 
   // ─── Listen to SignalR UserTyping events ──────────────────
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
@@ -1386,7 +1411,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return () => {
       connection.off("UserTyping", typingHandler);
     };
-  }, [activeConversation, currentUser]);
+  }, [activeConversation, currentUser, onlineSignalRConnected]);
 
   // ─── Provider ──────────────────────────────────────────────
   return (

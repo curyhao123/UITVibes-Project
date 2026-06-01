@@ -30,6 +30,7 @@ import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../../components/Avatar';
 import { Toast } from '../../components/Toast';
+import { MentionInput } from '../../components/MentionInput';
 
 type CreateType = 'post' | 'reels';
 
@@ -456,21 +457,21 @@ export default function CreateScreen() {
           </Animated.View>
         )}
 
-        {/* Caption */}
+        {/* Caption with @mention support */}
         <View style={styles.captionSection}>
           <View style={styles.captionDivider} />
-          <TextInput
-            style={styles.captionInput}
+          <MentionInput
+            value={caption}
+            onChangeText={setCaption}
             placeholder={
               createType === 'reels'
                 ? 'Write a caption for your reel…'
                 : 'Write a caption…'
             }
-            placeholderTextColor={AppColors.iconMuted}
-            value={caption}
-            onChangeText={setCaption}
             multiline
             maxLength={CAPTION_MAX}
+            style={styles.mentionInputWrapper}
+            inputStyle={styles.captionInput}
           />
           <Text style={styles.charCount}>
             {caption.length}/{CAPTION_MAX}
@@ -897,6 +898,9 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.border,
     marginBottom: 14,
   },
+  mentionInputWrapper: {
+    minHeight: 108,
+  },
   captionInput: {
     ...Typography.body,
     fontSize: 16,
@@ -906,6 +910,7 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     letterSpacing: -0.2,
     padding: 0,
+    backgroundColor: 'transparent',
   },
   charCount: {
     ...Typography.meta,

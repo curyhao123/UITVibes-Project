@@ -25,6 +25,7 @@ import { PostActionsSheet } from './PostActionsSheet';
 import { ReportPostSheet } from './ReportPostSheet';
 import { type ReportReason } from '../services/backendTypes';
 import { triggerHaptic } from '../hooks/useMicroInteractions';
+import { MentionText } from './MentionText';
 
 const ACTION_ICON = 24;
 
@@ -105,6 +106,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   };
 
   const handleRepost = async () => {
+    // Prevent reposting own post
+    if (isOwner) {
+      Alert.alert(
+        'Cannot Repost',
+        "You can't repost your own post.",
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const wasReposted = localReposted;
     setLocalReposted(!wasReposted);
     setLocalRepostCount((prev) => (wasReposted ? prev - 1 : prev + 1));
@@ -118,9 +129,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
       }
     } catch (err) {
+      // Revert optimistic update on error
       setLocalReposted(wasReposted);
       setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
-      console.error('[PostCard] Repost error:', err);
     }
   };
 
@@ -351,11 +362,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </View>
 
         <View style={styles.captionContainer}>
-            <Text style={styles.caption}>
-              <Text style={styles.captionUsername}>@{displayName}</Text>
-              {' '}
-              {post.caption}
-            </Text>
+          <MentionText
+            text={post.caption}
+            numberOfLines={5}
+          />
         </View>
 
         {(post.commentsCount ?? 0) > 0 && (

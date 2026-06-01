@@ -251,12 +251,13 @@ export async function getMessages(
 export async function sendMessage(
   conversationId: string,
   text: string,
+  members: Conversation["members"] = [],
 ): Promise<Message> {
   const { data } = await apiClient.post<BE_MessageResponse>(
     `${GW}/conversations/${conversationId}/message`,
     { content: text, type: 0 },
   );
-  return transformBEMessage(data);
+  return transformBEMessage(data, members);
 }
 
 /** PUT /conversations/{id}/message/{messageId} — edit a message */

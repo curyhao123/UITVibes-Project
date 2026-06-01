@@ -6,9 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
   Modal,
@@ -27,7 +24,6 @@ import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
 import { Avatar } from "../../components/Avatar";
-import { OnlineIndicator } from "../../components/OnlineIndicator";
 import { OnlineFriendsList } from "../../components/OnlineFriendsList";
 import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
 import { SwipeableRow } from "../../components/SwipeableRow";
@@ -145,31 +141,19 @@ export default function MessageScreen() {
   const {
     currentUser,
     conversations,
-    activeConversation,
-    messages,
-    conversationMembers,
     isLoadingConversations,
-    isLoadingMessages,
     conversationError,
     refreshConversations,
-    loadMessages,
-    sendMessage,
     setActiveConversation,
-    setMessages,
-    markMessagesRead,
     markConversationAsRead,
     startConversation,
     createGroup,
     suggestedUsers,
     fetchSuggestedUsers,
     isUserOnline,
-    onlineSignalRConnected,
-    partnerTyping,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [messageText, setMessageText] = useState("");
-  const isSendingRef = useRef(false);
   const [showNewMsg, setShowNewMsg] = useState(false);
   const [newMsgSearch, setNewMsgSearch] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -182,18 +166,7 @@ export default function MessageScreen() {
   const [groupFriendSearch, setGroupFriendSearch] = useState("");
   const [isLoadingGroupFriends, setIsLoadingGroupFriends] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
-  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [startingConvUserId, setStartingConvUserId] = useState<string | null>(null);
-  const [groupMemberToRemove, setGroupMemberToRemove] = useState<User | null>(null);
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [addMemberSearch, setAddMemberSearch] = useState("");
-  const [isRemovingMember, setIsRemovingMember] = useState(false);
-  const [isAddingMember, setIsAddingMember] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
-  const messagesEndRef = useRef<View>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const iStartedTypingRef = useRef(false);
-  const [convMembers, setConvMembers] = useState<Conversation["members"]>([]);
 
   // Load conversation list on mount
   useEffect(() => {
@@ -201,74 +174,6 @@ export default function MessageScreen() {
       Alert.alert("Error", "Failed to load conversations. Pull to retry.")
     );
   }, []);
-
-  // Sync activeConversation with updated conversation from conversations array
-  // This ensures activeConversation reflects the latest unreadCount after local updates
-  useEffect(() => {
-    if (activeConversation && conversations.length > 0) {
-      const updatedConv = conversations.find((c) => c.id === activeConversation.id);
-      if (updatedConv) {
-        setActiveConversation(updatedConv);
-      }
-    }
-  }, [conversations]);
-
-  // Load messages when entering a conversation — load + mark-as-read in one atomic flow
-  useEffect(() => {
-    if (activeConversation) {
-      setConvMembers(activeConversation.members);
-      loadMessages(activeConversation.id)
-        .then(async () => {
-          // Give a tick for messages state to settle, then mark as read
-          await new Promise((r) => setTimeout(r, 0));
-          await markMessagesRead(activeConversation.id);
-        })
-        .catch(() => {
-          // error surfaced via messageError in context
-        });
-    } else {
-      setConvMembers([]);
-      setMessages([]);
-    }
-  }, [activeConversation?.id]);
-
-  // Track if user has scrolled up manually (to avoid fighting with auto-scroll on old-message loads)
-  const userScrolledUpRef = useRef(false);
-  // Track whether we've done the initial scroll for the current conversation
-  const initialScrollDoneRef = useRef(false);
-
-  // Scroll to bottom — only on initial load, or when at the bottom, or when a new message arrives
-  const scrollToBottom = useCallback((animated = true) => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated });
-    }
-  }, []);
-
-  // Reset scroll state when conversation changes
-  useEffect(() => {
-    userScrolledUpRef.current = false;
-    initialScrollDoneRef.current = false;
-  }, [activeConversation?.id]);
-
-  // Scroll to bottom on initial load
-  useEffect(() => {
-    if (messages.length > 0 && activeConversation && !initialScrollDoneRef.current) {
-      initialScrollDoneRef.current = true;
-      setTimeout(() => scrollToBottom(false), 100);
-    }
-  }, [activeConversation?.id, messages.length]); // intentionally on length change
-
-  // Scroll to bottom when a new message arrives (append at end) — but only if user is at bottom
-  useEffect(() => {
-    if (!activeConversation || messages.length === 0) return;
-
-    const lastMsg = messages[messages.length - 1];
-    // Triggered by: a new message was added (length increased and last item is fresh)
-    // We can't easily detect "append vs prepend" here, so we check if user is near bottom
-    if (!userScrolledUpRef.current) {
-      setTimeout(() => scrollToBottom(true), 80);
-    }
-  }, [messages.length]); // only on length change = new message appended
 
   // Debounced user search when typing in New Message sheet
   useEffect(() => {
@@ -391,60 +296,6 @@ export default function MessageScreen() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Send Message ─────────────────────────────────────────────────────────
-  const handleSendDirect = useCallback(
-    async (text: string) => {
-      if (!activeConversation) return;
-      isSendingRef.current = true;
-      try {
-        await sendMessage(activeConversation.id, text);
-      } catch (err: any) {
-        Alert.alert("Error", err?.message ?? "Failed to send message.");
-        setMessageText(text); // restore on failure
-      } finally {
-        isSendingRef.current = false;
-        // Stop typing indicator — we just sent a message
-        if (iStartedTypingRef.current) {
-          iStartedTypingRef.current = false;
-          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-          invokeHub("StopTyping", activeConversation.id).catch(() => {});
-        }
-      }
-    },
-    [activeConversation, sendMessage],
-  );
-
-  const handleSend = useCallback(async () => {
-    if (!messageText.trim()) return;
-    if (!activeConversation) {
-      Alert.alert("Error", "No conversation selected.");
-      return;
-    }
-    const text = messageText.trim();
-    setMessageText("");
-    // Stop typing indicator immediately
-    if (iStartedTypingRef.current) {
-      iStartedTypingRef.current = false;
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      invokeHub("StopTyping", activeConversation.id).catch(() => {});
-    }
-    try {
-      await sendMessage(activeConversation.id, text);
-    } catch (err: any) {
-      setMessageText(text);
-      Alert.alert("Error", err?.message ?? "Failed to send message.");
-    }
-  }, [messageText, activeConversation, sendMessage]);
-
-  const handleBack = useCallback(() => {
-    setActiveConversation(null);
-    setMessageText("");
-    setConvMembers([]);
-    // Don't call refreshConversations here — it would re-fetch from server
-    // and could overwrite the optimistic unreadCount=0 set by markConversationAsRead.
-    // The next handleConversationPress will trigger a fresh refresh when needed.
-  }, [setActiveConversation]);
-
   const handleConversationPress = useCallback(
     async (conv: Conversation) => {
       await markConversationAsRead(conv.id);
@@ -454,9 +305,6 @@ export default function MessageScreen() {
   );
 
   // ─── Group Chat ────────────────────────────────────────────────────────────
-  const { addMemberToGroup, removeMemberFromGroup, leaveGroup } =
-    require("../../services/api");
-
   const handleCreateGroup = useCallback(async () => {
     if (!groupName.trim()) {
       Alert.alert("Error", "Please enter a group name.");
@@ -489,82 +337,6 @@ export default function MessageScreen() {
     }
   }, [createGroup, groupName, router, selectedMembers, refreshConversations, setActiveConversation]);
 
-  const handleRemoveMember = useCallback(
-    async (member: User) => {
-      if (!activeConversation) return;
-      Alert.alert(
-        "Remove Member",
-        `Remove ${member.displayName || member.username} from the group?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: async () => {
-              setIsRemovingMember(true);
-              try {
-                await removeMemberFromGroup(activeConversation.id, member.id);
-                setConvMembers((prev) => prev.filter((m) => m.id !== member.id));
-              } catch (err: any) {
-                Alert.alert(
-                  "Error",
-                  err?.response?.data?.message ?? "Failed to remove member."
-                );
-              } finally {
-                setIsRemovingMember(false);
-                setGroupMemberToRemove(null);
-              }
-            },
-          },
-        ]
-      );
-    },
-    [activeConversation, removeMemberFromGroup]
-  );
-
-  const handleAddMember = useCallback(
-    async (user: User) => {
-      if (!activeConversation) return;
-      setIsAddingMember(true);
-      try {
-        await addMemberToGroup(activeConversation.id, user.id);
-        setConvMembers((prev) => [...prev, user]);
-        setShowAddMember(false);
-        setAddMemberSearch("");
-      } catch (err: any) {
-        Alert.alert(
-          "Error",
-          err?.response?.data?.message ?? "Failed to add member."
-        );
-      } finally {
-        setIsAddingMember(false);
-      }
-    },
-    [activeConversation, addMemberToGroup]
-  );
-
-  const handleLeaveGroup = useCallback(async () => {
-    if (!activeConversation) return;
-    Alert.alert("Leave Group", "Are you sure you want to leave this group?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Leave",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await leaveGroup(activeConversation.id);
-            handleBack();
-          } catch (err: any) {
-            Alert.alert(
-              "Error",
-              err?.response?.data?.message ?? "Failed to leave group."
-            );
-          }
-        },
-      },
-    ]);
-  }, [activeConversation, handleBack, leaveGroup]);
-
   // ─── Helpers ──────────────────────────────────────────────────────────────
   const getOtherMember = useCallback(
     (conv: Conversation): User | undefined => {
@@ -578,13 +350,6 @@ export default function MessageScreen() {
       return senderId === currentUser?.id;
     },
     [currentUser?.id]
-  );
-
-  const getSenderFromMembers = useCallback(
-    (senderId: string): User | undefined => {
-      return convMembers.find((m) => m.id === senderId);
-    },
-    [convMembers]
   );
 
   // ─── Render: Conversation Item ─────────────────────────────────────────────
@@ -614,81 +379,6 @@ export default function MessageScreen() {
   };
 
   // ─── Render: Message Bubble ────────────────────────────────────────────────
-  const renderMessageBubble = ({
-    item,
-    index,
-  }: {
-    item: Message;
-    index: number;
-  }): React.JSX.Element => {
-    const mine = isCurrentUser(item.senderId);
-    const senderFromMembers = getSenderFromMembers(item.senderId);
-    const sender = senderFromMembers ?? item.sender;
-    const showAvatar =
-      !mine &&
-      (index === 0 || messages[index - 1]?.senderId !== item.senderId);
-
-    return (
-      <View style={[styles.messageRow, mine && styles.messageRowMine]}>
-        {!mine && (
-          <View style={styles.msgAvatarContainer}>
-            {showAvatar ? (
-              <Avatar
-                user={sender ?? ({ id: item.senderId, username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as User)}
-                size="tiny"
-                showOnlineIndicator={true}
-                isOnline={isUserOnline(item.senderId)}
-              />
-            ) : (
-              <View style={styles.msgAvatarPlaceholder} />
-            )}
-          </View>
-        )}
-        <View
-          style={[
-            styles.bubbleContainer,
-            mine ? styles.bubbleContainerMine : styles.bubbleContainerTheirs,
-          ]}
-        >
-          {!mine && showAvatar && (
-            <Text style={styles.senderName}>
-              {sender?.displayName || sender?.username || "User"}
-            </Text>
-          )}
-          <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-            {item.text ? (
-              <Text style={[styles.messageText, mine && styles.messageTextMine]}>
-                {item.text}
-              </Text>
-            ) : item.image ? (
-              <Image
-                source={{ uri: item.image }}
-                style={styles.messageImage}
-                resizeMode="cover"
-              />
-            ) : null}
-          </View>
-          <View style={[styles.msgMeta, mine && styles.msgMetaMine]}>
-            <Text style={styles.msgTime}>
-              {formatDistanceToNow(new Date(item.createdAt))}
-            </Text>
-            {mine && (
-              <Feather
-                name={item.isRead ? "check-circle" : "check"}
-                size={12}
-                color={item.isRead ? AppColors.primary : AppColors.iconMuted}
-              />
-            )}
-            {item.editedAt && (
-              <Text style={styles.editedTag}>edited</Text>
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  // ─── Render: Loading Skeleton ─────────────────────────────────────────────
   const renderLoadingItem = () => (
     <View style={styles.convItem}>
       <View style={[styles.avatar, styles.skeleton]} />
@@ -1086,233 +776,6 @@ export default function MessageScreen() {
 // ════════════════════════════════════════════════════════════════════════════════
 
 // ─── Group Settings Modal ─────────────────────────────────────────────────────
-interface GroupSettingsModalProps {
-  conversation: Conversation;
-  members: Conversation["members"];
-  onClose: () => void;
-  onRemoveMember: (member: User) => void;
-  onAddMember: () => void;
-  onLeaveGroup: () => void;
-  isRemovingMember: boolean;
-  isAddingMember: boolean;
-}
-
-function GroupSettingsModal({
-  conversation,
-  members,
-  onClose,
-  onRemoveMember,
-  onAddMember,
-  onLeaveGroup,
-  isRemovingMember,
-}: GroupSettingsModalProps): React.JSX.Element {
-  const { currentUser, isUserOnline } = useApp();
-  const isAdmin = conversation.adminIds?.includes(currentUser?.id ?? "") ?? false;
-
-  return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.settingsSheet}>
-          <View style={styles.settingsSheetHeader}>
-            <Text style={styles.settingsSheetTitle}>{conversation.name}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.settingsContent}>
-            <Text style={styles.sectionLabel}>Members ({members.length})</Text>
-
-            {members.map((member) => {
-              const isSelf = member.id === currentUser?.id;
-              const isGroupAdmin = conversation.adminIds?.includes(member.id) ?? false;
-                return (
-                  <View key={member.id} style={styles.memberRow}>
-                    <Avatar
-                      user={member}
-                      size="small"
-                      showOnlineIndicator={true}
-                      isOnline={isUserOnline(member.id)}
-                    />
-                    <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>
-                      {member.displayName || member.username}
-                      {isSelf && (
-                        <Text style={styles.memberSelf}> (You)</Text>
-                      )}
-                      {isGroupAdmin && (
-                        <Text style={styles.memberAdmin}> · Admin</Text>
-                      )}
-                    </Text>
-                  </View>
-                  {!isSelf && isAdmin && (
-                    <TouchableOpacity
-                      style={styles.removeMemberBtn}
-                      onPress={() => onRemoveMember(member)}
-                      disabled={isRemovingMember}
-                    >
-                      <Feather name="user-minus" size={18} color="#e74c3c" strokeWidth={2} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-
-            <View style={styles.settingsActions}>
-              {isAdmin && (
-                <TouchableOpacity style={styles.actionRow} onPress={onAddMember}>
-                  <Feather name="user-plus" size={20} color={AppColors.text} strokeWidth={2} />
-                  <Text style={styles.actionText}>Add member</Text>
-                  <Feather name="chevron-right" size={20} color={AppColors.iconMuted} strokeWidth={2} />
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity style={styles.actionRow} onPress={onLeaveGroup}>
-                <Feather name="log-out" size={20} color="#e74c3c" strokeWidth={2} />
-                <Text style={styles.leaveGroupText}>Leave group</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-// ─── Add Member Sheet ─────────────────────────────────────────────────────────
-interface AddMemberSheetProps {
-  conversation: Conversation;
-  currentMembers: Conversation["members"];
-  onClose: () => void;
-  onAddMember: (user: User) => void;
-  isAddingMember: boolean;
-}
-
-function AddMemberSheet({
-  conversation,
-  currentMembers,
-  onClose,
-  onAddMember,
-  isAddingMember,
-}: AddMemberSheetProps): React.JSX.Element {
-  const { currentUser, isUserOnline } = useApp();
-  const [friends, setFriends] = useState<User[]>([]);
-  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
-  const [search, setSearch] = useState("");
-  const memberIds = currentMembers.map((m) => m.id);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadFriends = async () => {
-      if (!currentUser?.id) return;
-      setIsLoadingFriends(true);
-      try {
-        const data = await api.getFriends(currentUser.id, 200);
-        if (!cancelled) setFriends(data);
-      } catch {
-        if (!cancelled) setFriends([]);
-      } finally {
-        if (!cancelled) setIsLoadingFriends(false);
-      }
-    };
-    loadFriends();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.id]);
-
-  const availableUsers = friends.filter(
-    (u) => u.id !== currentUser?.id && !memberIds.includes(u.id)
-  );
-
-  const filtered = search.length > 0
-    ? availableUsers.filter(
-        (u) =>
-          u.username?.toLowerCase().includes(search.toLowerCase()) ||
-          u.displayName?.toLowerCase().includes(search.toLowerCase())
-      )
-    : availableUsers;
-
-  return (
-    <View style={styles.sheetOverlay}>
-      <TouchableOpacity
-        style={styles.sheetBackdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      />
-      <View style={styles.newMsgSheet}>
-        <View style={styles.newMsgSheetHeader}>
-          <Text style={styles.newMsgSheetTitle}>Add Member</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.newMsgSearchContainer}>
-          <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
-          <TextInput
-            style={styles.newMsgSearchInput}
-            placeholder="Search people..."
-            placeholderTextColor={AppColors.iconMuted}
-            value={search}
-            onChangeText={setSearch}
-            autoFocus
-          />
-        </View>
-
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.newMsgUserItem}
-              activeOpacity={0.7}
-              onPress={() => onAddMember(item)}
-              disabled={isAddingMember}
-            >
-              <View style={styles.newMsgAvatarContainer}>
-                <Avatar
-                  user={item}
-                  size="small"
-                  showOnlineIndicator={true}
-                  isOnline={isUserOnline(item.id)}
-                />
-              </View>
-              <View style={styles.newMsgUserInfo}>
-                <Text style={styles.newMsgUserName}>{item.username}</Text>
-                <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>
-              </View>
-              {isAddingMember ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              ) : (
-                <Feather name="user-plus" size={20} color={AppColors.primary} strokeWidth={2} />
-              )}
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
-            isLoadingFriends ? (
-              <View style={styles.newMsgEmpty}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
-              </View>
-            ) : (
-              <Text style={styles.newMsgEmpty}>
-                {availableUsers.length === 0
-                  ? "No friends available to add"
-                  : "No results"}
-              </Text>
-            )
-          }
-          contentContainerStyle={{ paddingBottom: TAB_BAR_BOTTOM_OFFSET + 20 }}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    </View>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════════════
-// Styles
-// ════════════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: {
     flex: 1,
