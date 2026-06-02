@@ -7,15 +7,20 @@ Một nền tảng mạng xã hội phân tán hiện đại được xây dựn
 ## 📋 Mục Lục
 - [Tổng Quan](#-tổng-quan)
 - [Tính Năng](#-tính-năng)
-- [Kiến Trúc](#-kiến-trúc)
-- [Microservices](#-microservices)
 - [Tech Stack](#-tech-stack)
+- [Kiến Trúc Hệ Thống](#-kiến-trúc-hệ-thống)
+- [Tổng Quan Microservices](#-tổng-quan-microservices)
 - [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
 - [Yêu Cầu Hệ Thống](#-yêu-cầu-hệ-thống)
+- [Cấu Hình Môi Trường](#-cấu-hình-môi-trường)
 - [Khởi Động Nhanh](#-khởi-động-nhanh)
-- [Lược Đồ Cơ Sở Dữ Liệu](#-lược-đồ-cơ-sở-dữ-liệu)
 - [Tài Liệu API](#-tài-liệu-api)
-- [Triển Khai](#-triển-khai)
+- [Docker & Triển Khai](#-docker--triển-khai)
+- [Giám Sát & Ghi Nhật Ký](#-giám-sát--ghi-nhật-ký)
+- [Đóng Góp](#-đóng-góp)
+- [Giấy Phép](#-giấy-phép)
+- [Hỗ Trợ & Liên Hệ](#-hỗ-trợ--liên-hệ)
+- [Lời Cảm Ơn](#-lời-cảm-ơn)
 
 ---
 
@@ -82,14 +87,15 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 ---
 
 ## 🛠️ Tech Stack
-## Sơ đồ:
-<img width="1779" height="960" alt="TechStack_UITVibes - Page 1" src="https://github.com/user-attachments/assets/b4ec8ba3-ceac-4217-8797-637e4cf88af6" />
+
+### 📊 System Diagram
+<img width="1779" height="960" alt="TechStack_UITVibes - Page 1" src="https://github.com/user-attachments/assets/3a163f20-c87d-45cf-b279-8330d79b84df" />
 
 
 ### Frontend
 | Công Nghệ | Mục Đích |
 |-----------|----------|
-| **React Native (Expo v54)** | Framework di động đa nền tảng |
+| **React Native (Expo ~54)** | Framework di động đa nền tảng |
 | **TypeScript** | JavaScript an toàn về kiểu |
 | **Expo Router** | Đường dẫn dựa trên tập tin & điều hướng |
 | **Axios** | HTTP client với interceptors |
@@ -101,17 +107,17 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 | Công Nghệ | Mục Đích |
 |-----------|----------|
 | **.NET 8 & ASP.NET Core** | Framework cho tất cả microservices |
-| **.NET Aspire** | Orchestration phát triển địa phương |
+| **.NET Aspire** | Orchestration phát triển |
 | **Entity Framework Core** | ORM cho truy cập dữ liệu |
 | **FluentValidation** | Xác thực đầu vào |
-| **JWT Bearer** | Xác thực không trạng thái |
+| **JWT Bearer** | Xác thực và phân quyền |
 
 ### Dữ Liệu & Hạ Tầng
 | Công Nghệ | Mục Đích |
 |-----------|----------|
 | **PostgreSQL 16** | Cơ sở dữ liệu quan hệ chính (nhiều instance) |
-| **Redis 7** | Cấi nhốm, phiên, xếp hàng |
-| **RabbitMQ 3** | Mô hình tin nhắn, event bus |
+| **Redis 7** | Cache |
+| **RabbitMQ 3** | Message queue |
 | **SignalR** | Giao tiếp real-time WebSocket |
 | **YARP** | API Gateway & reverse proxy |
 | **Cloudinary** | Lưu trữ & tối ưu hóa media |
@@ -123,7 +129,7 @@ UITVibes là một nền tảng mạng xã hội có khả năng mở rộng cao
 
 ## 🏗️ Kiến Trúc Hệ Thống
 
-Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD), nơi mà mỗi service sở hữu cơ sở dữ liệu riêng và giao tiếp qua nhắn tin bất đồng bộ (RabbitMQ) hoặc gọi RPC đồng bộ.
+Dự án tuân theo mẫu microservices, nơi mà mỗi service sở hữu cơ sở dữ liệu riêng và giao tiếp qua nhắn tin bất đồng bộ (RabbitMQ) hoặc gọi RPC đồng bộ.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -134,12 +140,11 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
                  │
 ┌────────────────▼────────────────────────────────────────────┐
 │              API Gateway (YARP)                             │
-│         Cổng 5000 - Điều phối Request & JWT Auth            │
+│         Cổng tự động (.NET Aspire)                          │
 └─┬──────────┬──────────┬──────────┬──────────┬───────────────┘
   │          │          │          │          │
 ┌─▼──┐  ┌───▼──┐  ┌────▼───┐ ┌───▼──┐  ┌────▼────┐
 │Auth│  │User  │  │Post    │ │Message  │Notif   │
-│5158│  │5016  │  │5078    │ │5240     │5091    │
 └────┘  └──────┘  └────────┘ └────────┘ └─────────┘
   │        │        │          │         │
   └────────┴────────┼──────────┴─────────┘
@@ -166,7 +171,7 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 
 ## 🔧 Tổng Quan Microservices
 
-### 1. **AuthService** (Cổng 5158)
+### 1. **AuthService**
 **Mục Đích**: Xác thực người dùng, đăng ký và phân quyền
 - Đăng ký người dùng với xác thực email qua SMTP
 - Tạo JWT token & refresh tokens
@@ -177,13 +182,10 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 - **Cơ sở dữ liệu**: PostgreSQL (`authdb`)
 - **Các phụ thuộc chính**: RabbitMQ, Redis, SMTP, JWT
 
-**Giao Tiếp**:
-- 📤 Công bố: `UserRegistered`, `UserBanned` events
-- 📥 Được tiêu thụ bởi: UserService, NotificationService
 
 ---
 
-### 2. **UserService** (Cổng 5016)
+### 2. **UserService**
 **Mục Đích**: Hồ sơ người dùng, quan hệ xã hội và khám phá
 - Quản lý hồ sơ người dùng (tên hiển thị, avatar, ảnh bìa, tiểu sử)
 - Tải avatar/ảnh bìa qua Cloudinary
@@ -196,14 +198,10 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 - **Cơ sở dữ liệu**: PostgreSQL (`userdb`)
 - **Các phụ thuộc chính**: Cloudinary, RabbitMQ, gọi RPC đến các service khác
 
-**Giao Tiếp**:
-- 📤 Công bố: `UserFollowed`, `UserUnfollowed` events
-- 📥 Tiêu thụ: `UserRegistered` (tạo hồ sơ)
-- 🔄 RPC: Được PostService, MessageService gọi lấy thông tin người dùng
 
 ---
 
-### 3. **PostService** (Cổng 5078)
+### 3. **PostService**
 **Mục Đích**: Quản lý nội dung (bài đăng, stories, reels, bình luận)
 - Tạo, đọc, cập nhật, xóa bài đăng
 - Kiểm soát hiển thị (Công khai / Chỉ người theo dõi / Riêng tư)
@@ -221,14 +219,9 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 - **Cơ sở dữ liệu**: PostgreSQL (`postdb`)
 - **Các phụ thuộc chính**: Cloudinary, RabbitMQ, RPC đến UserService
 
-**Giao Tiếp**:
-- 📤 Công bố: `PostLiked`, `PostCommented`, `PostMentioned`, `CommentMentioned` events
-- 📥 Tiêu thụ: Dữ liệu UserService qua RPC
-- 🔄 RPC: Gọi UserService để lấy hồ sơ tác giả & trạng thái theo dõi
-
 ---
 
-### 4. **MessageService** (Cổng 5240)
+### 4. **MessageService**
 **Mục Đích**: Nhắn tin và trò chuyện thời gian thực
 - Trò chuyện riêng 1:1 giữa các người dùng
 - Nhắn tin nhóm (nhiều người nhận)
@@ -242,14 +235,10 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 - **Cơ sở dữ liệu**: PostgreSQL (`messagedb`)
 - **Các phụ thuộc chính**: SignalR, RabbitMQ, Redis (để mở rộng)
 
-**Giao Tiếp**:
-- 📤 Công bố: `MessageSent` events
-- 📥 Được tiêu thụ bởi: NotificationService
-- 🔄 RPC: Lấy thông tin người dùng từ UserService
 
 ---
 
-### 5. **NotificationService** (Cổng 5091)
+### 5. **NotificationService**
 **Mục Đích**: Thông báo đẩy và quản lý thông báo
 - Tích hợp Firebase Cloud Messaging (FCM) để gửi thông báo
 - Sự kiện thông báo trong ứng dụng
@@ -265,85 +254,36 @@ Dự án tuân theo mẫu microservices với Thiết kế hướng Miền (DDD)
 - **Cơ sở dữ liệu**: PostgreSQL (`notificationdb`)
 - **Các phụ thuộc chính**: Firebase Admin SDK, RabbitMQ event consumers
 
-**Giao Tiếp**:
-- 📥 Tiêu thụ: Sự kiện từ AuthService, UserService, PostService, MessageService
-- Công bố: Thông báo đẩy đến các thiết bị khách hàng
-
 ---
 
-### 6. **ApiService (API Gateway)** (Cổng 5000)
+### 6. **ApiService (API Gateway)**
 **Mục Đích**: Điều phối request trung tâm, tổng hợp và xác thực
 - YARP reverse proxy điều phối đến tất cả microservices
 - Xác thực JWT tập trung & phân quyền
-- Giới hạn tốc độ
-- Khám phá service
 - Tổng hợp tài liệu Swagger/OpenAPI
 - Xử lý token chuỗi truy vấn SignalR
 - Ghi nhật ký request/response
 - Xử lý lỗi & chuẩn hóa mã trạng thái
 
-**Bản Đồ Điều Phối**:
-```
-/auth/* → AuthService (5158)
-/users/* → UserService (5016)
-/posts/* → PostService (5078)
-/messages/* → MessageService (5240) + SignalR hub
-/notifications/* → NotificationService (5091)
-```
 
----
-
-## 💾 Lược Đồ Cơ Sở Dữ Liệu
-
-### **AuthDB** (PostgreSQL)
-- `Users`: Thông tin đăng nhập, vai trò, trạng thái xác thực, trạng thái cấm
-- `RefreshTokens`: Theo dõi làm mới token
-
-### **UserDB** (PostgreSQL)
-- `UserProfiles`: Thông tin hiển thị, avatars, tiểu sử, số lượng
-- `Follows`: Cặp người theo dõi-theo dõi
-- `Blocks`: Cặp người dùng bị chặn
-- `SocialLinks`: Liên kết hồ sơ bên ngoài
-- `UserReports`: Báo cáo lạm dụng
-
-### **PostDB** (PostgreSQL)
-- `Posts`: Nội dung, media, hiển thị, số liệu engagement
-- `Comments`: Cấu trúc bình luận lồng nhau
-- `Likes`: Thích bài đăng & bình luận
-- `Stories`: Nội dung tạm thời
-- `StoryHighlights`: Bộ sưu tập stories được lưu
-- `Reels`: Nội dung video ngắn
-- `PostMedia`: Siêu dữ liệu ảnh/video với URL Cloudinary
-- `Hashtags`: Theo dõi tag & xu hướng
-- `Mentions`: Theo dõi nhắc đến người dùng
-- `Bookmarks`: Bài đăng được lưu
-- `PostReports`: Cột kỷ kiểm duyệt nội dung
-
-### **MessageDB** (PostgreSQL)
-- `Conversations`: Trò chuyện riêng/nhóm
-- `Messages`: Nội dung tin nhắn, trạng thái đọc, dấu thời gian
-- `ConversationMembers`: Tham gia người dùng
-
-### **NotificationDB** (PostgreSQL)
-- `Notifications`: Thông báo sự kiện
-- `UserNotificationSettings`: Tùy chỉnh theo loại sự kiện
-- `DeviceTokens`: Đăng ký thiết bị FCM
+> **Lưu ý**: Các cổng của services được gán tự động bởi .NET Aspire. Xem console output khi chạy `dotnet run` để biết cổng cụ thể.
 
 ---
 
 ## 📂 Cấu Trúc Dự Án
 
 ```
-UITVibes-Project/
+UITVibes/
 ├── Backend/
 │   ├── UITVibes-Microservices.sln          # Visual Studio solution
 │   ├── docker-compose.yml                  # Docker Compose cho hạ tầng
 │   │
 │   ├── UITVibes-Microservices.AppHost/     # .NET Aspire orchestrator
-│   │   └── AppHost.cs                      # Phụ thuộc service & khởi động
+│   │   └── AppHost.cs                      # Service dependencies & startup config
 │   │
 │   ├── UITVibes-Microservices.ServiceDefaults/
-│   │   └── Cấu hình chung service
+│   │   ├── Extensions.cs                   # Shared service extensions
+│   │   └── UITVibes-Microservices.ServiceDefaults.csproj
 │   │
 │   ├── UITVibes-Microservices.ApiService/  # API Gateway (YARP)
 │   │   ├── Program.cs
@@ -356,8 +296,8 @@ UITVibes-Project/
 │   │   ├── DTOs/
 │   │   ├── Models/
 │   │   ├── ServiceLayer/
-│   │   ├── Migrations/                    # EF Core migrations
-│   │   ├── Messaging/                     # RabbitMQ publishers
+│   │   ├── Migrations/
+│   │   ├── Messaging/
 │   │   └── appsettings.json
 │   │
 │   ├── UserService/                        # Microservice hồ sơ người dùng
@@ -384,21 +324,21 @@ UITVibes-Project/
 │   │   ├── Program.cs
 │   │   ├── Controllers/
 │   │   ├── DTOs/
-│   │   ├── Hubs/                          # SignalR hubs
+│   │   ├── Hubs/
 │   │   ├── Models/
 │   │   ├── ServiceLayer/
 │   │   ├── Migrations/
 │   │   ├── Messaging/
 │   │   └── appsettings.json
 │   │
-│   ├── NotificationService/                # Microservice thông báo
+│   ├── NotificationService/               # Microservice thông báo
 │   │   ├── Program.cs
 │   │   ├── Controllers/
 │   │   ├── DTOs/
 │   │   ├── Models/
 │   │   ├── ServiceLayer/
 │   │   ├── Migrations/
-│   │   ├── Messaging/                     # RabbitMQ event consumers
+│   │   ├── Messaging/
 │   │   └── appsettings.json
 │   │
 │   └── DbSeeder/                          # Tập lệnh khởi tạo cơ sở dữ liệu
@@ -406,68 +346,123 @@ UITVibes-Project/
 │       ├── UserDbSeeder.sql
 │       ├── PostDbSeeder.sql
 │       ├── MessageDbSeeder.sql
-│       └── (Những cái khác)
+│       └── ...
 │
-├── frontend/                               # Ứng dụng React Native (Expo)
-│   ├── app/                               # Điều hướng dựa trên tập tin Expo Router
-│   │   ├── _layout.tsx                   # Bố cục gốc & Auth guard
-│   │   ├── (tabs)/                       # Màn hình điều hướng tab
+├── frontend/                              # React Native (Expo)
+│   ├── app/                              # File-based navigation (Expo Router)
+│   │   ├── _layout.tsx                   # Root layout & Auth guard
+│   │   ├── index.tsx
+│   │   ├── (tabs)/                       # Tab navigation
+│   │   │   ├── _layout.tsx
 │   │   │   ├── home.tsx
 │   │   │   ├── search.tsx
-│   │   │   ├── music.tsx
+│   │   │   ├── reels.tsx
 │   │   │   ├── profile.tsx
-│   │   │   ├── message.tsx
-│   │   │   └── reels.tsx
-│   │   ├── auth/                         # Màn hình xác thực
-│   │   │   ├── login.tsx
-│   │   │   ├── register.tsx
-│   │   │   └── (các luồng xác thực khác)
-│   │   ├── post/                         # Màn hình chi tiết bài đăng
-│   │   ├── profile/                      # Màn hình hồ sơ người dùng
-│   │   └── (màn hình khác)
+│   │   │   └── create.tsx
+│   │   ├── auth/
+│   │   ├── post/
+│   │   ├── profile/
+│   │   ├── story/
+│   │   ├── message/
+│   │   ├── followers/
+│   │   ├── admin/
+│   │   ├── notifications.tsx
+│   │   ├── settings.tsx
+│   │   ├── privacy.tsx
+│   │   ├── terms.tsx
+│   │   ├── help.tsx
+│   │   ├── archive.tsx
+│   │   ├── blocked-accounts.tsx
+│   │   └── change-password.tsx
 │   │
-│   ├── components/                        # Các thành phần React có thể tái sử dụng
+│   ├── components/                        # Reusable React components
 │   │   ├── Button.tsx
+│   │   ├── Avatar.tsx
 │   │   ├── PostCard.tsx
+│   │   ├── ReelCard.tsx
 │   │   ├── CommentItem.tsx
+│   │   ├── CommentSheet.tsx
+│   │   ├── CommentInput.tsx
+│   │   ├── StoryBar.tsx
 │   │   ├── ModernTabBar.tsx
-│   │   ├── AnimatedButton.tsx            # Thành phần động mới
+│   │   ├── AnimatedButton.tsx
 │   │   ├── AnimatedModal.tsx
+│   │   ├── AnimatedHeart.tsx
 │   │   ├── EnhancedSkeletonLoader.tsx
 │   │   ├── EnhancedToast.tsx
 │   │   ├── PremiumHeader.tsx
-│   │   └── (thêm thành phần)
+│   │   ├── StaticPremiumHeader.tsx
+│   │   ├── EditProfileModal.tsx
+│   │   ├── ForgotPasswordModal.tsx
+│   │   ├── OTPInput.tsx
+│   │   ├── ShareSheet.tsx
+│   │   ├── ReportPostSheet.tsx
+│   │   ├── PostActionsSheet.tsx
+│   │   ├── MessageListItem.tsx
+│   │   ├── ConfirmationModal.tsx
+│   │   ├── BlockedAccountsModal.tsx
+│   │   ├── ImageCarousel.tsx
+│   │   ├── SkeletonLoader.tsx
+│   │   ├── OnlineIndicator.tsx
+│   │   ├── OnlineFriendsList.tsx
+│   │   └── ui/ / help/ / privacy/ / settings/ / blocked-accounts/ / highlight/ / contact/
 │   │
-│   ├── services/                         # Dịch vụ API
+│   ├── services/                         # API services
+│   │   ├── api.ts
+│   │   ├── httpClient.ts
 │   │   ├── authService.ts
 │   │   ├── userService.ts
 │   │   ├── postService.ts
 │   │   ├── messageService.ts
 │   │   ├── notificationService.ts
-│   │   └── signalrService.ts            # Dịch vụ WebSocket
+│   │   ├── signalrService.ts
+│   │   ├── storyService.ts
+│   │   ├── highlightService.ts
+│   │   ├── blockService.ts
+│   │   ├── adminService.ts
+│   │   ├── reportService.ts
+│   │   ├── onlineTrackingService.ts
+│   │   ├── session.ts
+│   │   ├── tokenStorage.ts
+│   │   ├── backendTypes.ts
+│   │   └── admin/
 │   │
-│   ├── context/                          # React Context (quản lý trạng thái)
-│   │   └── AppContext.tsx
+│   ├── context/                          # React Context
+│   │   ├── AppContext.tsx                # Global app state
+│   │   └── tabBarVisibility.tsx
 │   │
-│   ├── hooks/                            # Các hook React tùy chỉnh
-│   │   ├── useMicroInteractions.ts      # Animation hooks
-│   │   └── (các hook khác)
+│   ├── hooks/                            # Custom React hooks
+│   │   ├── useMicroInteractions.ts
+│   │   ├── useOnlineUsers.ts
+│   │   ├── useThemeColor.ts
+│   │   ├── use-color-scheme.ts
+│   │   └── index.ts
 │   │
-│   ├── utils/                            # Hàm tiện ích
-│   ├── constants/                        # Hằng số ứng dụng
-│   ├── types/                            # Loại TypeScript
-│   ├── assets/                           # Ảnh, phông chữ
-│   ├── animations/                       # Cấu hình animation
+│   ├── constants/                        # App constants
+│   │   ├── theme.ts
+│   │   └── typography.ts
 │   │
-│   ├── package.json                      # Phụ thuộc npm
+│   ├── utils/                           # Utility functions
+│   │   └── time.ts
+│   │
+│   ├── types/                           # TypeScript types
+│   │   └── admin/
+│   │
+│   ├── src/                            # Legacy source (admin, types)
+│   ├── animations/                    # Animation configs
+│   ├── assets/                        # Images, fonts
+│   ├── data/                          # Static data
+│   ├── scripts/                      # Build scripts
+│   │
+│   ├── package.json
 │   ├── tsconfig.json
 │   ├── babel.config.js
-│   ├── app.json                          # Cấu hình Expo
+│   ├── app.json
+│   ├── expo-env.d.ts
 │   └── README.md
 │
 ├── LICENSE
-└── README.md                               # Tệp này
-
+└── README.md                           # This file
 ```
 
 ---
@@ -484,6 +479,69 @@ Trước khi bắt đầu, hãy đảm bảo bạn đã cài đặt:
 
 ---
 
+## 🔐 Cấu Hình Môi Trường
+
+### .NET Aspire Parameters
+
+Khi chạy `.NET Aspire`, bạn cần cung cấp các tham số sau (được định nghĩa trong `AppHost.cs`):
+
+| Tham Số | Mô Tả | Bắt Buộc | Ví Dụ |
+|---------|--------|-----------|-------|
+| `jwt-key` | Khóa ký JWT tokens | ✅ Có | `YourSuperSecretKeyAtLeast32Chars` |
+| `cloudinary-cloudname` | Cloud name từ Cloudinary | ✅ Có | `my-cloud` |
+| `cloudinary-apikey` | API Key Cloudinary | ✅ Có | `123456789012345` |
+| `cloudinary-apisecret` | API Secret Cloudinary | ✅ Có | `abc123...` |
+| `smtp-server` | Địa chỉ SMTP server | ✅ Có | `smtp.gmail.com` |
+| `smtp-port` | Cổng SMTP | ✅ Có | `587` |
+| `smtp-username` | Tên đăng nhập SMTP | ✅ Có | `your-email@gmail.com` |
+| `smtp-password` | Mật khẩu SMTP/App Password | ✅ Có | `xxxx xxxx xxxx xxxx` |
+| `smtp-senderemail` | Email người gửi | ✅ Có | `noreply@uitvibes.com` |
+| `smtp-sendername` | Tên người gửi | ✅ Có | `UITVibes` |
+| `firebase-credentialpath` | Đường dẫn file JSON Firebase | ❌ Không | `./firebase-key.json` |
+
+### Thiết Lập Tham Số
+
+**Cách 1: Qua command line**
+```bash
+cd Backend/UITVibes-Microservices.AppHost
+dotnet run --params="jwt-key=YourSecretKey;cloudinary-cloudname=mycloud"
+```
+
+**Cách 2: Qua file `appsettings.User.json`**
+```json
+{
+  "Parameters": {
+    "jwt-key": "YourSecretKey",
+    "cloudinary-cloudname": "mycloud",
+    "cloudinary-apikey": "your-api-key",
+    "cloudinary-apisecret": "your-api-secret",
+    "smtp-server": "smtp.gmail.com",
+    "smtp-port": "587",
+    "smtp-username": "your-email@gmail.com",
+    "smtp-password": "your-app-password",
+    "smtp-senderemail": "noreply@uitvibes.com",
+    "smtp-sendername": "UITVibes"
+  }
+}
+```
+
+**Cách 3: Qua biến môi trường**
+```bash
+export ORCHESTRATION_PARAMS="jwt-key=YourSecretKey;..."
+```
+
+### Cloudinary Setup
+1. Đăng ký tài khoản tại [cloudinary.com](https://cloudinary.com)
+2. Lấy Cloud Name, API Key, và API Secret từ Dashboard
+3. Cấu hình Upload Preset cho phép unsigned uploads nếu cần
+
+### Firebase Setup (cho Notifications)
+1. Tạo project Firebase tại [console.firebase.google.com](https://console.firebase.google.com)
+2. Tạo Service Account và tải file JSON
+3. Đặt đường dẫn file vào tham số `firebase-credentialpath`
+
+---
+
 ## 🚀 Khởi Động Nhanh
 
 ### Bước 1: Sao Chép Kho Lưu Trữ
@@ -492,19 +550,21 @@ git clone https://github.com/curyhao123/UITVibes-Project.git
 cd UITVibes-Project
 ```
 
-### Bước 2: Khởi Động Hạ Tầng (Docker Compose)
-Khởi động PostgreSQL, Redis, và RabbitMQ:
+### Bước 2: Khởi Động Hạ Tầng
 
+#### Tùy Chọn A: Dùng Docker Compose (Chạy riêng infrastructure)
 ```bash
 cd Backend
 docker-compose up -d
 ```
-
 Điều này sẽ khởi động:
 - PostgreSQL (cổng 5432)
 - Redis (cổng 6379)
 - RabbitMQ (cổng 5672, UI ở 15672)
 - PgAdmin (cổng 5050)
+
+#### Tùy Chọn B: .NET Aspire tự quản lý (Khuyến Nghị)
+Nếu dùng .NET Aspire ở Bước 3, hạ tầng sẽ được khởi động tự động.
 
 ### Bước 3: Thiết Lập Backend
 
@@ -574,8 +634,8 @@ npx expo start
 ## 🔗 Tài Liệu API
 
 ### URL Cơ Bản
-- **Phát Triển**: `http://localhost:5000` (thông qua API Gateway)
-- **Direct Services**: Xem cổng microservice ở trên
+- **Phát Triển**: `http://localhost:<api-gateway-port>` (thông qua API Gateway)
+- **Direct Services**: Xem console output khi chạy .NET Aspire để biết cổng cụ thể
 
 ### Xác Thực
 Tất cả các endpoint (ngoại trừ `/auth/register`, `/auth/login`) yêu cầu token JWT:
@@ -645,7 +705,7 @@ DELETE /devices/{tokenId}       # Hủy đăng ký thiết bị
 
 ### Tài Liệu Swagger
 Truy cập tài liệu API tương tác:
-- **Cục Bộ**: http://localhost:5000/swagger/index.html
+- **Cục Bộ**: `http://localhost:<api-gateway-port>/swagger/index.html`
 
 ---
 
@@ -706,78 +766,14 @@ services:
 
 ---
 
-## 🔄 Luồng Sự Kiện & Giao Tiếp
-
-### Mẫu Công Bố Sự Kiện
-Các dịch vụ công bố domain events tới RabbitMQ mà các dịch vụ khác tiêu thụ:
-
-```
-AuthService công bố:
-  ├─ UserRegistered → (UserService, NotificationService tiêu thụ)
-  └─ UserBanned
-
-UserService công bố:
-  ├─ UserFollowed → (NotificationService)
-  └─ UserUnfollowed
-
-PostService công bố:
-  ├─ PostLiked → (NotificationService)
-  ├─ PostCommented → (NotificationService)
-  ├─ PostMentioned → (NotificationService)
-  └─ CommentMentioned → (NotificationService)
-
-MessageService công bố:
-  └─ MessageSent → (NotificationService)
-
-NotificationService tiêu thụ:
-  └─ Tất cả sự kiện ở trên và gửi thông báo đẩy FCM
-```
-
-### Các Cuộc Gọi RPC (Đồng Bộ)
-Một số dịch vụ gọi các dịch vụ khác một cách đồng bộ cho các hoạt động cụ thể:
-
-```
-PostService → UserService
-  (Lấy hồ sơ tác giả, trạng thái theo dõi)
-
-MessageService → UserService
-  (Xác thực thành viên trò chuyện)
-```
-
----
-
-## 🧪 Kiểm Thử
-
-### Backend Unit Tests
-```bash
-cd Backend
-dotnet test
-```
-
-### Backend Integration Tests
-```bash
-# Đảm bảo Docker Compose đang chạy
-dotnet test --configuration Integration
-```
-
-### Frontend E2E Tests
-```bash
-cd frontend
-npm run test
-```
-
----
-
 ## 📊 Giám Sát & Ghi Nhật Ký
 
 ### Health Checks
-Mỗi dịch vụ công bố một endpoint health check:
+Mỗi dịch vụ công bố một endpoint health check (kiểm tra console output để biết cổng cụ thể):
 ```bash
-curl http://localhost:5158/health    # AuthService
-curl http://localhost:5016/health    # UserService
-curl http://localhost:5078/health    # PostService
-curl http://localhost:5240/health    # MessageService
-curl http://localhost:5091/health    # NotificationService
+# .NET Aspire sẽ hiển thị các endpoints trong console
+# Health check endpoint cho mỗi service:
+curl http://localhost:<port>/health
 ```
 
 ### RabbitMQ Management UI
@@ -812,9 +808,8 @@ Dự án này được cấp phép theo Giấy Phép MIT - xem tệp [LICENSE](L
 ## 📞 Hỗ Trợ & Liên Hệ
 
 Để có câu hỏi, sự cố hoặc đề xuất:
-- 📧 Email: support@uitvibes.com
 - 🐛 Issues: [GitHub Issues](https://github.com/curyhao123/UITVibes-Microservices/issues)
-- 💬 Discord: [Community Server](https://discord.gg/your-server)
+- 💬 Discord: [Community Server](https://discord.gg/your-server) *(Link sẽ được cập nhật khi có server)*
 
 ---
 
