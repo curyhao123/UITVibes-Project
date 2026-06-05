@@ -11,4 +11,5 @@ public interface IConversationService
     Task AddMemberToGroupAsync(Guid conversationId, Guid userId, Guid targetUserId);
     Task RemoveMemberFromGroupAsync(Guid conversationId, Guid userId, Guid targetUserId);
     Task LeaveGroupAsync(Guid conversationId, Guid userId);
+    Task DeleteConversationAsync(Guid conversationId, Guid userId);
 }

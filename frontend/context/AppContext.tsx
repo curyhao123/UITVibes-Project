@@ -6,28 +6,22 @@ import React, {
   useCallback,
   ReactNode,
   useRef,
-} from "react";
-import { Platform } from "react-native";
+} from 'react';
 import {
   User,
   Post,
   Conversation,
   Message,
-  Notification,
-} from "../data/mockData";
-import * as api from "../services/api";
-import type { Story } from "../services/storyService";
-import { useOnlineUsers } from "../hooks/useOnlineUsers";
-import messaging from "@react-native-firebase/messaging";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useDeviceToken } from "../hooks/useDeviceToken";
-import { getConnection } from "../services/signalrService";
-import type { BE_MessageResponse } from "../services/backendTypes";
-import { transformBEMessage } from "../services/messageService";
-
-const NOTIF_PERMISSION_PROMPTED_KEY =
-  "@uitvibes_notification_permission_prompted";
+} from '../data/mockData';
+import * as api from '../services/api';
+import type { Story } from '../services/storyService';
+import type { Notification } from '../services/notificationService';
+import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { getConnection } from '../services/signalrService';
+import type { BE_MessageResponse } from '../services/backendTypes';
+import { transformBEMessage } from '../services/messageService';
 import type { Reel as APIReel } from '../services/postService';
+import { clearReelsUserCache } from '../context/reelsUserCache';
 
 interface AppContextType {
   // Auth / User
@@ -39,6 +33,7 @@ interface AppContextType {
   register: (email: string, password: string, username: string) => Promise<boolean>;
   confirmPendingAuth: (user: User) => void;
   logout: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
 
   // Onboarding
@@ -51,7 +46,7 @@ interface AppContextType {
     bio: string;
     avatar: string;
   };
-  saveOnboardingData: (data: Partial<AppContextType["onboardingData"]>) => void;
+  saveOnboardingData: (data: Partial<AppContextType['onboardingData']>) => void;
   completeOnboardingStep: () => void;
   resetOnboarding: () => void;
 
@@ -68,7 +63,7 @@ interface AppContextType {
   lastPostsFetch: number;
   lastStoriesFetch: number;
 
-  myPosts: Post[]; // Posts của user hiện tại cho profile
+  myPosts: Post[];           // Posts của user hiện tại cho profile
   refreshMyPosts: () => Promise<void>; // Fetch riêng từ /post/my-posts
 
   // Feed filter
@@ -79,12 +74,8 @@ interface AppContextType {
   toggleLike: (postId: string) => Promise<void>;
   toggleBookmark: (postId: string) => Promise<void>;
   toggleRepost: (postId: string) => Promise<void>;
-  repostedPosts: Post[]; // Danh sách repost của user hiện tại
-  addComment: (
-    postId: string,
-    text: string,
-    parentCommentId?: string,
-  ) => Promise<void>;
+  repostedPosts: Post[];           // Danh sách repost của user hiện tại
+  addComment: (postId: string, text: string, parentCommentId?: string) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
     images: string[],
@@ -131,17 +122,13 @@ interface AppContextType {
   conversationError: string | null;
   messageError: string | null;
   refreshConversations: () => Promise<void>;
-  loadMessages: (conversationId: string) => Promise<void>;
+  loadMessages: (conversationId: string) => Promise<Message[]>;
   sendMessage: (conversationId: string, text: string) => Promise<void>;
-  editMessage: (
-    conversationId: string,
-    messageId: string,
-    text: string,
-  ) => Promise<void>;
+  editMessage: (conversationId: string, messageId: string, text: string) => Promise<void>;
   deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
   setActiveConversation: (conv: Conversation | null) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  markMessagesRead: (conversationId: string) => Promise<void>;
+  markMessagesRead: (conversationId: string, lastMessageId?: string) => Promise<void>;
   markConversationAsRead: (conversationId: string) => Promise<void>;
   startConversation: (userId: string) => Promise<Conversation | null>;
   createGroup: (name: string, memberUserIds: string[]) => Promise<Conversation>;
@@ -155,7 +142,20 @@ interface AppContextType {
   // Notifications
   notifications: Notification[];
   unreadCount: number;
-  refreshNotifications: () => Promise<void>;
+  notificationPage: number;
+  notificationTotalPages: number;
+  notificationTotalCount: number;
+  notificationHasNext: boolean;
+  isRefreshingNotifications: boolean;
+  notificationError: string | null;
+  pushNotificationsEnabled: boolean;
+  isUpdatingPushNotifications: boolean;
+  pushNotificationPermission: "unknown" | "granted" | "denied";
+  refreshNotifications: (page?: number) => Promise<void>;
+  refreshNotificationSettings: () => Promise<void>;
+  setPushNotificationsEnabled: (enabled: boolean) => Promise<boolean>;
+  registerPushDevice: () => Promise<boolean>;
+  handleForegroundNotificationReceived: () => void;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
 
@@ -178,81 +178,15 @@ interface AppProviderProps {
   children: ReactNode;
 }
 
+const NOTIFICATION_PAGE_SIZE = 20;
+
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  // ─── Device Token (Push Notifications) ────────────────
-  const {
-    deviceToken,
-    isRegistered: isDeviceTokenRegistered,
-    cleanup: cleanupDeviceToken,
-    requestPermission: requestPushPermission,
-    getToken,
-    registerToken,
-  } = useDeviceToken({
-    autoRegister: true,
-    autoRequestPermission: false, // Let user choose when to enable
-  });
-
-  const permissionPromptedRef = useRef(false);
-
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    if (permissionPromptedRef.current) return;
-    permissionPromptedRef.current = true;
-
-    const requestOnFirstLaunch = async () => {
-      try {
-        const prompted = await AsyncStorage.getItem(
-          NOTIF_PERMISSION_PROMPTED_KEY,
-        );
-        if (prompted) return;
-        await requestPushPermission();
-        await AsyncStorage.setItem(NOTIF_PERMISSION_PROMPTED_KEY, "1");
-      } catch (error) {
-        console.error("[Notifications] Permission request failed:", error);
-      }
-    };
-
-    requestOnFirstLaunch();
-  }, [requestPushPermission]);
-
   // ─── Auth / User ────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated || Platform.OS === "web") return;
-
-    let cancelled = false;
-
-    const ensureDeviceTokenRegistered = async () => {
-      try {
-        const granted = await requestPushPermission();
-        if (!granted || cancelled) return;
-
-        const token = deviceToken ?? (await getToken());
-        if (!token || cancelled) return;
-
-        await registerToken(token);
-      } catch (error) {
-        console.error("[Notifications] Token registration failed:", error);
-      }
-    };
-
-    ensureDeviceTokenRegistered();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isAuthenticated,
-    requestPushPermission,
-    getToken,
-    registerToken,
-    deviceToken,
-  ]);
 
   // ─── Pending Verification (after register, before OTP verify) ────
   // Stores user data temporarily so AuthGuard doesn't redirect to home
@@ -305,6 +239,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         const user = await api.login(email, password);
         setCurrentUser(user);
         setIsAuthenticated(true);
+        void api.registerDeviceForPushNotifications();
         // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
         setIsNewUser(user.posts === 0);
         return user;
@@ -313,10 +248,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         const errorCode = (error as any)?.errorCode;
         if (errorCode) {
           setIsLoading(false);
-          const errWithCode = error as Error & {
-            errorCode: string;
-            email: string;
-          };
+          const errWithCode = error as Error & { errorCode: string; email: string };
           throw errWithCode;
         }
         const message =
@@ -324,7 +256,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             ? error.message
             : "Login failed. Please check your credentials and try again.";
         setAuthError(message);
-        return null;
+        return false;
       } finally {
         setIsLoading(false);
       }
@@ -368,6 +300,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setPendingAuthUser(null);
     setCurrentUser(user);
     setIsAuthenticated(true);
+    void api.registerDeviceForPushNotifications();
     setIsNewUser(true); // posts = 0 for new account
   }, []);
 
@@ -382,31 +315,28 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setStories([]);
     setConversations([]);
     setNotifications([]);
+    setUnreadCount(0);
+    setNotificationPage(1);
+    notificationPageRef.current = 1;
+    setNotificationTotalPages(1);
+    setNotificationTotalCount(0);
+    setNotificationHasNext(false);
+    setNotificationError(null);
+    setPushNotificationsEnabledState(false);
+    setPushNotificationPermission("unknown");
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await api.logout();
-      await cleanupDeviceToken(); // Clean up device token on logout
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      resetSessionAfterSignOut();
-    }
-  }, [resetSessionAfterSignOut, cleanupDeviceToken]);
+    await api.logout();
+    resetSessionAfterSignOut();
+  }, [resetSessionAfterSignOut]);
 
   const deleteAccount = useCallback(
     async (password: string) => {
-      try {
-        await api.deleteAccount(password);
-        await cleanupDeviceToken(); // Clean up device token on account deletion
-      } catch (error) {
-        console.error("Delete account error:", error);
-      } finally {
-        resetSessionAfterSignOut();
-      }
+      await api.deleteAccount(password);
+      resetSessionAfterSignOut();
     },
-    [resetSessionAfterSignOut, cleanupDeviceToken],
+    [resetSessionAfterSignOut],
   );
 
   const saveOnboardingData = useCallback(
@@ -426,17 +356,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
       if (typeof data.fullName === "string" && data.fullName.trim()) {
         const name = data.fullName.trim();
-        setCurrentUser((prev) => (prev ? { ...prev, fullName: name } : prev));
+        setCurrentUser((prev) =>
+          prev ? { ...prev, fullName: name } : prev,
+        );
         api.patchCurrentUserLocal({ fullName: name });
       }
       if (typeof data.gender === "string") {
         const gender = data.gender;
-        setCurrentUser((prev) => (prev ? { ...prev, gender } : prev));
+        setCurrentUser((prev) =>
+          prev ? { ...prev, gender } : prev,
+        );
         api.patchCurrentUserLocal({ gender });
       }
       if (typeof data.bio === "string") {
         const bio = data.bio;
-        setCurrentUser((prev) => (prev ? { ...prev, bio } : prev));
+        setCurrentUser((prev) =>
+          prev ? { ...prev, bio } : prev,
+        );
         api.patchCurrentUserLocal({ bio });
       }
     },
@@ -450,14 +386,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
-    setOnboardingData({
-      fullName: "",
-      username: "",
-      displayName: "",
-      gender: "",
-      bio: "",
-      avatar: "",
-    });
+    setOnboardingData({ fullName: "", username: "", displayName: "", gender: "", bio: "", avatar: "" });
   }, []);
 
   // ─── Feed ────────────────────────────────────────────────
@@ -477,18 +406,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationMembers, setConversationMembers] = useState<
-    Conversation["members"]
-  >([]);
+  const [conversationMembers, setConversationMembers] = useState<Conversation["members"]>([]);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [conversationError, setConversationError] = useState<string | null>(
-    null,
-  );
+  const [conversationError, setConversationError] = useState<string | null>(null);
   const [messageError, setMessageError] = useState<string | null>(null);
 
   // Ref to store current conversationMembers without triggering effect re-runs
   const conversationMembersRef = useRef<Conversation["members"]>([]);
+  const locallyReadConversationIdsRef = useRef<Set<string>>(new Set());
   // Ref to track activeConversation for use in closures without stale values
   const activeConversationRef = useRef<Conversation | null>(null);
   activeConversationRef.current = activeConversation;
@@ -496,13 +422,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Notifications ───────────────────────────────────────
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationPage, setNotificationPage] = useState(1);
+  const [notificationTotalPages, setNotificationTotalPages] = useState(1);
+  const [notificationTotalCount, setNotificationTotalCount] = useState(0);
+  const [notificationHasNext, setNotificationHasNext] = useState(false);
+  const [isRefreshingNotifications, setIsRefreshingNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const notificationPageRef = useRef(1);
+  const [pushNotificationsEnabled, setPushNotificationsEnabledState] = useState(false);
+  const [isUpdatingPushNotifications, setIsUpdatingPushNotifications] = useState(false);
+  const [pushNotificationPermission, setPushNotificationPermission] =
+    useState<"unknown" | "granted" | "denied">("unknown");
 
   // ─── Typing ──────────────────────────────────────────────
   const [partnerTyping, setPartnerTyping] = useState(false);
 
   // ─── Online Status ────────────────────────────────────────
-  const { isOnline, isConnected: onlineSignalRConnected } =
-    useOnlineUsers(isAuthenticated);
+  const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(isAuthenticated);
 
   // ─── Feed Actions ────────────────────────────────────────
   const refreshPosts = useCallback(async () => {
@@ -527,21 +463,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Fetch posts của user hiện tại cho profile page
   const refreshMyPosts = useCallback(async () => {
-    console.log("[AppContext] refreshMyPosts: START");
     try {
       const data = await api.getMyPosts();
-      console.log(
-        "[AppContext] refreshMyPosts: SUCCESS, got",
-        data.length,
-        "posts",
-      );
       setMyPosts(data);
     } catch (error: any) {
-      console.error(
-        "[AppContext] refreshMyPosts: ERROR",
-        error?.response?.status,
-        error?.message,
-      );
+      console.error("[AppContext] refreshMyPosts: ERROR", error?.response?.status, error?.message);
     }
   }, []);
 
@@ -609,10 +535,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             return {
               ...post,
               isReposted: willRepost,
-              repostCount: Math.max(
-                0,
-                (post.repostCount ?? 0) + (willRepost ? 1 : -1),
-              ),
+              repostCount: Math.max(0, (post.repostCount ?? 0) + (willRepost ? 1 : -1)),
             };
           }
           return post;
@@ -630,14 +553,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setRepostedPosts((prev) => {
           const exists = prev.some((p) => p.id === postId);
           if (exists) return prev;
-          return [
-            {
-              ...targetPost,
-              isReposted: true,
-              repostCount: (targetPost.repostCount ?? 0) + 1,
-            },
-            ...prev,
-          ];
+          return [{ ...targetPost, isReposted: true, repostCount: (targetPost.repostCount ?? 0) + 1 }, ...prev];
         });
       } else {
         // Xóa khỏi danh sách repost (local)
@@ -646,6 +562,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     },
     [posts],
   );
+
 
   const addComment = useCallback(
     async (postId: string, text: string, parentCommentId?: string) => {
@@ -709,11 +626,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setPosts((prev) => [newPost, ...prev]);
         setMyPosts((prev) => [newPost, ...prev]);
         await refreshMyPosts();
-        // Cập nhật số posts trên profile ngay lập tức
-        setCurrentUser((prev) =>
-          prev ? { ...prev, posts: prev.posts + 1 } : prev,
-        );
-        setIsNewUser(false); // Đã có bài viết → không còn là new user
+        setCurrentUser((prev) => (prev ? { ...prev, posts: prev.posts + 1 } : prev));
+        setIsNewUser(false);
         return newPost;
       } catch (error) {
         console.error("Failed to create post:", error);
@@ -754,9 +668,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       setMyPosts((prev) => prev.filter((p) => p.id !== postId)); // Xóa khỏi myPosts
       // Cập nhật số posts trên profile khi xóa
-      setCurrentUser((prev) =>
-        prev ? { ...prev, posts: Math.max(0, prev.posts - 1) } : prev,
-      );
+      setCurrentUser((prev) => (prev ? { ...prev, posts: Math.max(0, prev.posts - 1) } : prev));
     } catch (error) {
       console.error("Failed to delete post:", error);
     }
@@ -872,11 +784,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.toggleFollow(userId);
         await refreshUser();
         await refreshPosts();
+        await refreshReels();
+        // Clear reels user cache so the follow button state refreshes correctly
+        clearReelsUserCache();
       } catch (error) {
         console.error("Failed to toggle follow:", error);
       }
     },
-    [refreshUser, refreshPosts],
+    [refreshUser, refreshPosts, refreshReels],
   );
 
   const updateProfile = useCallback(
@@ -952,40 +867,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // ─── Messages ─────────────────────────────────────────────
   const refreshConversations = useCallback(async () => {
-    console.log("[AppContext] refreshConversations: fetching...");
     setIsLoadingConversations(true);
     setConversationError(null);
     try {
       const data = await api.getConversations();
-      console.log(
-        "[AppContext] refreshConversations: received",
-        data.length,
-        "conversations",
-      );
-      if (data.length > 0) {
-        console.log(
-          "[AppContext] refreshConversations: first conv id:",
-          data[0].id,
-          "members:",
-          data[0].members.length,
-        );
-      }
-      // Merge server data with local unread counts to preserve optimistic updates from SignalR
       setConversations((prev) => {
-        if (prev.length === 0) return data;
-        const localUnreadMap = new Map(
-          prev.map((c) => [c.id, c.unreadCount ?? 0]),
-        );
+        const previousIds = new Set(prev.map((c) => c.id));
         return data.map((conv) => ({
           ...conv,
-          unreadCount: localUnreadMap.has(conv.id)
-            ? localUnreadMap.get(conv.id)!
-            : conv.unreadCount,
+          unreadCount:
+            previousIds.has(conv.id) &&
+            locallyReadConversationIdsRef.current.has(conv.id)
+              ? 0
+              : conv.unreadCount,
         }));
       });
     } catch (error: any) {
-      const msg =
-        error?.response?.data?.message ?? "Failed to load conversations.";
+      const msg = error?.response?.data?.message ?? "Failed to load conversations.";
       console.error("[AppContext] refreshConversations: FAILED —", msg, error);
       setConversationError(msg);
     } finally {
@@ -1000,12 +898,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       const { messages: msgs, members } = await api.getMessages(conversationId);
       // API trả về: tin mới nhất ở đầu → cần đảo để có thứ tự Cũ→Mới (đúng cho FlatList)
-      setMessages([...msgs].reverse());
+      const orderedMessages = [...msgs].reverse();
+      setMessages(orderedMessages);
       setConversationMembers(members);
+      return orderedMessages;
     } catch (error: any) {
       const msg = error?.response?.data?.message ?? "Failed to load messages.";
       setMessageError(msg);
       console.error("[AppContext] loadMessages:", msg, error);
+      return [];
     } finally {
       setIsLoadingMessages(false);
     }
@@ -1014,24 +915,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const sendMessageFn = useCallback(
     async (conversationId: string, text: string) => {
       try {
-        const newMsg = await api.sendMessage(conversationId, text);
-        // Attach sender info from cached members
-        const sender = conversationMembers.find(
-          (m) => m.id === newMsg.senderId,
+        const newMsg = await api.sendMessage(
+          conversationId,
+          text,
+          conversationMembersRef.current,
         );
-        if (sender) {
-          newMsg.sender = sender;
+        if (newMsg.senderId === currentUser?.id && !newMsg.sender?.displayName) {
+          newMsg.sender = currentUser;
         }
-        console.log(
-          "[AppContext] sendMessage: Adding message optimistically - ID:",
-          newMsg.id,
-        );
         setMessages((prev) => {
           const isDuplicate = prev.some((m) => m.id === newMsg.id);
           if (isDuplicate) {
-            console.log(
-              "[AppContext] sendMessage: Message already exists, skipping",
-            );
             return prev;
           }
           return [...prev, newMsg];
@@ -1043,7 +937,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         throw new Error(msg);
       }
     },
-    [refreshConversations, conversationMembers],
+    [currentUser, refreshConversations],
   );
 
   const editMessage = useCallback(
@@ -1055,7 +949,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             m.id === messageId
               ? { ...m, text, editedAt: new Date().toISOString() }
               : m,
-          ),
+          )
         );
       } catch (error: any) {
         const msg = error?.response?.data?.message ?? "Failed to edit message.";
@@ -1072,8 +966,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.deleteMessage(conversationId, messageId);
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       } catch (error: any) {
-        const msg =
-          error?.response?.data?.message ?? "Failed to delete message.";
+        const msg = error?.response?.data?.message ?? "Failed to delete message.";
         console.error("[AppContext] deleteMessage:", msg, error);
         throw new Error(msg);
       }
@@ -1082,18 +975,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 
   const markMessagesRead = useCallback(
-    async (conversationId: string) => {
+    async (conversationId: string, lastMessageId?: string) => {
       try {
-        // Find last message id to pass as lastMessageId
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg) {
-          await api.markMessagesRead(conversationId, lastMsg.id);
+        const fallbackLastMsg = messages[messages.length - 1];
+        const messageIdToRead = lastMessageId ?? fallbackLastMsg?.id;
+        if (messageIdToRead) {
+          await api.markMessagesRead(conversationId, messageIdToRead);
         }
-        // Update local state instead of refreshConversations to avoid overwriting unreadCount=0
+        locallyReadConversationIdsRef.current.add(conversationId);
         setConversations((prev) =>
           prev.map((conv) =>
-            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv,
-          ),
+            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+          )
         );
       } catch (error) {
         console.error("[AppContext] markMessagesRead:", error);
@@ -1105,49 +998,33 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Mark Conversation As Read (Local State Update) ───────────────────────
   // Updates local state immediately — does NOT call API (markMessagesRead handles that)
   const markConversationAsRead = useCallback(
-    async (conversationId: string) => {
-      console.log(
-        "[AppContext] markConversationAsRead: marking conv as read:",
-        conversationId,
-      );
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv,
-        ),
-      );
-      try {
-        const conv = conversations.find((c) => c.id === conversationId);
-        const lastMsgId = conv?.lastMessage?.id;
-        if (lastMsgId) {
-          await api.markMessagesRead(conversationId, lastMsgId);
-        }
-      } catch (error) {
-        console.error(
-          "[AppContext] markConversationAsRead: API call failed:",
-          error,
-        );
-      }
-    },
-    [conversations],
-  );
-
-  const startConversation = useCallback(async (userId: string) => {
-    console.log(
-      "[AppContext] startConversation: calling API with userId:",
-      userId,
+  async (conversationId: string) => {
+    locallyReadConversationIdsRef.current.add(conversationId);
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+      )
     );
+    try {
+      const conv = conversations.find((c) => c.id === conversationId);
+      const lastMsgId = conv?.lastMessage?.id;
+      if (lastMsgId) {
+        await api.markMessagesRead(conversationId, lastMsgId);
+      }
+    } catch (error) {
+      console.error("[AppContext] markConversationAsRead: API call failed:", error);
+    }
+  },
+  [conversations]
+);
+
+  const startConversation = useCallback(
+  async (userId: string) => {
     let conv;
     try {
       conv = await api.createPrivateConversation(userId);
-      console.log(
-        "[AppContext] startConversation: API returned conv.id:",
-        conv?.id,
-      );
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ??
-        err?.message ??
-        "Failed to start conversation.";
+      const msg = err?.response?.data?.message ?? err?.message ?? "Failed to start conversation.";
       console.error("[AppContext] startConversation: API FAILED —", msg, err);
       throw new Error(msg);
     }
@@ -1156,9 +1033,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (exists) return prev;
       return [conv, ...prev];
     });
-    console.log("[AppContext] startConversation: done. conv.id =", conv.id);
     return conv;
-  }, []);
+  },
+  [],
+);
 
   // ─── Notifications ───────────────────────────────────────
   const createGroup = useCallback(
@@ -1221,18 +1099,61 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     [],
   );
 
-  const refreshNotifications = useCallback(async () => {
-    try {
-      const [notifs, count] = await Promise.all([
-        api.getNotifications(),
-        api.getUnreadNotificationCount(),
-      ]);
-      setNotifications(notifs);
-      setUnreadCount(count);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+  const loadNotificationsPage = useCallback(async (page: number) => {
+    const safePage = Math.max(1, page);
+
+    setIsRefreshingNotifications(true);
+    setNotificationError(null);
+
+    const [pageResult, countResult] = await Promise.allSettled([
+      api.getNotificationPage(safePage, NOTIFICATION_PAGE_SIZE),
+      api.getUnreadNotificationCount(),
+    ]);
+
+    let nextError: string | null = null;
+
+    if (pageResult.status === "fulfilled") {
+      const pageData = pageResult.value;
+      setNotifications(pageData.items);
+      setNotificationPage(pageData.page);
+      notificationPageRef.current = pageData.page;
+      setNotificationTotalPages(Math.max(1, pageData.totalPages));
+      setNotificationTotalCount(pageData.totalCount);
+      setNotificationHasNext(pageData.hasNext);
+    } else {
+      nextError = "Failed to refresh notifications. Please try again.";
+      console.warn("Failed to refresh notification page:", pageResult.reason);
     }
+
+    if (countResult.status === "fulfilled") {
+      setUnreadCount(countResult.value);
+    } else {
+      nextError = nextError ?? "Failed to refresh notification count.";
+      console.warn("Failed to refresh notification count:", countResult.reason);
+    }
+
+    setNotificationError(nextError);
+    setIsRefreshingNotifications(false);
   }, []);
+
+  const refreshNotifications = useCallback(
+    async (page?: number) => {
+      if (!isAuthenticated) {
+        setNotifications([]);
+        setUnreadCount(0);
+        setNotificationPage(1);
+        notificationPageRef.current = 1;
+        setNotificationTotalPages(1);
+        setNotificationTotalCount(0);
+        setNotificationHasNext(false);
+        setNotificationError(null);
+        return;
+      }
+
+      await loadNotificationsPage(page ?? notificationPageRef.current);
+    },
+    [isAuthenticated, loadNotificationsPage],
+  );
 
   const markNotificationRead = useCallback(async (id: string) => {
     try {
@@ -1256,25 +1177,55 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    refreshNotifications();
-  }, [isAuthenticated, refreshNotifications]);
+  const refreshNotificationSettings = useCallback(async () => {
+    try {
+      const settings = await api.getNotificationSettings();
+      setPushNotificationsEnabledState(settings.isEnabled);
+    } catch (error) {
+      console.warn("Failed to load notification settings:", error);
+    }
+  }, []);
 
-  // ─── Foreground Notification Listener ────────────────────
-  useEffect(() => {
-    if (!isAuthenticated || Platform.OS === "web") return;
+  const registerPushDevice = useCallback(async () => {
+    const registered = await api.registerDeviceForPushNotifications();
+    setPushNotificationPermission(registered ? "granted" : "denied");
+    return registered;
+  }, []);
 
-    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
-      console.log("[FCM Foreground]", remoteMessage.data);
-      // Increment badge count immediately
-      setUnreadCount((prev) => prev + 1);
-      // Refresh the full list to ensure the notification feed is up-to-date
-      await refreshNotifications();
-    });
+  const handleForegroundNotificationReceived = useCallback(() => {
+    setUnreadCount((prev) => prev + 1);
+  }, []);
 
-    return unsubscribe;
-  }, [isAuthenticated, refreshNotifications]);
+  const setPushNotificationsEnabled = useCallback(
+    async (enabled: boolean) => {
+      const previousValue = pushNotificationsEnabled;
+      setPushNotificationsEnabledState(enabled);
+      setIsUpdatingPushNotifications(true);
+
+      try {
+        await api.updateNotificationSettings(enabled);
+
+        if (enabled) {
+          const registered = await registerPushDevice();
+          if (!registered) {
+            setPushNotificationsEnabledState(false);
+            await api.updateNotificationSettings(false);
+            return false;
+          }
+        } else {
+          setPushNotificationPermission("unknown");
+        }
+        return true;
+      } catch (error) {
+        setPushNotificationsEnabledState(previousValue);
+        console.error("Failed to update notification settings:", error);
+        return false;
+      } finally {
+        setIsUpdatingPushNotifications(false);
+      }
+    },
+    [pushNotificationsEnabled, registerPushDevice],
+  );
 
   // ─── Init: thử restore session từ JWT đã lưu ─────────────
   useEffect(() => {
@@ -1297,9 +1248,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             refreshStories(),
             refreshReels(),
             refreshConversations(),
-            refreshNotifications(),
+            loadNotificationsPage(1),
+            refreshNotificationSettings(),
             fetchSuggestedUsers(),
           ]);
+          void api.registerDeviceForPushNotifications();
         } else {
           // Không có token hoặc token hết hạn → chưa đăng nhập
           // Vẫn load dữ liệu mẫu để preview app (nếu cần)
@@ -1308,7 +1261,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             refreshStories(),
             refreshReels(),
             refreshConversations(),
-            refreshNotifications(),
           ]);
         }
       } catch (error) {
@@ -1319,7 +1271,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           refreshStories(),
           refreshReels(),
           refreshConversations(),
-          refreshNotifications(),
         ]);
       } finally {
         setIsLoading(false);
@@ -1332,13 +1283,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     refreshStories,
     refreshReels,
     refreshConversations,
-    refreshNotifications,
+    loadNotificationsPage,
+    refreshNotificationSettings,
     fetchSuggestedUsers,
   ]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const unsubscribeTokenRefresh = api.subscribeToPushTokenRefresh();
+
+    return () => {
+      unsubscribeTokenRefresh();
+    };
+  }, [isAuthenticated]);
+
   // ─── Sync conversationMembers to ref (without triggering listener re-run) ───
   useEffect(() => {
-    console.log("[AppContext] conversationMembers updated, syncing to ref");
     conversationMembersRef.current = conversationMembers;
   }, [conversationMembers]);
 
@@ -1349,55 +1310,33 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // ─── Listen to SignalR ReceiveMessage events ──────────────
   useEffect(() => {
     if (!activeConversation) return;
+    if (!onlineSignalRConnected) return;
 
     const connection = getConnection();
     if (!connection) {
-      console.warn(
-        "[AppContext] SignalR connection not available for message listener",
-      );
+      console.warn("[AppContext] SignalR connection not available for message listener");
       return;
     }
 
-    console.log(
-      `[AppContext] Registering ReceiveMessage listener for conversation: ${activeConversation.id}`,
-    );
 
     // Handler to receive new messages from SignalR
     const messageHandler = (messageData: BE_MessageResponse) => {
       // Ensure this message belongs to the current conversation
-      const messageConvId =
-        messageData.conversationId ?? (messageData as any).ConversationId;
+      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
       if (messageConvId !== activeConversation.id) {
-        console.log(
-          `[AppContext] ReceiveMessage: Ignoring message for wrong conversation. Expected: ${activeConversation.id}, got: ${messageConvId}`,
-        );
         return;
       }
 
-      const messageId = messageData.id ?? (messageData as any).Id;
-      console.log(
-        `[AppContext] ReceiveMessage event for conv ${activeConversation.id}, messageId: ${messageId}`,
-      );
-
       // Transform backend message format to frontend Message type using ref (won't re-trigger effect)
-      const newMessage = transformBEMessage(
-        messageData,
-        conversationMembersRef.current,
-      );
+      const newMessage = transformBEMessage(messageData, conversationMembersRef.current);
 
       // Add to messages state
       setMessages((prev) => {
         // Avoid duplicates: check if message ID already exists
         const isDuplicate = prev.some((m) => m.id === newMessage.id);
         if (isDuplicate) {
-          console.log(
-            `[AppContext] ReceiveMessage: Message already exists (ID: ${newMessage.id}), skipping duplicate`,
-          );
           return prev;
         }
-        console.log(
-          `[AppContext] ReceiveMessage: Added new message (ID: ${newMessage.id}). Total: ${prev.length + 1}`,
-        );
         return [...prev, newMessage];
       });
     };
@@ -1407,26 +1346,25 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
     // Cleanup: unregister listener when conversation changes
     return () => {
-      console.log(
-        `[AppContext] Unregistering ReceiveMessage listener for conversation: ${activeConversation.id}`,
-      );
       connection.off("ReceiveMessage", messageHandler);
     };
-  }, [activeConversation]);
+  }, [activeConversation, onlineSignalRConnected]);
 
   // ─── Update conversations list when a new message arrives (any conversation) ──
   // This listener runs independently of activeConversation so the ChatList updates
   // in real-time even when no conversation is open.
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
     const convListHandler = (messageData: BE_MessageResponse) => {
-      const messageConvId =
-        messageData.conversationId ?? (messageData as any).ConversationId;
+      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
       const senderId = messageData.senderId ?? (messageData as any).SenderId;
       const content = messageData.content ?? (messageData as any).Content ?? "";
       const createdAt = messageData.createdAt ?? (messageData as any).CreatedAt;
+      if (!messageConvId) return;
 
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c.id === messageConvId);
@@ -1448,6 +1386,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         // Use ref to avoid stale closure
         const isActive = activeConversationRef.current?.id === messageConvId;
         conv.unreadCount = isActive ? 0 : (conv.unreadCount ?? 0) + 1;
+        if (!isActive) {
+          locallyReadConversationIdsRef.current.delete(messageConvId);
+        }
 
         // Move conversation to top
         updated.splice(idx, 1);
@@ -1465,9 +1406,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return () => {
       connection.off("ReceiveMessage", convListHandler);
     };
-  }, [currentUser]); // only re-register when currentUser changes (login/logout)
+  }, [currentUser, onlineSignalRConnected]);
 
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
@@ -1539,6 +1482,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             : conversation,
         ),
       );
+      if (readerId === currentUser?.id) {
+        locallyReadConversationIdsRef.current.add(conversationId);
+      }
 
       if (readerId === currentUser?.id) return;
 
@@ -1560,18 +1506,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       connection.off("MessageDeleted", deletedHandler);
       connection.off("MessagesRead", readHandler);
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, onlineSignalRConnected]);
 
   // ─── Listen to SignalR UserTyping events ──────────────────
   useEffect(() => {
+    if (!onlineSignalRConnected) return;
+
     const connection = getConnection();
     if (!connection) return;
 
-    const typingHandler = (data: {
-      conversationId: string;
-      userId: string;
-      isTyping: boolean;
-    }) => {
+    const typingHandler = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
       const typingConvId = data.conversationId;
       const typingUserId = data.userId;
       const isTyping = data.isTyping;
@@ -1588,7 +1532,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return () => {
       connection.off("UserTyping", typingHandler);
     };
-  }, [activeConversation, currentUser]);
+  }, [activeConversation, currentUser, onlineSignalRConnected]);
 
   // ─── Provider ──────────────────────────────────────────────
   return (
@@ -1674,7 +1618,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         partnerTyping,
         notifications,
         unreadCount,
+        notificationPage,
+        notificationTotalPages,
+        notificationTotalCount,
+        notificationHasNext,
+        isRefreshingNotifications,
+        notificationError,
+        pushNotificationsEnabled,
+        isUpdatingPushNotifications,
+        pushNotificationPermission,
         refreshNotifications,
+        refreshNotificationSettings,
+        setPushNotificationsEnabled,
+        registerPushDevice,
+        handleForegroundNotificationReceived,
         markNotificationRead,
         markAllNotificationsRead,
         isUserOnline: isOnline,

@@ -22,9 +22,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { AppColors } from '../constants/theme';
 import { SPRING_SOFT, TIMING_FAST } from '../animations/spring';
+import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_HEIGHT = 320;
+const SHEET_HEIGHT = 400 + TAB_BAR_BOTTOM_OFFSET;
 
 interface ShareOption {
   id: string;
@@ -79,8 +80,8 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       if (result.action === Share.sharedAction) {
         onClose();
       }
-    } catch (error) {
-      console.log('Share error:', error);
+    } catch {
+      // Share can be cancelled or rejected by the platform; no user-facing action needed.
     }
   }, [username, caption, reelId, onClose]);
 
@@ -249,7 +250,8 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
+    zIndex: 999,
+    pointerEvents: 'box-none',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,

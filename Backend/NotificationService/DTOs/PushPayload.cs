@@ -5,6 +5,7 @@
         string Title,
         string Body,
         string Type,
-        string EntityId
+        string EntityId,
+        string? NotificationId = null
     );
 }

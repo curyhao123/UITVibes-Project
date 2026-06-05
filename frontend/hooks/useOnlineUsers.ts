@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addConnectionStateListener,
+  getConnection,
   getConnectionState,
   invokeHub,
   startConnection,
@@ -69,14 +70,12 @@ export function useOnlineUsers(isAuthenticated: boolean): UseOnlineUsersReturn {
     const normalized = ids.map(toStringId);
     onlineUserIdsRef.current = normalized;
     setOnlineUserIds(normalized);
-    console.log("[useOnlineUsers] REST fetched → Set:", Array.from(normalized));
   }, []);
 
   const isOnline = useCallback(
     (userId: string | number): boolean => {
       const normalizedId = toStringId(userId);
       const found = onlineUserIdsRef.current.includes(normalizedId);
-      console.log(`[useOnlineUsers] isOnline("${normalizedId}") → ${found} | Set:`, Array.from(onlineUserIdsRef.current));
       return found;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +123,25 @@ export function useOnlineUsers(isAuthenticated: boolean): UseOnlineUsersReturn {
     await fetchOnlineFriends();
   }, [fetchOnlineFriends]);
 
+  const handleUserOnline = useCallback((userId: string | number) => {
+    const id = toStringId(userId);
+    setOnlineUserIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      onlineUserIdsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleUserOffline = useCallback((userId: string | number) => {
+    const id = toStringId(userId);
+    setOnlineUserIds((prev) => {
+      const next = prev.filter((existingId) => existingId !== id);
+      onlineUserIdsRef.current = next;
+      return next;
+    });
+  }, []);
+
   // ── Connect / Disconnect ─────────────────────────────────────────────────────
 
   const connect = useCallback(async () => {
@@ -136,42 +154,24 @@ export function useOnlineUsers(isAuthenticated: boolean): UseOnlineUsersReturn {
     await startConnection(token);
 
     // ── Register SignalR event listeners ──
-    const conn = (await import("../services/signalrService")).getConnection();
+    const conn = getConnection();
     if (!conn) return;
 
-    // FIX Issue 1: Normalize userId to string before storing
-    conn.on("UserOnline", (userId: string | number) => {
-      const id = toStringId(userId);
-      console.log(`[useOnlineUsers] SignalR UserOnline → "${id}"`);
-      setOnlineUserIds((prev) => {
-        if (prev.includes(id)) return prev;
-        const next = [...prev, id];
-        onlineUserIdsRef.current = next;
-        console.log("[useOnlineUsers] UserOnline → Set:", Array.from(next));
-        return next;
-      });
-    });
-
-    // FIX Issue 2: Functional update + type normalization already applied above
-    conn.on("UserOffline", (userId: string | number) => {
-      const id = toStringId(userId);
-      console.log(`[useOnlineUsers] SignalR UserOffline → "${id}"`);
-      setOnlineUserIds((prev) => {
-        const next = prev.filter((existingId) => existingId !== id);
-        onlineUserIdsRef.current = next;
-        console.log("[useOnlineUsers] UserOffline → Set:", Array.from(next));
-        return next;
-      });
-    });
-
+    conn.off("UserOnline", handleUserOnline);
+    conn.off("UserOffline", handleUserOffline);
+    conn.on("UserOnline", handleUserOnline);
+    conn.on("UserOffline", handleUserOffline);
     // Start heartbeat to keep Redis TTL alive on the server
     startHeartbeat();
-  }, [startHeartbeat]);
+  }, [handleUserOffline, handleUserOnline, startHeartbeat]);
 
   const disconnect = useCallback(async () => {
+    const conn = getConnection();
+    conn?.off("UserOnline", handleUserOnline);
+    conn?.off("UserOffline", handleUserOffline);
     stopHeartbeat();
     await stopConnection();
-  }, [stopHeartbeat]);
+  }, [handleUserOffline, handleUserOnline, stopHeartbeat]);
 
   // ── Connection state listener ─────────────────────────────────────────────
 

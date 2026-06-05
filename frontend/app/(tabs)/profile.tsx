@@ -44,12 +44,10 @@ export default function ProfileScreen() {
 
   // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
-  console.log("[Profile] Render: myPosts.length =", myPosts.length, "userPosts.length =", userPosts.length);
 
   // Refresh myPosts khi quay lại profile tab
   useFocusEffect(
     useCallback(() => {
-      console.log("[Profile] useFocusEffect: refreshing myPosts");
       setIsLoadingPosts(true);
       refreshMyPosts().then(() => {
         setIsLoadingPosts(false);
@@ -133,6 +131,16 @@ export default function ProfileScreen() {
         showAvatar
         avatarUser={currentUser}
         onNotificationPress={() => router.push('/notifications')}
+        rightAction={
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            style={styles.settingsBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <Feather name="settings" size={20} color={AppColors.text} />
+          </TouchableOpacity>
+        }
       />
 
       <ScrollView

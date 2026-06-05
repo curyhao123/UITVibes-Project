@@ -13,7 +13,6 @@ import {
   BE_BookmarkResponse,
 } from "./backendTypes";
 import { fetchUserById } from "./userService";
-import { getAccessToken, API_BASE_URL } from "./httpClient";
 import { getCurrentUser } from "./api";
 import { getCurrentUserId } from "./session";
 
@@ -127,31 +126,21 @@ export async function uploadMedia(
     throw new Error("Unsupported URI scheme for media upload: " + uri);
   }
 
-  const token = await getAccessToken();
-  const res = await fetch(`${API_BASE_URL}/post/media`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData as any,
+  const { data } = await apiClient.post<{
+    url: string;
+    publicId: string;
+    thumbnailUrl?: string;
+    width?: number;
+    height?: number;
+    duration?: number;
+  }>("/post/media", formData as any, {
+    headers: { "Content-Type": "multipart/form-data" } as any,
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Upload failed: ${res.status} ${text}`);
-  }
-
-  const data = await res.json();
   return data;
 }
 
 function transformBEPost(post: BE_PostResponse, author?: User): Post {
-  console.log(
-    "[transformBEPost] post.id:",
-    post.id,
-    "media:",
-    JSON.stringify(post.media),
-  );
   const allImages = post.media?.map((m) => m.url) ?? [];
   return {
     id: post.id,
@@ -173,6 +162,7 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     image: allImages[0] ?? "",
     images: allImages,
     caption: post.content,
+    visibility: post.visibility ?? undefined,
     likes: post.likesCount,
     comments: [],
     createdAt: post.createdAt,
@@ -296,23 +286,13 @@ export async function getPostComments(postId: string): Promise<CommentType[]> {
 
 export async function getMyPosts(): Promise<Post[]> {
   try {
-    const { data, status } = await apiClient.get<BE_PostResponse[]>(
+    const { data } = await apiClient.get<BE_PostResponse[]>(
       "/post/my-posts",
       {
         params: { skip: 0, take: 50 },
       },
     );
-    console.log(
-      "[getMyPosts] status:",
-      status,
-      "data length:",
-      data?.length,
-      "data:",
-      JSON.stringify(data),
-    );
-
     if (!data || data.length === 0) {
-      console.log("[getMyPosts] No posts returned from API");
       return [];
     }
 
@@ -332,7 +312,6 @@ export async function getMyPosts(): Promise<Post[]> {
         posts.push(transformBEPost(post, undefined));
       }
     }
-    console.log("[getMyPosts] Transformed posts:", posts.length, "posts");
     return posts;
   } catch (e: any) {
     console.error(
@@ -870,6 +849,18 @@ async function transformReelComment(
   };
 }
 
+async function fetchRepliesForReelComment(commentId: string): Promise<CommentType[]> {
+  const { data } = await apiClient.get<BE_ReelCommentResponse[]>(
+    `/post/reel/comment/${commentId}/replies`,
+  );
+
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return Promise.all(data.map((reply) => transformReelComment(reply)));
+}
+
 export async function getReelComments(reelId: string): Promise<CommentType[]> {
   try {
     const { data } = await apiClient.get<BE_ReelCommentResponse[]>(
@@ -878,7 +869,13 @@ export async function getReelComments(reelId: string): Promise<CommentType[]> {
     if (!data || !Array.isArray(data)) return [];
 
     const comments = await Promise.all(
-      data.map(async (c) => transformReelComment(c)),
+      data.map(async (c) => {
+        const comment = await transformReelComment(c);
+        if (c.replyCount && c.replyCount > 0) {
+          comment.replies = await fetchRepliesForReelComment(c.id);
+        }
+        return comment;
+      }),
     );
     return comments;
   } catch (error) {
@@ -903,7 +900,7 @@ export async function addReelComment(
       `/post/reel/${reelId}/comment`,
       body,
     );
-    const comment = transformReelComment(data);
+    const comment = await transformReelComment(data);
     return { success: true, comment };
   } catch (error) {
     console.error("[addReelComment] API error:", error);

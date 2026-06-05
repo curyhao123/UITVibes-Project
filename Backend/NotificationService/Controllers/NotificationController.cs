@@ -20,9 +20,7 @@ namespace NotificationService.Controllers
 
         // PUT /api/notifications/{id}/read
         [HttpPut("{id:guid}/read")]
-        public async Task<IActionResult> MarkAsRead(
-            [FromRoute(Name = "id")] Guid notificationId,
-            CancellationToken ct)
+        public async Task<IActionResult> MarkAsRead([FromRoute(Name = "id")] Guid notificationId, CancellationToken ct)
         {
             var userId = GetUserId();
             await _notificationService.MarkAsReadAsync(notificationId, userId, ct);

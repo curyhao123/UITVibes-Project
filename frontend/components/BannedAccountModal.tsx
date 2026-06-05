@@ -16,6 +16,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Modal,
   Animated,
 } from "react-native";
@@ -73,17 +74,14 @@ export function BannedAccountModal({
       animationType="none"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <Animated.View
-          style={[
-            styles.card,
-            { opacity: modalOpacity, transform: [{ scale: modalScale }] },
-          ]}
-        >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay}>
+          <Animated.View
+            style={[
+              styles.card,
+              { opacity: modalOpacity, transform: [{ scale: modalScale }] },
+            ]}
+          >
           {/* Warning icon */}
           <View style={styles.iconWrap}>
             <Feather
@@ -104,7 +102,6 @@ export function BannedAccountModal({
             support team for assistance.
           </Text>
 
-          {/* Action button */}
           <Button
             title="Understood"
             onPress={onClose}
@@ -112,7 +109,8 @@ export function BannedAccountModal({
             style={styles.button}
           />
         </Animated.View>
-      </TouchableOpacity>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

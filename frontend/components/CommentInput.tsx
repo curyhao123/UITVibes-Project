@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
@@ -12,6 +11,7 @@ import { Avatar } from "./Avatar";
 import { Comment } from "../data/mockData";
 import { AppColors, layoutPadding } from "../constants/theme";
 import { useApp } from "../context/AppContext";
+import { MentionInput } from "./MentionInput";
 
 interface CommentInputProps {
   /** Comment being edited; null means Create Mode */
@@ -43,15 +43,6 @@ export const CommentInput: React.FC<CommentInputProps> = ({
       setText(editingComment.text);
     }
   }, [editingComment?.id]);
-
-  // Auto-focus when entering edit mode
-  const inputRef = useRef<TextInput>(null);
-  useEffect(() => {
-    if (isEditMode) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isEditMode]);
 
   const trimmed = text.trim();
   const canSend = trimmed.length > 0;
@@ -104,9 +95,9 @@ export const CommentInput: React.FC<CommentInputProps> = ({
           )}
         </View>
 
-        <TextInput
-          ref={inputRef}
-          style={[styles.input, styles.inputPill]}
+        <MentionInput
+          value={text}
+          onChangeText={setText}
           placeholder={
             isEditMode
               ? "Edit your comment..."
@@ -114,14 +105,9 @@ export const CommentInput: React.FC<CommentInputProps> = ({
               ? `Reply to ${replyTo.user.fullName || replyTo.user.displayName}...`
               : "Add a comment..."
           }
-          placeholderTextColor={AppColors.iconMuted}
-          value={text}
-          onChangeText={setText}
-          onSubmitEditing={handleSubmitEditing}
-          blurOnSubmit={false}
-          autoCapitalize="none"
-          autoCorrect={false}
-          key={editingComment?.id} // remount to reset focus state per comment
+          onSubmit={handleSubmitEditing}
+          style={styles.mentionInputContainer}
+          inputStyle={[styles.input, styles.inputPill]}
         />
 
         {/* Submit / Save button */}
@@ -203,17 +189,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: AppColors.borderLight,
   },
+  mentionInputContainer: {
+    flex: 1,
+  },
   input: {
     flex: 1,
     height: 36,
     paddingVertical: 8,
+    paddingHorizontal: 14,
     fontSize: 14,
     color: AppColors.text,
   },
   inputPill: {
     backgroundColor: "#F2F2F2",
     borderRadius: 18,
-    paddingHorizontal: 14,
   },
   iconWrap: {
     padding: 6,

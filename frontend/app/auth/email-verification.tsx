@@ -104,7 +104,6 @@ export default function EmailVerificationScreen() {
       } else {
         // ── Luồng 1: Register → Verify → complete auth & go to onboarding ──
         await api.verifyEmail(verifiedEmail, code);
-        console.log("[Verify] Email verified (register flow). Completing auth & navigating to onboarding.");
         // Activate authentication now — AuthGuard will allow navigation to onboarding
         if (currentUser) {
           confirmPendingAuth(currentUser);

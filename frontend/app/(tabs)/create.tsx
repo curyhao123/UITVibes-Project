@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
   ScrollView,
   Pressable,
   Platform,
@@ -24,16 +23,23 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../../context/AppContext';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../../components/Avatar';
 import { Toast } from '../../components/Toast';
+import { MentionInput } from '../../components/MentionInput';
+import {
+  ContentVisibility,
+  contentVisibilityToApiValue,
+  getDefaultContentVisibility,
+} from '../../services/contentPreferences';
 
 type CreateType = 'post' | 'reels';
 
-export type PostVisibility = 'Public' | 'Followers' | 'Private';
+export type PostVisibility = ContentVisibility;
 
 const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.ComponentProps<typeof Feather>['name']; description: string }[] = [
   { value: 'Public', label: 'Public', icon: 'globe', description: 'Anyone can see your post' },
@@ -118,6 +124,27 @@ export default function CreateScreen() {
     return { backgroundColor };
   });
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
+      const preferenceType = createType === 'reels' ? 'reels' : 'post';
+
+      void getDefaultContentVisibility(preferenceType)
+        .then((visibility) => {
+          if (active) {
+            setSelectedVisibility(visibility);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to load default content visibility:', error);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [createType]),
+  );
+
   const pickImage = async () => {
     if (Platform.OS !== 'web') {
       await Haptics.selectionAsync();
@@ -200,7 +227,7 @@ export default function CreateScreen() {
         setToastType('success');
         setToastMessage('Your reel has been published!');
       } else {
-        const visibilityValue = selectedVisibility === 'Public' ? 0 : selectedVisibility === 'Followers' ? 1 : 2;
+        const visibilityValue = contentVisibilityToApiValue(selectedVisibility);
         await createPost(selectedMedia, caption, undefined, visibilityValue);
         setToastType('success');
         setToastMessage('Your post has been published!');
@@ -232,10 +259,6 @@ export default function CreateScreen() {
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
   const shareReady = selectedMedia.length > 0 && !!caption.trim() && !isPosting;
-  const optionsDisabled = selectedMedia.length === 0;
-
-  const mockOption = (title: string) => () =>
-    Alert.alert(title, 'This option will be available in a future update.');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -456,21 +479,21 @@ export default function CreateScreen() {
           </Animated.View>
         )}
 
-        {/* Caption */}
+        {/* Caption with @mention support */}
         <View style={styles.captionSection}>
           <View style={styles.captionDivider} />
-          <TextInput
-            style={styles.captionInput}
+          <MentionInput
+            value={caption}
+            onChangeText={setCaption}
             placeholder={
               createType === 'reels'
                 ? 'Write a caption for your reel…'
                 : 'Write a caption…'
             }
-            placeholderTextColor={AppColors.iconMuted}
-            value={caption}
-            onChangeText={setCaption}
             multiline
             maxLength={CAPTION_MAX}
+            style={styles.mentionInputWrapper}
+            inputStyle={styles.captionInput}
           />
           <Text style={styles.charCount}>
             {caption.length}/{CAPTION_MAX}
@@ -482,43 +505,11 @@ export default function CreateScreen() {
           <Text style={styles.optionsHeading}>More options</Text>
           <View style={styles.optionsCard}>
             <OptionRow
-              icon="user-plus"
-              label="Tag people"
-              disabled={optionsDisabled}
-              onPress={mockOption('Tag people')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
-              icon="map-pin"
-              label="Add location"
-              disabled={optionsDisabled}
-              onPress={mockOption('Location')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
-              icon="hash"
-              label="Add topics"
-              disabled={optionsDisabled}
-              onPress={mockOption('Topics')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
               icon={selectedVisibility === 'Public' ? 'globe' : selectedVisibility === 'Followers' ? 'users' : 'lock'}
               label={`Visibility: ${selectedVisibility}`}
               disabled={false}
               onPress={() => setShowVisibilityPicker(true)}
             />
-            {createType === 'reels' && (
-              <>
-                <View style={styles.optionSeparator} />
-                <OptionRow
-                  icon="music"
-                  label="Add music"
-                  disabled={optionsDisabled}
-                  onPress={mockOption('Music')}
-                />
-              </>
-            )}
           </View>
         </View>
       </ScrollView>
@@ -533,7 +524,7 @@ export default function CreateScreen() {
           <Pressable style={styles.visibilityBackdrop} onPress={() => setShowVisibilityPicker(false)} />
           <View style={styles.visibilityCard}>
             <View style={styles.visibilityHeader}>
-              <Text style={styles.visibilityTitle}>Who can see your post?</Text>
+              <Text style={styles.visibilityTitle}>Who can see your {createType === 'reels' ? 'reel' : 'post'}?</Text>
               <TouchableOpacity onPress={() => setShowVisibilityPicker(false)} style={styles.visibilityCloseBtn}>
                 <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
               </TouchableOpacity>
@@ -897,6 +888,9 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.border,
     marginBottom: 14,
   },
+  mentionInputWrapper: {
+    minHeight: 108,
+  },
   captionInput: {
     ...Typography.body,
     fontSize: 16,
@@ -906,6 +900,7 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     letterSpacing: -0.2,
     padding: 0,
+    backgroundColor: 'transparent',
   },
   charCount: {
     ...Typography.meta,

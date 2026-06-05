@@ -25,7 +25,6 @@ import {
   UnblockConfirmModal,
 } from '../components/blocked-accounts';
 import type { BlockedUserItemData } from '../components/blocked-accounts';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';

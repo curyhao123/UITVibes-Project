@@ -1,126 +1,255 @@
-/**
- * Notification Service
- * Calls backend NotificationService endpoints via API Gateway
- * GET /api/notification
- * PUT /api/notification/{id}/read
- * PUT /api/notification/read-all
- * GET /api/notification/unread-count
- */
-
+import { PermissionsAndroid, Platform } from "react-native";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import apiClient from "./httpClient";
-import type {
-  NotificationDto,
-  PagedResult,
-  UnreadCountResponse,
-} from "../data/notification.d";
-import type { Notification } from "../data/mockData";
 
-/**
- * Fetch paginated notifications for current user
- * GET /api/notification?page=1&pageSize=20
- */
-export async function getNotifications(
-  page: number = 1,
-  pageSize: number = 20,
-): Promise<Notification[]> {
+export type BackendNotificationType =
+  | "NewMessage"
+  | "MessageRead"
+  | "PostLiked"
+  | "PostCommented"
+  | "NewFollower"
+  | "Mentioned"
+  | "Tagged"
+  | string;
+
+export interface BackendNotificationDto {
+  id: string;
+  actorId: string;
+  entityId: string;
+  type: BackendNotificationType;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface PagedNotificationResult<T> {
+  items: T[];
+  Items?: T[];
+  totalCount: number;
+  TotalCount?: number;
+  page: number;
+  Page?: number;
+  pageSize: number;
+  PageSize?: number;
+  totalPages: number;
+  TotalPages?: number;
+  hasNext: boolean;
+  HasNext?: boolean;
+}
+
+export interface NotificationSettingDto {
+  isEnabled: boolean;
+}
+
+export type Notification = BackendNotificationDto & {
+  message: string;
+};
+
+type DevicePlatform = "Android" | "iOS";
+export type PushRemoteMessage = {
+  notification?: {
+    title?: string;
+    body?: string;
+  };
+  data?: Record<string, unknown>;
+};
+
+type MessagingModule = typeof import("@react-native-firebase/messaging").default;
+
+function toNotification(dto: BackendNotificationDto): Notification {
+  return {
+    ...dto,
+    message: dto.content,
+  };
+}
+
+function getDevicePlatform(): DevicePlatform {
+  return Platform.OS === "ios" ? "iOS" : "Android";
+}
+
+export function isPushRuntimeSupported(): boolean {
+  if (Platform.OS !== "android" && Platform.OS !== "ios") return false;
+  return Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+}
+
+function getMessagingModule(): MessagingModule | null {
+  if (!isPushRuntimeSupported()) return null;
+
   try {
-    const response = await apiClient.get<PagedResult<NotificationDto>>(
-      "/notification",
-      {
-        params: { page, pageSize },
-      },
-    );
-
-    return (response.data.items || []).map(
-      transformNotificationDtoToNotification,
-    );
+    const module = require("@react-native-firebase/messaging");
+    return (module.default ?? module) as MessagingModule;
   } catch (error) {
-    console.error("[Notification] Failed to fetch notifications:", error);
-    return [];
+    console.warn("[Notifications] Firebase Messaging is unavailable", error);
+    return null;
   }
 }
 
-/**
- * Mark a single notification as read
- * PUT /api/notification/{id}/read
- */
+function isPermissionGranted(status: number): boolean {
+  return status === 1 || status === 2;
+}
+
+async function requestAndroidNotificationPermission(): Promise<boolean> {
+  if (Platform.OS !== "android") return true;
+
+  const version =
+    typeof Platform.Version === "number"
+      ? Platform.Version
+      : Number.parseInt(String(Platform.Version), 10);
+
+  if (!Number.isFinite(version) || version < 33) return true;
+
+  const result = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+  );
+  return result === PermissionsAndroid.RESULTS.GRANTED;
+}
+
+export async function getNotifications(
+  page = 1,
+  pageSize = 20,
+): Promise<Notification[]> {
+  const data = await getNotificationPage(page, pageSize);
+  return data.items;
+}
+
+export async function getNotificationPage(
+  page = 1,
+  pageSize = 20,
+): Promise<PagedNotificationResult<Notification>> {
+  const { data } = await apiClient.get<
+    PagedNotificationResult<BackendNotificationDto>
+  >("/notification", {
+    params: { page, pageSize },
+  });
+
+  const items = (data.items ?? data.Items ?? [])
+    .map(toNotification)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+  return {
+    ...data,
+    items,
+    Items: items,
+    totalCount: data.totalCount ?? data.TotalCount ?? items.length,
+    page: data.page ?? data.Page ?? page,
+    pageSize: data.pageSize ?? data.PageSize ?? pageSize,
+    totalPages: data.totalPages ?? data.TotalPages ?? 1,
+    hasNext: data.hasNext ?? data.HasNext ?? false,
+  };
+}
+
 export async function markNotificationRead(
   notificationId: string,
 ): Promise<void> {
-  try {
-    await apiClient.put(
-      `/notification/${notificationId}/read`,
-    );
-
-    if (__DEV__) {
-      console.log(`[Notification] Marked as read: ${notificationId}`);
-    }
-  } catch (error) {
-    console.error("[Notification] Failed to mark as read:", error);
-    throw error;
-  }
+  await apiClient.put(`/notification/${notificationId}/read`);
 }
 
-/**
- * Mark all notifications as read
- * PUT /api/notification/read-all
- */
 export async function markAllNotificationsRead(): Promise<void> {
-  try {
-    await apiClient.put(`/notification/read-all`);
-
-    if (__DEV__) {
-      console.log("[Notification] Marked all as read");
-    }
-  } catch (error) {
-    console.error("[Notification] Failed to mark all as read:", error);
-    throw error;
-  }
+  await apiClient.put("/notification/read-all");
 }
 
-/**
- * Get unread notification count
- * GET /api/notification/unread-count
- */
 export async function getUnreadNotificationCount(): Promise<number> {
-  try {
-    const response = await apiClient.get<UnreadCountResponse>(
-      `/notification/unread-count`,
-    );
+  const { data } = await apiClient.get<{ unreadCount?: number; UnreadCount?: number }>(
+    "/notification/unread-count",
+  );
+  return data.unreadCount ?? data.UnreadCount ?? 0;
+}
 
-    return response.data.unreadCount || 0;
+export async function getNotificationSettings(): Promise<NotificationSettingDto> {
+  const { data } = await apiClient.get<
+    NotificationSettingDto & { IsEnabled?: boolean }
+  >(
+    "/notifications/settings",
+  );
+  return { isEnabled: data.isEnabled ?? data.IsEnabled ?? false };
+}
+
+export async function updateNotificationSettings(
+  isEnabled: boolean,
+): Promise<void> {
+  await apiClient.put("/notifications/settings", { isEnabled });
+}
+
+export async function registerDeviceToken(token: string): Promise<void> {
+  await apiClient.post("/notification/device/register", {
+    token,
+    platform: getDevicePlatform(),
+  });
+}
+
+export async function registerDeviceForPushNotifications(): Promise<boolean> {
+  try {
+    const messaging = getMessagingModule();
+    if (!messaging) return false;
+
+    const settings = await getNotificationSettings();
+    if (!settings.isEnabled) return false;
+
+    if (!messaging().isDeviceRegisteredForRemoteMessages) {
+      await messaging().registerDeviceForRemoteMessages();
+    }
+
+    if (!(await requestAndroidNotificationPermission())) return false;
+
+    if (Platform.OS === "ios") {
+      const status = await messaging().requestPermission();
+      if (!isPermissionGranted(status)) return false;
+    }
+
+    const token = await messaging().getToken();
+    if (!token) return false;
+
+    await registerDeviceToken(token);
+    return true;
   } catch (error) {
-    console.error("[Notification] Failed to get unread count:", error);
-    return 0;
+    console.warn("[Notifications] Failed to register device token", error);
+    return false;
   }
 }
 
-/**
- * Transform backend NotificationDto to frontend Notification model
- * Maps backend fields to frontend model structure
- */
-function transformNotificationDtoToNotification(
-  dto: NotificationDto,
-): Notification {
-  return {
-    id: dto.id,
-    type: (dto.type.toLowerCase() as any) || "follow",
-    user: {
-      id: dto.actorId,
-      username: "unknown",
-      displayName: "Unknown User",
-      fullName: "Unknown User",
-      avatar: "",
-      coverImage: "",
-      bio: "",
-      gender: "",
-      followers: 0,
-      following: 0,
-      posts: 0,
-      isVerified: false,
-    },
-    message: dto.content,
-    createdAt: dto.createdAt,
-    isRead: dto.isRead,
-  };
+export function subscribeToPushTokenRefresh(): () => void {
+  const messaging = getMessagingModule();
+  if (!messaging) return () => {};
+
+  return messaging().onTokenRefresh((token) => {
+    void (async () => {
+      const settings = await getNotificationSettings();
+      if (!settings.isEnabled) return;
+      await registerDeviceToken(token);
+    })().catch((error) => {
+      console.warn("[Notifications] Failed to register refreshed token", error);
+    });
+  });
+}
+
+export function subscribeToForegroundNotifications(
+  handler: (message: PushRemoteMessage) => void,
+): () => void {
+  const messaging = getMessagingModule();
+  if (!messaging) return () => {};
+
+  return messaging().onMessage(async (message) => {
+    handler(message);
+  });
+}
+
+export function subscribeToNotificationOpened(
+  handler: (message: PushRemoteMessage) => void,
+): () => void {
+  const messaging = getMessagingModule();
+  if (!messaging) return () => {};
+
+  return messaging().onNotificationOpenedApp((message) => {
+    handler(message);
+  });
+}
+
+export async function getInitialPushNotification(): Promise<PushRemoteMessage | null> {
+  const messaging = getMessagingModule();
+  if (!messaging) return null;
+
+  return messaging().getInitialNotification();
 }

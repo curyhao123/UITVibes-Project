@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NotificationService.DTOs;
 using NotificationService.Models;
-using NotificationService.ServiceLayer.Interface;
 using System.Text.Json;
 
 namespace NotificationService.ServiceLayer.Implementation
@@ -32,8 +31,8 @@ namespace NotificationService.ServiceLayer.Implementation
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
-            var pushSender = scope.ServiceProvider.GetRequiredService<IFcmPushSender>();
-            var deviceService = scope.ServiceProvider.GetRequiredService<IDeviceTokenService>();
+            var pushSender = scope.ServiceProvider.GetRequiredService<global::NotificationService.ServiceLayer.Interface.IFcmPushSender>();
+            var deviceService = scope.ServiceProvider.GetRequiredService<global::NotificationService.ServiceLayer.Interface.IDeviceTokenService>();
 
             var pending = await db.OutboxMessages
                 .Where(x => x.Status == OutboxStatus.Pending)

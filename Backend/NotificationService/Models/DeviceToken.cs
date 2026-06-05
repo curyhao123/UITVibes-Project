@@ -1,4 +1,4 @@
-namespace NotificationService.Models
+﻿namespace NotificationService.Models
 {
     public class DeviceToken
     {
@@ -6,7 +6,7 @@ namespace NotificationService.Models
 
         public Guid UserId { get; private set; }
         public string Token { get; private set; } = string.Empty;
-        public DevicePlatform Platform { get; init; }
+        public DevicePlatform Platform { get; private set; }
 
         public bool IsActive { get; private set; } = true;
         public DateTime LastUsedAt { get; private set; } = DateTime.UtcNow;
@@ -22,12 +22,14 @@ namespace NotificationService.Models
             IsActive = true;
         }
 
-        public void Deactivate() => IsActive = false;
-
-        public void UpdateUser(Guid newUserId)
+        public void Reassign(Guid userId, string newToken, DevicePlatform platform)
         {
-            UserId = newUserId;
+            UserId = userId;
+            Platform = platform;
+            Refresh(newToken);
         }
+
+        public void Deactivate() => IsActive = false;
     }
 
     public enum DevicePlatform { Android, iOS }

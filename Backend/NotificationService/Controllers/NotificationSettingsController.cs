@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NotificationService.DTOs;
-using NotificationService.ServiceLayer.Implementation;
+using NotificationService.ServiceLayer.Interface;
 
 namespace NotificationService.Controllers
 {
@@ -8,9 +8,9 @@ namespace NotificationService.Controllers
     [Route("api/notifications/settings")]
     public class NotificationSettingsController : ControllerBase
     {
-        private readonly UserNotificationSettingService _settingService;
+        private readonly IUserNotificationSettingService _settingService;
 
-        public NotificationSettingsController(UserNotificationSettingService settingService)
+        public NotificationSettingsController(IUserNotificationSettingService settingService)
             => _settingService = settingService;
 
         private Guid GetUserId()
@@ -24,6 +24,11 @@ namespace NotificationService.Controllers
         public async Task<IActionResult> Get(CancellationToken ct = default)
         {
             var userId = GetUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized();
+            }
+
             var isEnabled = await _settingService.IsEnabledAsync(userId, ct);
             return Ok(new NotificationSettingDto(isEnabled));
         }
@@ -35,6 +40,11 @@ namespace NotificationService.Controllers
             CancellationToken ct = default)
         {
             var userId = GetUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized();
+            }
+
             await _settingService.UpdateAsync(userId, request.IsEnabled, ct);
             return NoContent();
         }

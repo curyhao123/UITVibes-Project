@@ -6,6 +6,7 @@ namespace NotificationService.ServiceLayer.Implementation
 {
     public class FcmPushSender : IFcmPushSender
     {
+        private const string DefaultAndroidChannelId = "uitvibes_default_channel";
         private readonly FirebaseMessaging _messaging;
         private readonly IDeviceTokenService _deviceService;
         private readonly ILogger<FcmPushSender> _logger;
@@ -19,6 +20,15 @@ namespace NotificationService.ServiceLayer.Implementation
 
         public async Task SendAsync(List<string> tokens, PushPayload payload, CancellationToken ct = default)
         {
+            var data = new Dictionary<string, string>
+            {
+                ["type"] = payload.Type,
+                ["entityId"] = payload.EntityId,
+            };
+
+            if (!string.IsNullOrWhiteSpace(payload.NotificationId))
+                data["notificationId"] = payload.NotificationId;
+
             var message = new MulticastMessage
             {
                 Tokens = tokens,
@@ -27,15 +37,15 @@ namespace NotificationService.ServiceLayer.Implementation
                     Title = payload.Title,
                     Body = payload.Body,
                 },
-                Data = new Dictionary<string, string>
-                {
-                    ["type"] = payload.Type,
-                    ["entityId"] = payload.EntityId,
-                },
+                Data = data,
                 Android = new AndroidConfig
                 {
                     Priority = Priority.High,
-                    Notification = new AndroidNotification { ChannelId = "default" }
+                    Notification = new AndroidNotification
+                    {
+                        ChannelId = DefaultAndroidChannelId,
+                        Sound = "default"
+                    }
                 },
                 Apns = new ApnsConfig
                 {

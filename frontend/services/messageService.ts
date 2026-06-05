@@ -251,12 +251,13 @@ export async function getMessages(
 export async function sendMessage(
   conversationId: string,
   text: string,
+  members: Conversation["members"] = [],
 ): Promise<Message> {
   const { data } = await apiClient.post<BE_MessageResponse>(
     `${GW}/conversations/${conversationId}/message`,
     { content: text, type: 0 },
   );
-  return transformBEMessage(data);
+  return transformBEMessage(data, members);
 }
 
 /** PUT /conversations/{id}/message/{messageId} — edit a message */
@@ -290,4 +291,9 @@ export async function markMessagesRead(
   await apiClient.post(
     `${GW}/conversations/${conversationId}/message/${messageId}/read`,
   );
+}
+
+/** DELETE /conversations/{id} — delete (soft-delete) a conversation */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await apiClient.delete(`${GW}/conversations/${conversationId}`);
 }

@@ -59,7 +59,12 @@ namespace NotificationService.ServiceLayer.Implementation
             var outboxMessage = OutboxMessage.Create(
                 notification.Id,
                 DeliveryChannel.Push,
-                new PushPayload(body, body, input.Type.ToString(), input.EntityId.ToString()));
+                new PushPayload(
+                    body,
+                    body,
+                    input.Type.ToString(),
+                    input.EntityId.ToString(),
+                    notification.Id.ToString()));
 
             _db.OutboxMessages.Add(outboxMessage);
 

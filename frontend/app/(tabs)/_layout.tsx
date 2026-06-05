@@ -6,7 +6,7 @@ import { AppColors } from '../../constants/theme';
 import { ModernTabBar } from '../../components/ModernTabBar';
 
 /**
- * Bottom tabs — Home, Search, Music, Create, Reels, Message, Profile.
+ * Bottom tabs — Home, Search, Create, Reels, Profile.
  *
  * All icon sizes use 23px stroke weight for consistency.
  * Labels are intentionally hidden: icon-only feels more premium on a floating bar.
@@ -55,15 +55,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="music"
-        options={{
-          title: 'Music',
-          tabBarIcon: ({ color }) => (
-            <Feather name="music" size={TAB_ICON_SIZE} color={color} strokeWidth={2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="create"
         options={{
           title: 'Create',
@@ -84,16 +75,7 @@ export default function TabLayout() {
         options={{
           title: 'Reels',
           tabBarIcon: ({ color }) => (
-            <Feather name="video" size={TAB_ICON_SIZE} color={color} strokeWidth={2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="message"
-        options={{
-          title: 'Message',
-          tabBarIcon: ({ color }) => (
-            <Feather name="message-circle" size={TAB_ICON_SIZE} color={color} strokeWidth={2} />
+            <Feather name="film" size={TAB_ICON_SIZE} color={color} strokeWidth={2} />
           ),
         }}
       />

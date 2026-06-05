@@ -46,9 +46,11 @@ builder.Services.AddHostedService<UserBannedConsumer>();
 builder.Services.AddHostedService<UserProfileRpcConsumer>();
 builder.Services.AddHostedService<FriendListRpcConsumer>();
 builder.Services.AddHostedService<UserFollowRpcConsumer>();
+builder.Services.AddHostedService<BlockStatusRpcConsumer>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IBlockService, BlockService>();
 builder.Services.AddScoped<IUserFollowPublisher, UserFollowPublisher>();
+builder.Services.AddScoped<IPostCountRpcClient, PostCountRpcClient>();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {

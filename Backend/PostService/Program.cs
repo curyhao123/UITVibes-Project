@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
+using PostService.Messaging;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
 using PostService.ServiceLayer.Interface;
@@ -32,6 +33,7 @@ builder.Services.AddScoped<IPostMentionedPublisher, PostMentionedPublisher>();
 builder.Services.AddScoped<ICommentMentionedPublisher, CommentMentionedPublisher>();
 builder.Services.AddScoped<IHighlightService, HighlightService>();
 builder.Services.AddScoped<IReelService, ReelService>();
+builder.Services.AddHostedService<PostCountRpcConsumer>();
 
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()

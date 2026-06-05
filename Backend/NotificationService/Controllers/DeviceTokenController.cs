@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NotificationService.DTOs;
 using NotificationService.ServiceLayer.Interface;
-using System.Security.Claims;
 
 namespace NotificationService.Controllers
 {
@@ -28,6 +27,16 @@ namespace NotificationService.Controllers
             CancellationToken ct = default)
         {
             var userId = GetUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized();
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Token))
+            {
+                return BadRequest("Device token is required.");
+            }
+
             await _deviceTokenService.RegisterAsync(userId, request.Token, request.Platform, ct);
             return Ok();
         }
