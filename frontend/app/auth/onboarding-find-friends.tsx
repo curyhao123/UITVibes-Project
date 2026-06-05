@@ -106,19 +106,12 @@ export default function OnboardingFindFriendsScreen() {
     setIsLoading(true);
     try {
       // Batch-save all collected onboarding data to DB in one call
-      console.log("[Onboarding] Saving profile:", {
-        fullName: onboardingData.fullName,
-        displayName: onboardingData.displayName,
-        gender: onboardingData.gender,
-        bio: onboardingData.bio,
-      });
       await api.updateProfile({
         fullName: onboardingData.fullName || undefined,
         displayName: onboardingData.displayName || undefined,
         gender: onboardingData.gender || undefined,
         bio: onboardingData.bio || undefined,
       });
-      console.log("[Onboarding] Profile saved successfully.");
     } catch (err: any) {
       console.error("[Onboarding] Failed to save profile:", err?.response?.data ?? err);
     } finally {

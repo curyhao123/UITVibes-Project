@@ -44,12 +44,10 @@ export default function ProfileScreen() {
 
   // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
-  console.log("[Profile] Render: myPosts.length =", myPosts.length, "userPosts.length =", userPosts.length);
 
   // Refresh myPosts khi quay lại profile tab
   useFocusEffect(
     useCallback(() => {
-      console.log("[Profile] useFocusEffect: refreshing myPosts");
       setIsLoadingPosts(true);
       refreshMyPosts().then(() => {
         setIsLoadingPosts(false);

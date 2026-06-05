@@ -118,7 +118,11 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               {isCurrentUser(item.lastMessage?.senderId ?? "")
                 ? "You: "
                 : ""}
-              {item.lastMessage?.text || "No messages yet"}
+              {(() => {
+                if (item.lastMessage?.image) return "📷 Photo";
+                if (item.lastMessage?.messageType === "image") return "📷 Photo";
+                return item.lastMessage?.text || "No messages yet";
+              })()}
             </Text>
             {hasUnread && (
               <View style={styles.unreadBadge}>
@@ -206,17 +210,13 @@ export default function MessageScreen() {
 
   // ── Start conversation from New Message sheet ─────────────────────────────────
   const handleSelectUser = async (user: User) => {
-    console.log("[MessageScreen] handleSelectUser called — user:", user.displayName, user.id);
-
     // 1. Set loading — disable the item immediately
     setStartingConvUserId(user.id);
     setShowNewMsg(false);
 
     try {
       // 2. Call API to create/get private conversation
-      console.log("[MessageScreen] Calling startConversation for userId:", user.id);
       const conv = await startConversation(user.id);
-      console.log("[MessageScreen] startConversation returned:", conv);
 
       if (!conv) {
         // startConversation returned null — this should not happen if we throw on error
@@ -231,8 +231,6 @@ export default function MessageScreen() {
       // 4. Clear search state
       setNewMsgSearch("");
       setSearchResults([]);
-
-      console.log("[MessageScreen] Done — chat should be open now.");
     } catch (err: any) {
       // 3b. Handle error — show alert
       console.error("[MessageScreen] startConversation FAILED:", err?.response?.data ?? err?.message ?? err);
@@ -290,7 +288,6 @@ export default function MessageScreen() {
   });
 
   useEffect(() => {
-    console.log("[MessageScreen] useEffect: initial conversation fetch on mount");
     refreshConversations().catch((err) => {
       console.error("[MessageScreen] Initial conversation fetch failed:", err);
     });

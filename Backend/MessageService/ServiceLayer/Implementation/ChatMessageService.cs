@@ -1,6 +1,5 @@
 using MessageService.DTOs;
 using MessageService.Models;
-using MessageService.DTOs;
 using MessageService.Hubs;
 using MessageService.ServiceLayer.Interface;
 using Microsoft.AspNetCore.SignalR;
@@ -15,6 +14,7 @@ namespace MessageService.ServiceLayer.Implementation
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly ILogger<ChatMessageService> _logger;
         private readonly IUserProfileRpcClient _userProfileRpcClient;
+        private readonly IBlockStatusRpcClient _blockStatusRpcClient;
         private readonly IMessageSentPublisher _messageSentPublisher;
 
         public ChatMessageService(
@@ -22,12 +22,14 @@ namespace MessageService.ServiceLayer.Implementation
             IHubContext<ChatHub> hubContext,
             ILogger<ChatMessageService> logger,
             IUserProfileRpcClient userProfileRpcClient,
+            IBlockStatusRpcClient blockStatusRpcClient,
             IMessageSentPublisher messageSentPublisher)
         {
             _context = context;
             _hubContext = hubContext;
             _logger = logger;
             _userProfileRpcClient = userProfileRpcClient;
+            _blockStatusRpcClient = blockStatusRpcClient;
             _messageSentPublisher = messageSentPublisher;
         }
 
@@ -153,12 +155,38 @@ namespace MessageService.ServiceLayer.Implementation
 
         public async Task<MessageDto> SendMessageAsync(Guid conversationId, Guid senderId, SendMessageRequest request)
         {
-            // Verify user is member of conversation
-            var isMember = await _context.ConversationMembers
-                .AnyAsync(m => m.ConversationId == conversationId && m.UserId == senderId && m.LeftAt == null);
+            var conversation = await _context.Conversations
+                .Include(c => c.Members)
+                .FirstOrDefaultAsync(c => c.Id == conversationId && !c.IsDeleted);
 
-            if (!isMember)
+            if (conversation == null)
+                throw new KeyNotFoundException("Conversation not found");
+
+            var activeMembers = conversation.Members
+                .Where(m => m.LeftAt == null)
+                .ToList();
+
+            // Verify user is member of conversation
+            if (!activeMembers.Any(m => m.UserId == senderId))
                 throw new UnauthorizedAccessException("You are not a member of this conversation");
+
+            if (conversation.Type == ConversationType.Private)
+            {
+                var otherMember = activeMembers.FirstOrDefault(m => m.UserId != senderId);
+                if (otherMember != null)
+                {
+                    var blockStatus = await _blockStatusRpcClient.GetBlockStatusAsync(senderId, otherMember.UserId);
+                    if (blockStatus == null)
+                    {
+                        throw new InvalidOperationException("Unable to verify block status. Please try again.");
+                    }
+
+                    if (blockStatus.BlockedByMe || blockStatus.BlockedMe)
+                    {
+                        throw new UnauthorizedAccessException("Cannot send messages because this conversation is blocked");
+                    }
+                }
+            }
 
             // Validate reply
             if (request.ReplyToMessageId.HasValue)
@@ -188,7 +216,6 @@ namespace MessageService.ServiceLayer.Implementation
             _context.Messages.Add(message);
 
             // Update conversation's last message
-            var conversation = await _context.Conversations.FindAsync(conversationId);
             if (conversation != null)
             {
                 conversation.LastMessageContent = request.Type == 0

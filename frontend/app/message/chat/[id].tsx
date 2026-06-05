@@ -29,9 +29,11 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../../context/AppContext';
 import * as api from '../../../services/api';
@@ -41,6 +43,12 @@ import {
   leaveGroup,
   getConversationById,
 } from '../../../services/messageService';
+import {
+  blockUser,
+  getBlockStatus,
+  unblockUser,
+  type BlockStatusDto,
+} from '../../../services/blockService';
 import { invokeHub } from '../../../services/signalrService';
 import { Avatar } from '../../../components/Avatar';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
@@ -91,6 +99,7 @@ export default function ChatScreen() {
     text: '',
   });
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [showChatActions, setShowChatActions] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [friends, setFriends] = useState<any[]>([]);
   const [friendSearch, setFriendSearch] = useState('');
@@ -101,6 +110,7 @@ export default function ChatScreen() {
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [showScrollToBottomButton, setShowScrollToBottomButton] = useState(false);
+  const [blockStatus, setBlockStatus] = useState<BlockStatusDto | null>(null);
   const [confirmAction, setConfirmAction] = useState<
     | { type: 'remove'; member: any }
     | { type: 'leave' }
@@ -112,6 +122,9 @@ export default function ChatScreen() {
     | { type: 'leave' }
     | null
   >(null);
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Find the conversation from the global list by id
   const conversation = conversations.find((c) => c.id === id) ?? null;
@@ -133,6 +146,15 @@ export default function ChatScreen() {
   const isGroup = conversation?.isGroup ?? false;
   const headerName = conversation?.name || other?.displayName || 'Chat';
   const otherUser = !isGroup ? other : null;
+  const isChatBlocked = !isGroup && !!(blockStatus?.blockedByMe || blockStatus?.blockedMe);
+  const blockedNoticeTitle = blockStatus?.blockedByMe
+    ? 'You blocked this user'
+    : 'Messaging unavailable';
+  const blockedNoticeMessage = blockStatus?.blockedByMe
+    ? 'Go to Settings > Blocked Accounts to unblock them before sending messages.'
+    : 'This user has blocked you, so you cannot send messages in this chat.';
+  const chatActionLabel = blockStatus?.blockedByMe ? 'Unblock user' : 'Block user';
+  const chatActionIcon = blockStatus?.blockedByMe ? 'user-check' : 'user-x';
   const isAdmin =
     conversation?.adminIds?.includes(currentUser?.id ?? '') ?? false;
   const memberIds = new Set(convMembers.map((member) => member.id));
@@ -157,6 +179,94 @@ export default function ChatScreen() {
       })
       .catch(() => {});
   }, [id, conversation?.id]);
+
+  const refreshBlockStatus = useCallback(async () => {
+    if (isGroup || !otherUser?.id) {
+      setBlockStatus(null);
+      return;
+    }
+
+    try {
+      const status = await getBlockStatus(otherUser.id);
+      setBlockStatus(status);
+      if (status.blockedByMe || status.blockedMe) {
+        setMessageText('');
+      }
+    } catch {
+      setBlockStatus(null);
+    }
+  }, [isGroup, otherUser?.id]);
+
+  useEffect(() => {
+    void refreshBlockStatus();
+  }, [refreshBlockStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshBlockStatus();
+    }, [refreshBlockStatus]),
+  );
+
+  const handleBlockUserAction = useCallback(() => {
+    if (!otherUser?.id) return;
+
+    const displayName = otherUser.displayName || otherUser.username || 'this user';
+    const shouldUnblock = !!blockStatus?.blockedByMe;
+
+    Alert.alert(
+      shouldUnblock ? 'Unblock user?' : 'Block user?',
+      shouldUnblock
+        ? `You will be able to send messages to ${displayName} again.`
+        : `${displayName} will not be able to message, follow, or interact with you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: shouldUnblock ? 'Unblock' : 'Block',
+          style: shouldUnblock ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              if (shouldUnblock) {
+                await unblockUser(otherUser.id);
+              } else {
+                await blockUser(otherUser.id);
+                setMessageText('');
+              }
+              await refreshBlockStatus();
+              await refreshConversations();
+            } catch (err: any) {
+              Alert.alert(
+                'Error',
+                err?.response?.data?.message ??
+                  err?.message ??
+                  (shouldUnblock
+                    ? 'Failed to unblock this user.'
+                    : 'Failed to block this user.'),
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [
+    blockStatus?.blockedByMe,
+    isGroup,
+    otherUser?.displayName,
+    otherUser?.id,
+    otherUser?.username,
+    refreshBlockStatus,
+    refreshConversations,
+  ]);
+
+  const handleHeaderAction = useCallback(() => {
+    if (isGroup) {
+      setShowGroupSettings(true);
+      return;
+    }
+
+    if (otherUser?.id) {
+      setShowChatActions(true);
+    }
+  }, [isGroup, otherUser?.id]);
 
   useEffect(() => {
     if (!showAddMember || !currentUser?.id) return;
@@ -255,23 +365,92 @@ export default function ChatScreen() {
     scheduleScrollToBottom(true);
   }, [scheduleScrollToBottom]);
 
+  // ── Image picker ────────────────────────────────────────────────────
+  const pickImage = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to send images.',
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  }, []);
+
+  const removeSelectedImage = useCallback(() => {
+    setSelectedImage(null);
+  }, []);
+
   // ── Send ───────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
-    if (!messageText.trim() || !conversation || isSendingRef.current) return;
+    if (!conversation || isSendingRef.current || isChatBlocked) return;
+
+    const hasText = messageText.trim().length > 0;
+    const hasImage = !!selectedImage;
+
+    if (!hasText && !hasImage) return;
+
     isSendingRef.current = true;
+    pendingOwnMessageScrollRef.current = true;
+
+    if (hasImage && !hasText) {
+      setIsUploadingImage(true);
+    }
+
     const text = messageText.trim();
     setMessageText('');
-    pendingOwnMessageScrollRef.current = true;
+    if (hasImage) {
+      setSelectedImage(null);
+    }
+
     try {
-      await sendMessage(conversation.id, text);
+      if (hasImage) {
+        await sendMessage(conversation.id, {
+          content: text,
+          mediaUri: selectedImage,
+        });
+      } else {
+        await sendMessage(conversation.id, text);
+      }
     } catch (err: any) {
       pendingOwnMessageScrollRef.current = false;
-      setMessageText(text);
+      if (hasImage) {
+        setSelectedImage(selectedImage);
+      }
+      if (!hasImage) {
+        setMessageText(text);
+      }
       Alert.alert('Error', err?.message ?? 'Failed to send message.');
     } finally {
       isSendingRef.current = false;
+      setIsUploadingImage(false);
     }
-  }, [messageText, conversation, sendMessage]);
+  }, [messageText, selectedImage, conversation, sendMessage, isChatBlocked]);
+
+  const handleSendDirect = useCallback(
+    async (text: string) => {
+      if (!conversation || isSendingRef.current || isChatBlocked) return;
+      isSendingRef.current = true;
+      pendingOwnMessageScrollRef.current = true;
+      try {
+        await sendMessage(conversation.id, text);
+      } catch (err: any) {
+        pendingOwnMessageScrollRef.current = false;
+        Alert.alert('Error', err?.message ?? 'Failed to send message.');
+      } finally {
+        isSendingRef.current = false;
+      }
+    },
+    [conversation, sendMessage, isChatBlocked],
+  );
 
   const handleAddMember = useCallback(
     async (userId: string) => {
@@ -353,23 +532,6 @@ export default function ChatScreen() {
       setIsLeavingGroup(false);
     }
   }, [conversation, refreshConversations, router]);
-
-  const handleSendDirect = useCallback(
-    async (text: string) => {
-      if (!conversation || isSendingRef.current) return;
-      isSendingRef.current = true;
-      pendingOwnMessageScrollRef.current = true;
-      try {
-        await sendMessage(conversation.id, text);
-      } catch (err: any) {
-        pendingOwnMessageScrollRef.current = false;
-        Alert.alert('Error', err?.message ?? 'Failed to send message.');
-      } finally {
-        isSendingRef.current = false;
-      }
-    },
-    [conversation, sendMessage],
-  );
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   const isCurrentUser = (senderId: string) => senderId === currentUser?.id;
@@ -523,16 +685,23 @@ export default function ChatScreen() {
                 bubbleGroupStyle,
               ]}
             >
-              {item.text ? (
+              {item.messageType === 'image' || item.image ? (
+                <>
+                  <Image
+                    source={{ uri: item.image ?? '' }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                  />
+                  {item.text ? (
+                    <Text style={[styles.messageText, mine && styles.messageTextMine]}>
+                      {item.text}
+                    </Text>
+                  ) : null}
+                </>
+              ) : item.text ? (
                 <Text style={[styles.messageText, mine && styles.messageTextMine]}>
                   {item.text}
                 </Text>
-              ) : item.image ? (
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.messageImage}
-                  resizeMode="cover"
-                />
               ) : null}
             </View>
             {showMessageTime && (
@@ -652,9 +821,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerAction}
-            onPress={() => {
-              if (isGroup) setShowGroupSettings(true);
-            }}
+            onPress={handleHeaderAction}
           >
             <Feather
               name={isGroup && isAdmin ? 'settings' : 'info'}
@@ -717,65 +884,106 @@ export default function ChatScreen() {
         )}
 
         {/* Message Input */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-          style={styles.keyboardAvoid}
-        >
+        {isChatBlocked ? (
           <View
             style={[
-              styles.inputContainer,
+              styles.blockedInputNotice,
               { paddingBottom: Math.max(insets.bottom, 10) },
             ]}
           >
-            <TouchableOpacity style={styles.attachBtn}>
-              <Feather name="smile" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-            </TouchableOpacity>
-            <TextInput
-              style={styles.messageInput}
-              placeholder="Message..."
-              placeholderTextColor={AppColors.iconMuted}
-              value={messageText}
-              onChangeText={(text) => {
-                if (!isSendingRef.current && text.endsWith('\n') && !text.endsWith('\n\n')) {
-                  const trimmed = text.trimEnd();
-                  setMessageText('');
-                  if (trimmed.length > 0) {
-                    handleSendDirect(trimmed);
-                  }
-                  return;
-                }
-                setMessageText(text);
-                if (conversation && text.length > 0) {
-                  if (!iStartedTypingRef.current) {
-                    iStartedTypingRef.current = true;
-                    invokeHub('StartTyping', conversation.id).catch(() => {});
-                  }
-                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                  typingTimeoutRef.current = setTimeout(() => {
-                    iStartedTypingRef.current = false;
-                    invokeHub('StopTyping', conversation.id).catch(() => {});
-                  }, 2000);
-                }
-              }}
-              multiline
-              maxLength={4000}
-            />
-            {messageText.length > 0 ? (
-              <TouchableOpacity
-                onPress={handleSend}
-                style={styles.sendBtn}
-                disabled={isLoadingMessages}
-              >
-                <Feather name="send" size={22} color={AppColors.primary} strokeWidth={2} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.attachBtn}>
-                <Feather name="camera" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-              </TouchableOpacity>
-            )}
+            <Feather name="slash" size={18} color={AppColors.textMuted} strokeWidth={2} />
+            <View style={styles.blockedInputTextWrap}>
+              <Text style={styles.blockedInputTitle}>{blockedNoticeTitle}</Text>
+              <Text style={styles.blockedInputMessage}>{blockedNoticeMessage}</Text>
+            </View>
           </View>
-        </KeyboardAvoidingView>
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+            style={styles.keyboardAvoid}
+          >
+            {/* Image preview strip */}
+            {selectedImage && (
+              <View style={styles.imagePreviewStrip}>
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: selectedImage }} style={styles.imagePreviewThumb} resizeMode="cover" />
+                  <TouchableOpacity
+                    style={styles.imagePreviewRemove}
+                    onPress={removeSelectedImage}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather name="x-circle" size={22} color="#fff" strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            <View
+              style={[
+                styles.inputContainer,
+                { paddingBottom: Math.max(insets.bottom, 10) },
+              ]}
+            >
+              {/* Attach image button */}
+              <TouchableOpacity
+                onPress={pickImage}
+                style={styles.attachBtn}
+                disabled={isUploadingImage}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Feather
+                  name="image"
+                  size={22}
+                  color={isUploadingImage ? AppColors.iconMuted : AppColors.textMuted}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.messageInput}
+                placeholder="Message..."
+                placeholderTextColor={AppColors.iconMuted}
+                value={messageText}
+                onChangeText={(text) => {
+                  if (!isSendingRef.current && text.endsWith('\n') && !text.endsWith('\n\n')) {
+                    const trimmed = text.trimEnd();
+                    setMessageText('');
+                    if (trimmed.length > 0) {
+                      handleSendDirect(trimmed);
+                    }
+                    return;
+                  }
+                  setMessageText(text);
+                  if (conversation && text.length > 0) {
+                    if (!iStartedTypingRef.current) {
+                      iStartedTypingRef.current = true;
+                      invokeHub('StartTyping', conversation.id).catch(() => {});
+                    }
+                    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                    typingTimeoutRef.current = setTimeout(() => {
+                      iStartedTypingRef.current = false;
+                      invokeHub('StopTyping', conversation.id).catch(() => {});
+                    }, 2000);
+                  }
+                }}
+                multiline
+                maxLength={4000}
+              />
+              {(messageText.length > 0 || !!selectedImage) && (
+                <TouchableOpacity
+                  onPress={handleSend}
+                  style={styles.sendBtn}
+                  disabled={isLoadingMessages || isUploadingImage}
+                >
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color={AppColors.primary} />
+                  ) : (
+                    <Feather name="send" size={22} color={AppColors.primary} strokeWidth={2} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        )}
       </SafeAreaView>
 
       <MessageContextMenu
@@ -790,6 +998,58 @@ export default function ChatScreen() {
         onSave={handleEditSave}
         onCancel={() => setEditModal({ visible: false, messageId: '', text: '' })}
       />
+
+      {conversation && !isGroup && (
+        <Modal
+          visible={showChatActions}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowChatActions(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowChatActions(false)}
+          >
+            <View
+              style={styles.chatActionsSheet}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.settingsSheetHeader}>
+                <Text style={styles.settingsSheetTitle}>Chat actions</Text>
+                <TouchableOpacity onPress={() => setShowChatActions(false)}>
+                  <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.actionRow}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setShowChatActions(false);
+                  setTimeout(handleBlockUserAction, 120);
+                }}
+              >
+                <Feather
+                  name={chatActionIcon}
+                  size={20}
+                  color={blockStatus?.blockedByMe ? AppColors.text : AppColors.error}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={[
+                    styles.actionText,
+                    !blockStatus?.blockedByMe && styles.dangerActionText,
+                  ]}
+                >
+                  {chatActionLabel}
+                </Text>
+                <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
 
       {conversation && (
         <Modal
@@ -1083,6 +1343,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     maxHeight: '85%',
   },
+  chatActionsSheet: {
+    backgroundColor: AppColors.background,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingBottom: 20,
+  },
   settingsSheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1157,6 +1423,9 @@ const styles = StyleSheet.create({
     ...Typography.body,
     flex: 1,
     color: AppColors.text,
+  },
+  dangerActionText: {
+    color: AppColors.error,
   },
   leaveGroupText: {
     ...Typography.body,
@@ -1353,6 +1622,29 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 20,
   },
+  blockedInputNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: layoutPadding,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  blockedInputTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  blockedInputTitle: {
+    ...Typography.bodySemibold,
+    color: AppColors.text,
+  },
+  blockedInputMessage: {
+    ...Typography.caption,
+    color: AppColors.textMuted,
+    lineHeight: 18,
+  },
   keyboardAvoid: {
     // Wraps input so it sits flush against the keyboard
   },
@@ -1368,6 +1660,30 @@ const styles = StyleSheet.create({
   },
   attachBtn: {
     padding: 4,
+  },
+  imagePreviewStrip: {
+    paddingHorizontal: layoutPadding,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  imagePreviewContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePreviewThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePreviewRemove: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 11,
   },
   sendBtn: {
     padding: 4,

@@ -26,7 +26,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Video } from 'expo-av';
+import { ResizeMode, Video } from 'expo-av';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -429,6 +429,7 @@ interface ReelCardProps {
   onShare: () => void;
   onUserPress: () => void;
   onFollow: () => void;
+  onTogglePaused: (paused: boolean) => void;
   isCurrentUser?: boolean;
 }
 
@@ -443,14 +444,17 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onShare,
   onUserPress,
   onFollow,
+  onTogglePaused,
   isCurrentUser = false,
 }) => {
   const insets = useSafeAreaInsets();
   const [showHeart, setShowHeart] = useState(false);
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [showPlayPause, setShowPlayPause] = useState(false);
+  const [playPauseIndicatorPaused, setPlayPauseIndicatorPaused] = useState(isPaused);
   const [progress, setProgress] = useState(0);
   const lastTap = useRef<number>(0);
+  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRef = useRef<Video>(null);
   const buttonPressedRef = useRef(false);
 
@@ -485,6 +489,14 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     }
   }, [isActive]);
 
+  useEffect(() => {
+    return () => {
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handlePress = useCallback(() => {
     if (buttonPressedRef.current) {
       buttonPressedRef.current = false;
@@ -492,6 +504,10 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     }
     const now = Date.now();
     if (now - lastTap.current < 300) {
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+        singleTapTimeoutRef.current = null;
+      }
       // Double tap - like
       setShowHeart(true);
       if (!isLiked) {
@@ -500,17 +516,18 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       }
       setTimeout(() => setShowHeart(false), 1000);
     } else {
-      // Single tap - toggle play/pause (only when not globally paused)
-      if (!isPaused) {
-        videoRef.current?.pauseAsync();
-      } else {
-        videoRef.current?.playAsync();
-      }
-      setShowPlayPause(true);
-      setTimeout(() => setShowPlayPause(false), 600);
+      singleTapTimeoutRef.current = setTimeout(() => {
+        // Single tap - toggle parent-owned play/pause state.
+        const nextPaused = !isPaused;
+        setPlayPauseIndicatorPaused(nextPaused);
+        onTogglePaused(nextPaused);
+        setShowPlayPause(true);
+        setTimeout(() => setShowPlayPause(false), 600);
+        singleTapTimeoutRef.current = null;
+      }, 300);
     }
     lastTap.current = now;
-  }, [isLiked, isPaused, onLike]);
+  }, [isLiked, isPaused, onLike, onTogglePaused]);
 
   const handleLike = useCallback(() => {
     setIsLiked(!isLiked);
@@ -538,15 +555,15 @@ export const ReelCard: React.FC<ReelCardProps> = ({
           ref={videoRef}
           source={{ uri: item.videoUrl }}
           style={[styles.background, { height: itemHeight }]}
-          resizeMode="cover"
+          resizeMode={ResizeMode.COVER}
           isLooping
           shouldPlay={shouldPlay}
           isMuted={false}
           onPlaybackStatusUpdate={(status) => {
             if (status.isLoaded) {
-              const duration = status.duration || 1;
+              const duration = status.durationMillis || 1;
               const position = status.positionMillis || 0;
-              setProgress(position / (duration * 1000));
+              setProgress(position / duration);
             }
           }}
         />
@@ -562,7 +579,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       <View style={styles.gradient} />
 
       {/* Play/Pause indicator */}
-      <PlayPauseIndicator visible={showPlayPause} isPaused={isPaused} />
+      <PlayPauseIndicator visible={showPlayPause} isPaused={playPauseIndicatorPaused} />
 
       {/* Heart overlay (double-tap) */}
       <AnimatedHeartOverlay visible={showHeart} />

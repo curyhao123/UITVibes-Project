@@ -80,8 +80,8 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       if (result.action === Share.sharedAction) {
         onClose();
       }
-    } catch (error) {
-      console.log('Share error:', error);
+    } catch {
+      // Share can be cancelled or rejected by the platform; no user-facing action needed.
     }
   }, [username, caption, reelId, onClose]);
 

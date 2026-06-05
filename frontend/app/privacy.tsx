@@ -2,7 +2,7 @@
  * PrivacyPolicyScreen — modern, trustworthy privacy policy for a social media app.
  *
  * Architecture:
- * - ScreenHeader: matches all other screen headers in the app (help, settings, terms)
+ * - CompactHeader: matches all other screen headers in the app (help, settings, terms)
  * - Hero block: title + subtitle + last-updated date — clean, not legal-heavy
  * - Summary card: friendly overview before diving into sections
  * - Trust highlights: 3 horizontal reassurance cards (trust, control, security)
@@ -30,7 +30,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
 import { HighlightCard } from '../components/privacy/HighlightCard';

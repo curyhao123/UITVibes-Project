@@ -83,6 +83,9 @@ export interface Message {
   sender: User;
   text: string;
   image?: string;
+  messageType?: 'text' | 'image' | 'video' | 'file' | 'system';
+  fileName?: string;
+  fileSize?: number;
   createdAt: string;
   isRead: boolean;
   isLiked?: boolean;

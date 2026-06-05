@@ -52,7 +52,7 @@ export function Button({
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={{ flex: 1, width: '100%', transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
         style={[
           styles.base,

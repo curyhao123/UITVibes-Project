@@ -1,4 +1,6 @@
+﻿using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using PostService.Messaging;
 using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
@@ -32,6 +34,7 @@ builder.Services.AddScoped<IPostMentionedPublisher, PostMentionedPublisher>();
 builder.Services.AddScoped<ICommentMentionedPublisher, CommentMentionedPublisher>();
 builder.Services.AddScoped<IHighlightService, HighlightService>();
 builder.Services.AddScoped<IReelService, ReelService>();
+builder.Services.AddHostedService<PostCountRpcConsumer>();
 
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()
@@ -50,6 +53,21 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Post, comment, like, and feed management service"
     });
 });
+
+// Cho phép upload form-data lớn (100MB)
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104_857_600; // 100MB
+    options.ValueLengthLimit = int.MaxValue;
+    options.MemoryBufferThreshold = int.MaxValue;
+});
+
+// Cho phép request lớn ở mức Kestrel
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 104_857_600; // 100MB
+});
+
 
 var app = builder.Build();
 

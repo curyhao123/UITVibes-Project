@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { ScreenHeader } from '../../components/ScreenHeader';
 import { CompactHeader } from '../../components/StaticPremiumHeader';
 import OTPInput, { OTPInputRef } from '../../components/OTPInput';
 import { FormInput } from '../../components/FormInput';

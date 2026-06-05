@@ -4,6 +4,7 @@ import {
   User,
 } from "../data/mockData";
 import apiClient from "./httpClient";
+import { uploadMedia } from "./postService";
 import { BE_ConversationResponse, BE_MessageResponse } from "./backendTypes";
 
 /** YARP gateway: /message/{**catch-all} → message-service:5240/api/{**catch-all} */
@@ -96,6 +97,18 @@ export function transformBEMessage(m: BE_MessageResponse, members: Conversation[
   const isEdited = m.isEdited ?? raw.IsEdited ?? false;
   const editedAt = m.editedAt ?? raw.EditedAt ?? null;
   const readBy = m.readBy ?? raw.ReadBy ?? [];
+  const rawType = (m.type ?? raw.Type ?? "Text") as string;
+  const normalizedType = rawType.toLowerCase();
+  const messageType: Message["messageType"] =
+    normalizedType === "image"
+      ? "image"
+      : normalizedType === "video"
+        ? "video"
+        : normalizedType === "file"
+          ? "file"
+          : normalizedType === "system"
+            ? "system"
+            : "text";
 
   const sender = members.find((mem) => mem.id === senderId);
   return {
@@ -118,6 +131,9 @@ export function transformBEMessage(m: BE_MessageResponse, members: Conversation[
     },
     text: isDeleted ? "" : (content ?? ""),
     image: mediaUrl || undefined,
+    messageType,
+    fileName: m.fileName ?? raw.FileName ?? undefined,
+    fileSize: m.fileSize ?? raw.FileSize ?? undefined,
     createdAt,
     isRead: readBy.length > 0,
     editedAt: isEdited ? (editedAt ?? undefined) : undefined,
@@ -247,15 +263,47 @@ export async function getMessages(
   };
 }
 
+type SendMessagePayload = {
+  content?: string;
+  mediaUri?: string;
+  mediaUrl?: string;
+  mediaPublicId?: string;
+  fileName?: string;
+  fileSize?: number;
+  type?: 0 | 1 | 2 | 3;
+};
+
 /** POST /conversations/{id}/message — send a message */
 export async function sendMessage(
   conversationId: string,
-  text: string,
+  payload: string | SendMessagePayload,
   members: Conversation["members"] = [],
 ): Promise<Message> {
+  const request = typeof payload === "string"
+    ? { content: payload, type: 0 as const }
+    : payload;
+
+  let mediaUrl = request.mediaUrl;
+  let mediaPublicId = request.mediaPublicId;
+  let type = request.type ?? 0;
+
+  if (request.mediaUri) {
+    const uploaded = await uploadMedia(request.mediaUri, "image");
+    mediaUrl = uploaded.url;
+    mediaPublicId = uploaded.publicId;
+    type = 1;
+  }
+
   const { data } = await apiClient.post<BE_MessageResponse>(
     `${GW}/conversations/${conversationId}/message`,
-    { content: text, type: 0 },
+    {
+      content: request.content ?? "",
+      mediaUrl: mediaUrl ?? null,
+      mediaPublicId: mediaPublicId ?? null,
+      fileName: request.fileName ?? null,
+      fileSize: request.fileSize ?? null,
+      type,
+    },
   );
   return transformBEMessage(data, members);
 }

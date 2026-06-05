@@ -161,7 +161,11 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
               {isCurrentUser(conversation.lastMessage?.senderId ?? '')
                 ? 'You: '
                 : ''}
-              {conversation.lastMessage?.text || 'No messages yet'}
+              {(() => {
+                if (conversation.lastMessage?.image) return '📷 Photo';
+                if (conversation.lastMessage?.messageType === 'image') return '📷 Photo';
+                return conversation.lastMessage?.text || 'No messages yet';
+              })()}
             </Text>
             {hasUnread && (
               <View style={styles.unreadBadge}>

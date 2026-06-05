@@ -596,9 +596,6 @@ export async function updateProfile(updates: {
   if (updates.bio !== undefined) body.bio = updates.bio;
   if (updates.website !== undefined) body.website = updates.website;
 
-  console.log("[updateProfile] payload:", JSON.stringify(body, null, 2));
-  console.log("[updateProfile] calling PUT /user/userprofile/me");
-
   try {
     const { data } = await apiClient.put<BE_UserProfile>(
       "/user/userprofile/me",
@@ -611,7 +608,6 @@ export async function updateProfile(updates: {
     let user = transformBEUserProfile(data, statsRes.data);
     user = await applyLocalUsernameToUser(user);
     setCurrentUser(user);
-    console.log("[updateProfile] SUCCESS — profile updated:", data.userId);
     return user;
   } catch (err: any) {
     const status = err?.response?.status;

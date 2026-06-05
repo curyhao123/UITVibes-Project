@@ -1,9 +1,3 @@
-/**
- * Logger - disables all console logs in production
- * Must be imported first before any other modules that log
- */
-import '@/utils/logger';
-
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -27,7 +21,6 @@ function AuthGuard() {
   const { isAuthenticated, isLoading, isNewUser, currentUser } = useApp();
 
   useEffect(() => {
-    console.log('[AuthGuard] Running - isLoading:', isLoading, 'isAuth:', isAuthenticated, 'role:', currentUser?.role, 'segments:', segments);
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === 'auth';
@@ -59,7 +52,6 @@ function AuthGuard() {
 
     // Vào admin route nhưng không phải Admin → home
     if (inAdminGroup && currentUser?.role !== 'Admin') {
-      console.log('[AuthGuard] Non-admin trying to access admin, redirecting...');
       router.replace('/(tabs)/home');
     }
   }, [isAuthenticated, isLoading, segments, router, currentUser, isNewUser]);

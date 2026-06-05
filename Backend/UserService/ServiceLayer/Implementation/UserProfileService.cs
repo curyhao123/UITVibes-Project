@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using UserService.DTOs;
+using UserService.Messaging.Interface;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
 
@@ -15,6 +16,7 @@ public class UserProfileService : IUserProfileService
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IBlockService _blockService;
     private readonly IDistributedCache _cache;
+    private readonly IPostCountRpcClient _postCountRpcClient;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private const int MaxRecentSearches = 10;
@@ -25,13 +27,15 @@ public class UserProfileService : IUserProfileService
         ILogger<UserProfileService> logger,
         ICloudinaryService cloudinaryService,
         IBlockService blockService,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        IPostCountRpcClient postCountRpcClient)
     {
         _context = context;
         _logger = logger;
         _cloudinaryService = cloudinaryService;
         _blockService = blockService;
         _cache = cache;
+        _postCountRpcClient = postCountRpcClient;
     }
 
     public async Task<UserProfileDto?> GetProfileByUserIdAsync(Guid currentUserId, Guid userId)
@@ -55,7 +59,7 @@ public class UserProfileService : IUserProfileService
             throw new KeyNotFoundException("User profile not found");
         }
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task<UserProfileDto> CreateProfileAsync(Guid userId, string username)
@@ -83,7 +87,7 @@ public class UserProfileService : IUserProfileService
 
         _logger.LogInformation("Created profile for user {UserId}", userId);
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
@@ -176,7 +180,7 @@ public class UserProfileService : IUserProfileService
 
         _logger.LogInformation("Updated profile for user {UserId}", userId);
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task DeleteProfileAsync(Guid userId)
@@ -223,6 +227,31 @@ public class UserProfileService : IUserProfileService
             }).OrderBy(sl => sl.DisplayOrder).ToList()
         };
     }
+
+    private async Task<UserProfileDto> MapToDtoWithPostCountAsync(UserProfile profile)
+    {
+        var dto = MapToDto(profile);
+        dto.PostsCount = await GetPostsCountAsync(profile.UserId);
+        return dto;
+    }
+
+    private async Task<int> GetPostsCountAsync(Guid userId)
+    {
+        try
+        {
+            var response = await _postCountRpcClient.GetPostCountAsync(userId);
+            if (response?.Found == true)
+            {
+                return response.PostsCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch posts count for user {UserId}", userId);
+        }
+
+        return 0;
+    }
     public async Task<UserProfileDto> UpdateAvatarAsync(Guid userId, string avatarUrl)
     {
         var profile = await _context.UserProfiles
@@ -251,7 +280,7 @@ public class UserProfileService : IUserProfileService
 
         _logger.LogInformation("Updated avatar for user {UserId}", userId);
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
     public async Task<UserProfileDto> UpdateCoverImageAsync(Guid userId, string coverImageUrl)
     {
@@ -281,7 +310,7 @@ public class UserProfileService : IUserProfileService
 
         _logger.LogInformation("Updated cover image for user {UserId}", userId);
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
 
@@ -337,7 +366,7 @@ public class UserProfileService : IUserProfileService
         profile.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         _logger.LogInformation("Updated bio for user {UserId}", userId);
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task<UserProfileDto> DeleteAvatarAsync(Guid userId)
@@ -361,7 +390,7 @@ public class UserProfileService : IUserProfileService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Deleted avatar for user {UserId}", userId);
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task<UserProfileDto> DeleteCoverImageAsync(Guid userId)
@@ -385,7 +414,7 @@ public class UserProfileService : IUserProfileService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Deleted cover image for user {UserId}", userId);
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 
     private static void ThrowIfEphemeralMediaUrl(string fieldName, string url)
@@ -584,12 +613,19 @@ public class UserProfileService : IUserProfileService
 
     public async Task<List<UserProfileDto>> GetAllUserProfilesAsync(int skip = 0, int take = 20)
     {
-        return await _context.UserProfiles
+        var profiles = await _context.UserProfiles
             .Include(p => p.SocialLinks)
             .Skip(skip)
             .Take(take)
-            .Select(p => MapToDto(p))
             .ToListAsync();
+
+        var results = new List<UserProfileDto>(profiles.Count);
+        foreach (var profile in profiles)
+        {
+            results.Add(await MapToDtoWithPostCountAsync(profile));
+        }
+
+        return results;
     }
     public async Task<List<UserReportDto>> GetUserReportsAsync(
         int skip = 0, 
@@ -807,6 +843,6 @@ public class UserProfileService : IUserProfileService
             throw new KeyNotFoundException("User profile not found");
         }
 
-        return MapToDto(profile);
+        return await MapToDtoWithPostCountAsync(profile);
     }
 }

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
   ScrollView,
   Pressable,
   Platform,
@@ -24,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useApp } from '../../context/AppContext';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
@@ -31,10 +31,15 @@ import { Typography } from '../../constants/typography';
 import { Avatar } from '../../components/Avatar';
 import { Toast } from '../../components/Toast';
 import { MentionInput } from '../../components/MentionInput';
+import {
+  ContentVisibility,
+  contentVisibilityToApiValue,
+  getDefaultContentVisibility,
+} from '../../services/contentPreferences';
 
 type CreateType = 'post' | 'reels';
 
-export type PostVisibility = 'Public' | 'Followers' | 'Private';
+export type PostVisibility = ContentVisibility;
 
 const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.ComponentProps<typeof Feather>['name']; description: string }[] = [
   { value: 'Public', label: 'Public', icon: 'globe', description: 'Anyone can see your post' },
@@ -43,6 +48,19 @@ const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.Co
 ];
 
 const CAPTION_MAX = 2200;
+type AspectRatioKey = '9:16' | '1:1' | '16:9' | '4:5';
+
+const ASPECT_RATIO_OPTIONS: {
+  key: AspectRatioKey;
+  label: string;
+  icon: string;
+  ratio: number;
+}[] = [
+  { key: '9:16', label: '9:16', icon: 'smartphone', ratio: 9 / 16 },
+  { key: '4:5',  label: '4:5',  icon: 'image',      ratio: 4 / 5  },
+  { key: '1:1',  label: '1:1',  icon: 'square',     ratio: 1      },
+  { key: '16:9', label: '16:9', icon: 'monitor',    ratio: 16 / 9 },
+];
 
 function OptionRow({
   icon,
@@ -88,6 +106,7 @@ export default function CreateScreen() {
   const [toastMessage, setToastMessage] = React.useState('');
   const [toastType, setToastType] = React.useState<'success' | 'error'>('success');
   const [selectedVisibility, setSelectedVisibility] = React.useState<PostVisibility>('Public');
+  const [selectedAspectRatio, setSelectedAspectRatio] = React.useState<AspectRatioKey>('9:16');
   const [showVisibilityPicker, setShowVisibilityPicker] = React.useState(false);
   const { createPost, createReel, currentUser } = useApp();
   const router = useRouter();
@@ -118,6 +137,27 @@ export default function CreateScreen() {
     );
     return { backgroundColor };
   });
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
+      const preferenceType = createType === 'reels' ? 'reels' : 'post';
+
+      void getDefaultContentVisibility(preferenceType)
+        .then((visibility) => {
+          if (active) {
+            setSelectedVisibility(visibility);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to load default content visibility:', error);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [createType]),
+  );
 
   const pickImage = async () => {
     if (Platform.OS !== 'web') {
@@ -201,7 +241,7 @@ export default function CreateScreen() {
         setToastType('success');
         setToastMessage('Your reel has been published!');
       } else {
-        const visibilityValue = selectedVisibility === 'Public' ? 0 : selectedVisibility === 'Followers' ? 1 : 2;
+        const visibilityValue = contentVisibilityToApiValue(selectedVisibility);
         await createPost(selectedMedia, caption, undefined, visibilityValue);
         setToastType('success');
         setToastMessage('Your post has been published!');
@@ -228,15 +268,12 @@ export default function CreateScreen() {
       }
       setCreateType(t);
       setSelectedMedia([]);
+      if (t === 'reels') setSelectedAspectRatio('9:16'); // reset về mặc định
     }
   };
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
   const shareReady = selectedMedia.length > 0 && !!caption.trim() && !isPosting;
-  const optionsDisabled = selectedMedia.length === 0;
-
-  const mockOption = (title: string) => () =>
-    Alert.alert(title, 'This option will be available in a future update.');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -367,31 +404,78 @@ export default function CreateScreen() {
             </TouchableOpacity>
           </Animated.View>
         ) : createType === 'reels' ? (
-          <Animated.View
-            key="preview-media-reels"
-            entering={FadeIn.duration(280)}
-            exiting={FadeOut.duration(180)}
-            style={styles.mediaAnimWrap}
+  <Animated.View
+    key="preview-media-reels"
+    entering={FadeIn.duration(280)}
+    exiting={FadeOut.duration(180)}
+    style={styles.mediaAnimWrap}
+  >
+    {/* Aspect ratio selector */}
+    <View style={styles.aspectRatioBar}>
+      {ASPECT_RATIO_OPTIONS.map((option) => (
+        <Pressable
+          key={option.key}
+          onPress={() => {
+            if (Platform.OS !== 'web') Haptics.selectionAsync();
+            setSelectedAspectRatio(option.key);
+          }}
+          style={[
+            styles.aspectRatioPill,
+            selectedAspectRatio === option.key && styles.aspectRatioPillActive,
+          ]}
+        >
+          <Feather
+            name={option.icon as React.ComponentProps<typeof Feather>['name']}
+            size={13}
+            color={selectedAspectRatio === option.key ? AppColors.primary : AppColors.iconMuted}
+            strokeWidth={2}
+          />
+          <Text
+            style={[
+              styles.aspectRatioPillLabel,
+              selectedAspectRatio === option.key && styles.aspectRatioPillLabelActive,
+            ]}
           >
-            <View style={[styles.previewShell, styles.previewShellReels]}>
-              <Image
-                source={{ uri: selectedMedia[0] }}
-                style={styles.previewImageReels}
-                contentFit="cover"
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(45,55,72,0.35)']}
-                style={styles.previewGradient}
-              />
-              <TouchableOpacity style={styles.changeMediaFab} onPress={handleMediaPick} activeOpacity={0.9}>
-                <Feather name="edit-2" size={18} color="#FFFFFF" strokeWidth={2} />
-              </TouchableOpacity>
-              <View style={styles.reelsPill}>
-                <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
-                <Text style={styles.reelsPillText}>Reels</Text>
-              </View>
-            </View>
-          </Animated.View>
+            {option.label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+
+    {/* Video preview với tỉ lệ động */}
+    <View style={[styles.previewShell, styles.previewShellReels]}>
+      <Image
+        source={{ uri: selectedMedia[0] }}
+        style={[
+          styles.previewImageReels,
+          {
+            aspectRatio:
+              ASPECT_RATIO_OPTIONS.find((o) => o.key === selectedAspectRatio)?.ratio ?? 9 / 16,
+          },
+        ]}
+        contentFit="cover"
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(45,55,72,0.35)']}
+        style={styles.previewGradient}
+      />
+      <TouchableOpacity
+        style={styles.changeMediaFab}
+        onPress={handleMediaPick}
+        activeOpacity={0.9}
+      >
+        <Feather name="edit-2" size={18} color="#FFFFFF" strokeWidth={2} />
+      </TouchableOpacity>
+      <View style={styles.reelsPill}>
+        <Feather name="video" size={13} color="#FFFFFF" strokeWidth={2} />
+        <Text style={styles.reelsPillText}>Reels</Text>
+      </View>
+      {/* Badge hiển thị tỉ lệ hiện tại */}
+      <View style={styles.aspectRatioBadge}>
+        <Text style={styles.aspectRatioBadgeText}>{selectedAspectRatio}</Text>
+      </View>
+    </View>
+  </Animated.View>
         ) : (
           <Animated.View
             key="preview-grid"
@@ -483,43 +567,11 @@ export default function CreateScreen() {
           <Text style={styles.optionsHeading}>More options</Text>
           <View style={styles.optionsCard}>
             <OptionRow
-              icon="user-plus"
-              label="Tag people"
-              disabled={optionsDisabled}
-              onPress={mockOption('Tag people')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
-              icon="map-pin"
-              label="Add location"
-              disabled={optionsDisabled}
-              onPress={mockOption('Location')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
-              icon="hash"
-              label="Add topics"
-              disabled={optionsDisabled}
-              onPress={mockOption('Topics')}
-            />
-            <View style={styles.optionSeparator} />
-            <OptionRow
               icon={selectedVisibility === 'Public' ? 'globe' : selectedVisibility === 'Followers' ? 'users' : 'lock'}
               label={`Visibility: ${selectedVisibility}`}
               disabled={false}
               onPress={() => setShowVisibilityPicker(true)}
             />
-            {createType === 'reels' && (
-              <>
-                <View style={styles.optionSeparator} />
-                <OptionRow
-                  icon="music"
-                  label="Add music"
-                  disabled={optionsDisabled}
-                  onPress={mockOption('Music')}
-                />
-              </>
-            )}
           </View>
         </View>
       </ScrollView>
@@ -534,7 +586,7 @@ export default function CreateScreen() {
           <Pressable style={styles.visibilityBackdrop} onPress={() => setShowVisibilityPicker(false)} />
           <View style={styles.visibilityCard}>
             <View style={styles.visibilityHeader}>
-              <Text style={styles.visibilityTitle}>Who can see your post?</Text>
+              <Text style={styles.visibilityTitle}>Who can see your {createType === 'reels' ? 'reel' : 'post'}?</Text>
               <TouchableOpacity onPress={() => setShowVisibilityPicker(false)} style={styles.visibilityCloseBtn}>
                 <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
               </TouchableOpacity>
@@ -1069,5 +1121,52 @@ const styles = StyleSheet.create({
     ...Typography.meta,
     fontSize: 13,
     color: AppColors.iconMuted,
+  },
+  // Aspect ratio selector
+  aspectRatioBar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+    justifyContent: 'center',
+  },
+  aspectRatioPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: AppColors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: AppColors.border,
+  },
+  aspectRatioPillActive: {
+    backgroundColor: `${AppColors.primary}15`,
+    borderColor: AppColors.primary,
+  },
+  aspectRatioPillLabel: {
+    ...Typography.meta,
+    fontSize: 12,
+    fontWeight: '600',
+    color: AppColors.iconMuted,
+  },
+  aspectRatioPillLabelActive: {
+    color: AppColors.primary,
+  },
+  aspectRatioBadge: {
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  aspectRatioBadgeText: {
+    ...Typography.meta,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });
