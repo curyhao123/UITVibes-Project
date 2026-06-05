@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using UITVibes_Microservices.ApiService.Services;
 using Yarp.ReverseProxy.Transforms;
-using Swashbuckle.AspNetCore.SwaggerGen;
 //using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -202,6 +203,21 @@ builder.Services.AddCors(options =>
               .AllowCredentials(); // ← bắt buộc cho SignalR
     });
 });
+
+// Cho phép request lớn đi qua Kestrel của API Gateway (ví dụ nâng lên 100MB)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 104_857_600; // 100MB
+});
+
+// Cho phép upload form-data lớn đi qua Gateway
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104_857_600; // 100MB
+    options.ValueLengthLimit = int.MaxValue;
+    options.MemoryBufferThreshold = int.MaxValue;
+});
+
 // ===== RATE LIMITING =====
 builder.Services.AddRateLimiter(options =>
 {

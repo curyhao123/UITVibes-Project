@@ -18,8 +18,10 @@
 
 import * as signalR from "@microsoft/signalr";
 import { API_BASE_URL } from "./httpClient";
+import { createLogger } from "../utils/logger";
 
 export const SIGNALR_HUB_URL = `${API_BASE_URL}/hubs/chat`;
+const log = createLogger("SignalR");
 
 // ─── Connection state helpers ──────────────────────────────────────────────────
 
@@ -115,21 +117,20 @@ export async function startConnection(accessToken: string): Promise<void> {
   // ── State change handler ──
   _connection.onclose((error) => {
     if (error != null) {
-      console.warn("[SignalR] Connection closed with error:", error.message);
+      log.warn("Connection closed with error:", error.message);
       setState("Error");
     } else {
-      console.log("[SignalR] Connection closed gracefully");
       setState("Disconnected");
     }
   });
 
   _connection.onreconnecting((error) => {
-    console.warn("[SignalR] Reconnecting…", error?.message);
+    log.warn("Reconnecting:", error?.message);
     setState("Connecting");
   });
 
   _connection.onreconnected((connectionId) => {
-    console.log("[SignalR] Reconnected — connectionId:", connectionId);
+    log.info("Reconnected:", connectionId);
     setState("Connected");
   });
 
@@ -137,9 +138,9 @@ export async function startConnection(accessToken: string): Promise<void> {
     // start() resolves when the hub is ready; rejects on failure
     await _connection.start();
     setState("Connected");
-    console.log("[SignalR] Connected — connectionId:", _connection.connectionId);
+    log.info("Connected:", _connection.connectionId);
   } catch (err) {
-    console.error("[SignalR] Failed to connect:", err);
+    log.error("Failed to connect:", err);
     setState("Error");
     throw err;
   }
@@ -154,9 +155,8 @@ export async function stopConnection(): Promise<void> {
   setState("Disconnecting");
   try {
     await _connection.stop();
-    console.log("[SignalR] Disconnected");
   } catch (err) {
-    console.warn("[SignalR] Error during disconnect:", err);
+    log.warn("Error during disconnect:", err);
   } finally {
     _connection = null;
     setState("Disconnected");
@@ -182,13 +182,13 @@ export async function invokeHub<T = unknown>(
   ...args: unknown[]
 ): Promise<T | null> {
   if (_connection?.state !== signalR.HubConnectionState.Connected) {
-    console.warn(`[SignalR] Cannot invoke "${methodName}" — not connected`);
+    log.warn(`Cannot invoke "${methodName}" because the connection is not active.`);
     return null;
   }
   try {
     return await _connection.invoke<T>(methodName, ...args);
   } catch (err) {
-    console.error(`[SignalR] invoke("${methodName}") failed:`, err);
+    log.error(`invoke("${methodName}") failed:`, err);
     throw err;
   }
 }

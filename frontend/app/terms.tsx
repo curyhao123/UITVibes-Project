@@ -2,7 +2,7 @@
  * TermsOfServiceScreen — modern, polished legal screen for a social media app.
  *
  * Architecture:
- * - ScreenHeader: matches all other screen headers in the app (help, settings, etc.)
+ * - CompactHeader: matches all other screen headers in the app (help, settings, etc.)
  * - Hero block: title + subtitle + last-updated date — clean, not legal-heavy
  * - Summary card: InfoCard with "summary" variant — quick overview before scrolling
  * - Accordion sections: TermsSection components with smooth expand/collapse
@@ -30,7 +30,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { TermsSection, type TermsSectionData } from '../components/help/TermsSection';
 import { InfoCard } from '../components/help/InfoCard';

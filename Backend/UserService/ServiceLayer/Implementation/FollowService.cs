@@ -11,12 +11,18 @@ public class FollowService : IFollowService
     private readonly UserDbContext _context;
     private readonly ILogger<FollowService> _logger;
     private readonly IUserFollowPublisher _userFollowPublisher;
+    private readonly IPostCountRpcClient _postCountRpcClient;
 
-    public FollowService(UserDbContext context, ILogger<FollowService> logger, IUserFollowPublisher userFollowPublisher)
+    public FollowService(
+        UserDbContext context,
+        ILogger<FollowService> logger,
+        IUserFollowPublisher userFollowPublisher,
+        IPostCountRpcClient postCountRpcClient)
     {
         _context = context;
         _logger = logger;
         _userFollowPublisher = userFollowPublisher;
+        _postCountRpcClient = postCountRpcClient;
     }
 
     public async Task<FollowDto> FollowUserAsync(Guid followerId, Guid followingId)
@@ -167,7 +173,7 @@ public class FollowService : IFollowService
             AvatarUrl = profile.AvatarUrl,
             FollowersCount = profile.FollowersCount,
             FollowingCount = profile.FollowingCount,
-            PostsCount = 0,
+            PostsCount = await GetPostsCountAsync(userId),
             IsFollowing = false,
             IsFollowedBy = false
         };
@@ -180,6 +186,24 @@ public class FollowService : IFollowService
         }
 
         return stats;
+    }
+
+    private async Task<int> GetPostsCountAsync(Guid userId)
+    {
+        try
+        {
+            var response = await _postCountRpcClient.GetPostCountAsync(userId);
+            if (response?.Found == true)
+            {
+                return response.PostsCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch posts count for user {UserId}", userId);
+        }
+
+        return 0;
     }
 
     public async Task<List<FollowerListDto>> GetFollowersAsync(Guid userId, int skip = 0, int take = 50)

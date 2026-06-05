@@ -141,12 +141,6 @@ export async function uploadMedia(
 }
 
 function transformBEPost(post: BE_PostResponse, author?: User): Post {
-  console.log(
-    "[transformBEPost] post.id:",
-    post.id,
-    "media:",
-    JSON.stringify(post.media),
-  );
   const allImages = post.media?.map((m) => m.url) ?? [];
   return {
     id: post.id,
@@ -292,23 +286,13 @@ export async function getPostComments(postId: string): Promise<CommentType[]> {
 
 export async function getMyPosts(): Promise<Post[]> {
   try {
-    const { data, status } = await apiClient.get<BE_PostResponse[]>(
+    const { data } = await apiClient.get<BE_PostResponse[]>(
       "/post/my-posts",
       {
         params: { skip: 0, take: 50 },
       },
     );
-    console.log(
-      "[getMyPosts] status:",
-      status,
-      "data length:",
-      data?.length,
-      "data:",
-      JSON.stringify(data),
-    );
-
     if (!data || data.length === 0) {
-      console.log("[getMyPosts] No posts returned from API");
       return [];
     }
 
@@ -328,7 +312,6 @@ export async function getMyPosts(): Promise<Post[]> {
         posts.push(transformBEPost(post, undefined));
       }
     }
-    console.log("[getMyPosts] Transformed posts:", posts.length, "posts");
     return posts;
   } catch (e: any) {
     console.error(
@@ -866,6 +849,18 @@ async function transformReelComment(
   };
 }
 
+async function fetchRepliesForReelComment(commentId: string): Promise<CommentType[]> {
+  const { data } = await apiClient.get<BE_ReelCommentResponse[]>(
+    `/post/reel/comment/${commentId}/replies`,
+  );
+
+  if (!data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return Promise.all(data.map((reply) => transformReelComment(reply)));
+}
+
 export async function getReelComments(reelId: string): Promise<CommentType[]> {
   try {
     const { data } = await apiClient.get<BE_ReelCommentResponse[]>(
@@ -874,7 +869,13 @@ export async function getReelComments(reelId: string): Promise<CommentType[]> {
     if (!data || !Array.isArray(data)) return [];
 
     const comments = await Promise.all(
-      data.map(async (c) => transformReelComment(c)),
+      data.map(async (c) => {
+        const comment = await transformReelComment(c);
+        if (c.replyCount && c.replyCount > 0) {
+          comment.replies = await fetchRepliesForReelComment(c.id);
+        }
+        return comment;
+      }),
     );
     return comments;
   } catch (error) {
@@ -899,7 +900,7 @@ export async function addReelComment(
       `/post/reel/${reelId}/comment`,
       body,
     );
-    const comment = transformReelComment(data);
+    const comment = await transformReelComment(data);
     return { success: true, comment };
   } catch (error) {
     console.error("[addReelComment] API error:", error);

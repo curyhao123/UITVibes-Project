@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -23,6 +24,13 @@ import { ConfirmationModal, EditProfileModal } from '../components';
 import { SettingsSection, SettingsRow } from '../components/settings';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import {
+  CONTENT_VISIBILITY_OPTIONS,
+  ContentType,
+  ContentVisibility,
+  getDefaultContentVisibilities,
+  setDefaultContentVisibility,
+} from '../services/contentPreferences';
 
 // ─── Profile Summary Card ────────────────────────────────────────────────────
 
@@ -151,12 +159,7 @@ const profileStyles = StyleSheet.create({
 
 export default function SettingsScreen() {
   const settingsRouter = useRouter();
-  const { logout, currentUser } = useApp();
-
-  // Toggle states
-  const [privateAccount, setPrivateAccount] = useState(false);
-  const [mutedAccounts, setMutedAccounts] = useState(false);
-  const [activityStatus, setActivityStatus] = useState(true);
+  const { logout, deleteAccount } = useApp();
 
   // Modal states
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
@@ -166,14 +169,27 @@ export default function SettingsScreen() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [postVisibility, setPostVisibility] = useState<ContentVisibility>('Public');
+  const [reelVisibility, setReelVisibility] = useState<ContentVisibility>('Public');
+  const [visibilityPickerType, setVisibilityPickerType] = useState<ContentType | null>(null);
 
-  // ── Navigation helpers ────────────────────────────────────────────────────
-  const safePush = useCallback(
-    (path: string) => {
-      settingsRouter.push(path as any);
-    },
-    [settingsRouter],
-  );
+  useEffect(() => {
+    let active = true;
+
+    void getDefaultContentVisibilities()
+      .then((preferences) => {
+        if (!active) return;
+        setPostVisibility(preferences.post);
+        setReelVisibility(preferences.reels);
+      })
+      .catch((error) => {
+        console.warn('Failed to load content visibility defaults:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const performLogout = async () => {
@@ -205,7 +221,7 @@ export default function SettingsScreen() {
     }
     setDeleteBusy(true);
     try {
-      await logout();
+      await deleteAccount(pwd);
       setDeleteModalVisible(false);
       setDeletePassword('');
       settingsRouter.replace('/auth/login' as any);
@@ -216,6 +232,26 @@ export default function SettingsScreen() {
       );
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const selectVisibility = async (visibility: ContentVisibility) => {
+    if (!visibilityPickerType) return;
+
+    const type = visibilityPickerType;
+    setVisibilityPickerType(null);
+
+    if (type === 'post') {
+      setPostVisibility(visibility);
+    } else {
+      setReelVisibility(visibility);
+    }
+
+    try {
+      await setDefaultContentVisibility(type, visibility);
+    } catch (error) {
+      Alert.alert('Could not save setting', 'Please try again.');
+      console.warn('Failed to save content visibility default:', error);
     }
   };
 
@@ -262,9 +298,8 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="key"
             label="Private Account"
-            isToggle
-            toggleValue={privateAccount}
-            onToggle={setPrivateAccount}
+            value="Coming soon"
+            showChevron={false}
             isLast
           />
         </SettingsSection>
@@ -274,22 +309,21 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="bell-off"
             label="Muted Accounts"
-            isToggle
-            toggleValue={mutedAccounts}
-            onToggle={setMutedAccounts}
+            value="Coming soon"
+            showChevron={false}
             isFirst
           />
           <SettingsRow
             icon="eye"
             label="Activity Status"
-            isToggle
-            toggleValue={activityStatus}
-            onToggle={setActivityStatus}
+            value="Coming soon"
+            showChevron={false}
           />
           <SettingsRow
             icon="bell"
             label="Push Notifications"
-            onPress={() => {}}
+            value="Coming soon"
+            showChevron={false}
             isLast
           />
         </SettingsSection>
@@ -299,27 +333,15 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="grid"
             label="Posts"
-            value="Public"
-            onPress={() => {}}
+            value={postVisibility}
+            onPress={() => setVisibilityPickerType('post')}
             isFirst
           />
           <SettingsRow
             icon="video"
             label="Reels"
-            value="Public"
-            onPress={() => {}}
-          />
-          <SettingsRow
-            icon="music"
-            label="Music"
-            value="Public"
-            onPress={() => {}}
-          />
-          <SettingsRow
-            icon="globe"
-            label="Language"
-            value="English"
-            onPress={() => {}}
+            value={reelVisibility}
+            onPress={() => setVisibilityPickerType('reels')}
             isLast
           />
         </SettingsSection>
@@ -377,6 +399,87 @@ export default function SettingsScreen() {
         visible={showEditModal}
         onClose={() => setShowEditModal(false)}
       />
+
+      {/* Content visibility picker */}
+      <Modal
+        visible={visibilityPickerType !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setVisibilityPickerType(null)}
+      >
+        <Pressable
+          style={styles.optionBackdrop}
+          onPress={() => setVisibilityPickerType(null)}
+        >
+          <Pressable style={styles.optionCard} onPress={() => undefined}>
+            <View style={styles.optionHeader}>
+              <Text style={styles.optionTitle}>
+                Default {visibilityPickerType === 'reels' ? 'reels' : 'post'} visibility
+              </Text>
+              <TouchableOpacity
+                style={styles.optionClose}
+                onPress={() => setVisibilityPickerType(null)}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={20} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            {CONTENT_VISIBILITY_OPTIONS.map((visibility, index) => {
+              const selected =
+                visibilityPickerType === 'reels'
+                  ? reelVisibility === visibility
+                  : postVisibility === visibility;
+              const icon =
+                visibility === 'Public'
+                  ? 'globe'
+                  : visibility === 'Followers'
+                    ? 'users'
+                    : 'lock';
+
+              return (
+                <TouchableOpacity
+                  key={visibility}
+                  style={[
+                    styles.optionItem,
+                    index > 0 && styles.optionItemBorder,
+                    selected && styles.optionItemSelected,
+                  ]}
+                  onPress={() => void selectVisibility(visibility)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.optionItemIcon}>
+                    <Feather
+                      name={icon}
+                      size={18}
+                      color={selected ? AppColors.primary : AppColors.textSecondary}
+                    />
+                  </View>
+                  <View style={styles.optionItemText}>
+                    <Text
+                      style={[
+                        styles.optionItemLabel,
+                        selected && styles.optionItemLabelSelected,
+                      ]}
+                    >
+                      {visibility}
+                    </Text>
+                    <Text style={styles.optionItemSubtitle}>
+                      {visibility === 'Public'
+                        ? 'Anyone can see it'
+                        : visibility === 'Followers'
+                          ? 'Only followers can see it'
+                          : 'Only you can see it'}
+                    </Text>
+                  </View>
+                  {selected && (
+                    <Feather name="check" size={20} color={AppColors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Logout confirmation */}
       <ConfirmationModal
@@ -600,6 +703,86 @@ const styles = StyleSheet.create({
   modalBtnDangerText: {
     ...Typography.bodySemibold,
     color: '#fff',
+  },
+  optionBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  optionCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: AppColors.surfaceElevated,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 9,
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.borderLight,
+  },
+  optionTitle: {
+    ...Typography.sectionTitle,
+    color: AppColors.text,
+    fontSize: 17,
+  },
+  optionClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppColors.background,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    backgroundColor: AppColors.surfaceElevated,
+  },
+  optionItemBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: AppColors.borderLight,
+  },
+  optionItemSelected: {
+    backgroundColor: `${AppColors.primary}10`,
+  },
+  optionItemIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppColors.background,
+    marginRight: 12,
+  },
+  optionItemText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  optionItemLabel: {
+    ...Typography.bodySemibold,
+    color: AppColors.text,
+  },
+  optionItemLabelSelected: {
+    color: AppColors.primary,
+  },
+  optionItemSubtitle: {
+    ...Typography.caption,
+    color: AppColors.textMuted,
+    marginTop: 2,
   },
   // Footer
   footer: {

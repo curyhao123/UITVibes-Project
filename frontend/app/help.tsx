@@ -2,7 +2,7 @@
  * HelpCenterScreen — polished social-media-style support page.
  *
  * Features:
- * 1. Header (ScreenHeader) with title + subtitle
+ * 1. Header (CompactHeader) with title
  * 2. Search bar with local topic filtering
  * 3. Quick-action support cards (Report, Contact, Guidelines, Safety, Security)
  * 4. Animated FAQ accordion
@@ -20,11 +20,11 @@ import {
   StyleSheet,
   Keyboard,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScreenHeader } from '../components/ScreenHeader';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { HelpCard, FAQItem, SectionHeader } from '../components/help';
 import { SupportModal } from '../components/contact';
@@ -39,35 +39,30 @@ const QUICK_ACTIONS = [
     icon: 'alert-triangle',
     title: 'Report a Problem',
     description: 'Let us know if something is wrong',
-    action: () => {},
   },
   {
     id: 'contact',
     icon: 'message-circle',
     title: 'Contact Support',
     description: 'Chat with our support team',
-    action: () => setSupportModalVisible(true),
   },
   {
     id: 'guidelines',
     icon: 'book-open',
     title: 'Community Guidelines',
     description: 'Learn what is allowed on UITVibes',
-    action: () => {},
   },
   {
     id: 'safety',
     icon: 'shield',
     title: 'Safety & Privacy',
     description: 'Control your privacy and safety settings',
-    action: () => {},
   },
   {
     id: 'security',
     icon: 'lock',
     title: 'Account & Security',
     description: 'Manage your account security',
-    action: () => {},
   },
 ];
 
@@ -156,6 +151,33 @@ export default function HelpCenterScreen() {
   const [query, setQuery] = useState('');
   const [supportModalVisible, setSupportModalVisible] = useState(false);
 
+  const quickActions = useMemo(
+    () =>
+      QUICK_ACTIONS.map((card) => ({
+        ...card,
+        action: () => {
+          switch (card.id) {
+            case 'contact':
+            case 'report':
+              setSupportModalVisible(true);
+              break;
+            case 'safety':
+              router.push('/privacy' as any);
+              break;
+            case 'security':
+              router.push('/settings' as any);
+              break;
+            default:
+              Alert.alert(
+                'Coming soon',
+                'This help section is not available yet.',
+              );
+          }
+        },
+      })),
+    [router],
+  );
+
   // Filter topics based on search query
   const filteredTopics = useMemo(() => {
     if (!query.trim()) return null;
@@ -199,12 +221,12 @@ export default function HelpCenterScreen() {
         {/* ── Quick Actions ── */}
         <SectionHeader title="Quick Actions" />
         <View style={styles.cardWrap}>
-          {QUICK_ACTIONS.map((card, index) => (
+          {quickActions.map((card, index) => (
             <HelpCard
               key={card.id}
               card={card}
               isFirst={index === 0}
-              isLast={index === QUICK_ACTIONS.length - 1}
+              isLast={index === quickActions.length - 1}
             />
           ))}
         </View>
@@ -273,7 +295,12 @@ export default function HelpCenterScreen() {
             <TouchableOpacity
               style={styles.ctaSecondaryBtn}
               activeOpacity={0.7}
-              onPress={() => {}}
+              onPress={() =>
+                Alert.alert(
+                  'Coming soon',
+                  'Feedback submission is not available yet. Please use Contact Support for now.',
+                )
+              }
             >
               <Feather name="edit-3" size={16} color={AppColors.primary} strokeWidth={2} />
               <Text style={styles.ctaSecondaryBtnText}>Send Feedback</Text>

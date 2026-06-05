@@ -9,6 +9,14 @@ public class CloudinaryService : ICloudinaryService
     private readonly Cloudinary _cloudinary;
     private readonly ILogger<CloudinaryService> _logger;
 
+    // Kích thước mỗi chunk gửi lên Cloudinary (default của SDK cũng là 20MB).
+    // Có thể điều chỉnh xuống 6MB nếu mạng không ổn định.
+    private const int ChunkSize = 20 * 1024 * 1024;
+
+    // Ngưỡng để quyết định dùng UploadLargeAsync vs UploadAsync thông thường.
+    // Video nhỏ hơn 20MB không cần chunked.
+    private const long ChunkedUploadThreshold = 20 * 1024 * 1024;
+
     public CloudinaryService(IConfiguration configuration, ILogger<CloudinaryService> logger)
     {
         var cloudName = configuration["Cloudinary:CloudName"]
@@ -23,6 +31,9 @@ public class CloudinaryService : ICloudinaryService
         _logger = logger;
     }
 
+    // -------------------------------------------------------------------------
+    // Image upload — giữ nguyên logic cũ, không cần chunked cho ảnh
+    // -------------------------------------------------------------------------
     public async Task<(string Url, string PublicId, int? Width, int? Height)> UploadImageAsync(
         IFormFile file,
         string folder = "posts")
@@ -34,13 +45,11 @@ public class CloudinaryService : ICloudinaryService
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
             throw new ArgumentException("Invalid file type. Only images are allowed.");
 
-        if (file.Length > 10 * 1024 * 1024) // 10MB
+        if (file.Length > 10 * 1024 * 1024)
             throw new ArgumentException("File size must be less than 10MB");
 
         try
         {
-            // Đọc toàn bộ bytes vào memory trước — tránh stream bị dispose sớm,
-            // đặc biệt quan trọng khi có proxy/reverse proxy ở giữa.
             using var memoryStream = new MemoryStream();
             await file.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
@@ -76,6 +85,9 @@ public class CloudinaryService : ICloudinaryService
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Video upload — tự động chọn single hoặc chunked dựa trên kích thước file
+    // -------------------------------------------------------------------------
     public async Task<(string Url, string ThumbnailUrl, string PublicId, int? Duration)> UploadVideoAsync(
         IFormFile file,
         string folder = "posts")
@@ -83,33 +95,44 @@ public class CloudinaryService : ICloudinaryService
         if (file == null || file.Length == 0)
             throw new ArgumentException("File is empty");
 
-        var allowedTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime" };
+        // Đã thêm video/x-matroska (mkv) và các dạng khác
+        var allowedTypes = new[] { "video/mp4", "video/mpeg", "video/quicktime", "video/x-matroska", "video/webm", "video/avi" };
         if (!allowedTypes.Contains(file.ContentType.ToLower()))
-            throw new ArgumentException("Invalid file type. Only videos are allowed.");
+            throw new ArgumentException($"Invalid file type ({file.ContentType}). Only videos are allowed.");
 
-        if (file.Length > 100 * 1024 * 1024) // 100MB
+        if (file.Length > 100 * 1024 * 1024)
             throw new ArgumentException("Video size must be less than 100MB");
 
         try
         {
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
+            RawUploadResult uploadResult;
 
-            var uploadParams = new VideoUploadParams
+            if (file.Length > ChunkedUploadThreshold)
             {
-                File = new FileDescription(file.FileName, memoryStream),
-                Folder = folder,
-                NotificationUrl = null // Tắt webhook notification để tránh complexity
-            };
+                _logger.LogInformation(
+                    "File {FileName} ({SizeMB}MB) exceeds threshold — using chunked upload",
+                    file.FileName,
+                    file.Length / (1024 * 1024));
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                uploadResult = await UploadVideoInChunksAsync(file, folder);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "File {FileName} ({SizeMB}MB) below threshold — using single upload",
+                    file.FileName,
+                    file.Length / (1024 * 1024));
+
+                uploadResult = await UploadVideoSingleAsync(file, folder);
+            }
 
             if (uploadResult.Error != null)
             {
                 _logger.LogError("Cloudinary upload error: {Error}", uploadResult.Error.Message);
                 throw new Exception($"Upload failed: {uploadResult.Error.Message}");
             }
+
+            var videoResult = uploadResult as VideoUploadResult;
 
             var thumbnailUrl = _cloudinary.Api.UrlVideoUp
                 .Transform(new Transformation().Width(300).Height(300).Crop("fill"))
@@ -119,10 +142,15 @@ public class CloudinaryService : ICloudinaryService
             _logger.LogInformation(
                 "Video uploaded to Cloudinary: PublicId={PublicId}, Duration={Duration}s, Size={FileSize}MB",
                 uploadResult.PublicId,
-                uploadResult.Duration,
+                videoResult?.Duration,
                 file.Length / (1024 * 1024));
 
-            return (uploadResult.SecureUrl.ToString(), thumbnailUrl, uploadResult.PublicId, (int?)uploadResult.Duration);
+            return (
+                uploadResult.SecureUrl.ToString(),
+                thumbnailUrl,
+                uploadResult.PublicId,
+                (int?)(videoResult?.Duration)
+            );
         }
         catch (Exception ex) when (ex is not ArgumentException)
         {
@@ -131,6 +159,68 @@ public class CloudinaryService : ICloudinaryService
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Single upload — dùng cho video nhỏ (< 20MB)
+    // -------------------------------------------------------------------------
+    private async Task<RawUploadResult> UploadVideoSingleAsync(IFormFile file, string folder)
+    {
+        using var memoryStream = new MemoryStream();
+        await file.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        var uploadParams = new VideoUploadParams
+        {
+            File = new FileDescription(file.FileName, memoryStream),
+            Folder = folder,
+            NotificationUrl = null
+        };
+
+        return await _cloudinary.UploadAsync(uploadParams);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chunked upload — dùng cho video lớn (>= 20MB)
+    //
+    // UploadLargeAsync nhận TOÀN BỘ stream một lần — SDK tự chia chunk,
+    // tự gắn header Content-Range và X-Unique-Upload-Id cho mỗi request.
+    // Không cần tự loop hay truyền isLastPart từ bên ngoài.
+    // -------------------------------------------------------------------------
+    private async Task<RawUploadResult> UploadVideoInChunksAsync(IFormFile file, string folder)
+    {
+        // Dùng OpenReadStream() trực tiếp — không buffer toàn bộ vào MemoryStream,
+        // giúp tiết kiệm RAM khi file lớn. SDK đọc stream theo từng chunk nội bộ.
+        using var stream = file.OpenReadStream();
+
+        var uploadParams = new VideoUploadParams
+        {
+            File = new FileDescription(file.FileName, stream),
+            Folder = folder,
+            NotificationUrl = null
+        };
+
+        int totalChunks = (int)Math.Ceiling((double)file.Length / ChunkSize);
+
+        _logger.LogInformation(
+            "Starting chunked upload: File={FileName}, TotalSize={TotalMB}MB, ChunkSize={ChunkMB}MB, EstimatedChunks={TotalChunks}",
+            file.FileName,
+            file.Length / (1024 * 1024),
+            ChunkSize / (1024 * 1024),
+            totalChunks);
+
+        // bufferSize = kích thước mỗi chunk gửi lên Cloudinary.
+        // maxConcurrentUploads = số chunk song song tối đa (mặc định là 1 — sequential).
+        // Phải chỉ định rõ kiểu trả về <VideoUploadResult> cho UploadLargeAsync
+        var result = await _cloudinary.UploadLargeAsync<VideoUploadResult>(
+            uploadParams,
+            bufferSize: ChunkSize,
+            maxConcurrentUploads: 1);
+
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Delete media
+    // -------------------------------------------------------------------------
     public async Task<bool> DeleteMediaAsync(string publicId)
     {
         if (string.IsNullOrEmpty(publicId))
@@ -142,16 +232,12 @@ public class CloudinaryService : ICloudinaryService
             var result = await _cloudinary.DestroyAsync(deletionParams);
 
             if (result.Result == "ok")
-            {
                 _logger.LogInformation("Media deleted from Cloudinary: PublicId={PublicId}", publicId);
-            }
             else
-            {
                 _logger.LogWarning(
                     "Cloudinary delete returned non-ok for PublicId={PublicId}: {Result}",
                     publicId,
                     result.Result);
-            }
 
             return result.Result == "ok";
         }

@@ -37,7 +37,7 @@ interface CommentSheetProps {
   onClose: () => void;
   comments: Comment[];
   reelId: string;
-  onPostComment: (text: string) => void;
+  onPostComment: (text: string, parentCommentId?: string) => void | Promise<void>;
   onLikeComment: (commentId: string) => void;
   onReply: (commentId: string) => void;
   onDeleteComment?: (commentId: string) => void;
@@ -51,6 +51,12 @@ interface CommentItemProps {
   onReply: () => void;
   isReply?: boolean;
 }
+
+const countCommentsWithReplies = (comments: Comment[]): number =>
+  comments.reduce(
+    (total, comment) => total + 1 + countCommentsWithReplies(comment.replies ?? []),
+    0,
+  );
 
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
@@ -174,6 +180,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
 }) => {
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const totalCommentCount = countCommentsWithReplies(comments);
   const translateY = useSharedValue(0);
   const sheetOpacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
@@ -201,11 +208,11 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
 
   const handlePost = useCallback(() => {
     if (commentText.trim()) {
-      onPostComment(commentText.trim());
+      void onPostComment(commentText.trim(), replyingTo?.id);
       setCommentText('');
       setReplyingTo(null);
     }
-  }, [commentText, onPostComment]);
+  }, [commentText, onPostComment, replyingTo]);
 
   const handleClose = useCallback(() => {
     setReplyingTo(null);
@@ -240,7 +247,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
-              {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+              {totalCommentCount} {totalCommentCount === 1 ? 'comment' : 'comments'}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Feather name="x" size={24} color={AppColors.text} />

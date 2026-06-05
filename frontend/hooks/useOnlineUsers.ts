@@ -70,14 +70,12 @@ export function useOnlineUsers(isAuthenticated: boolean): UseOnlineUsersReturn {
     const normalized = ids.map(toStringId);
     onlineUserIdsRef.current = normalized;
     setOnlineUserIds(normalized);
-    console.log("[useOnlineUsers] REST fetched → Set:", Array.from(normalized));
   }, []);
 
   const isOnline = useCallback(
     (userId: string | number): boolean => {
       const normalizedId = toStringId(userId);
       const found = onlineUserIdsRef.current.includes(normalizedId);
-      console.log(`[useOnlineUsers] isOnline("${normalizedId}") → ${found} | Set:`, Array.from(onlineUserIdsRef.current));
       return found;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,23 +125,19 @@ export function useOnlineUsers(isAuthenticated: boolean): UseOnlineUsersReturn {
 
   const handleUserOnline = useCallback((userId: string | number) => {
     const id = toStringId(userId);
-    console.log(`[useOnlineUsers] SignalR UserOnline -> "${id}"`);
     setOnlineUserIds((prev) => {
       if (prev.includes(id)) return prev;
       const next = [...prev, id];
       onlineUserIdsRef.current = next;
-      console.log("[useOnlineUsers] UserOnline -> Set:", Array.from(next));
       return next;
     });
   }, []);
 
   const handleUserOffline = useCallback((userId: string | number) => {
     const id = toStringId(userId);
-    console.log(`[useOnlineUsers] SignalR UserOffline -> "${id}"`);
     setOnlineUserIds((prev) => {
       const next = prev.filter((existingId) => existingId !== id);
       onlineUserIdsRef.current = next;
-      console.log("[useOnlineUsers] UserOffline -> Set:", Array.from(next));
       return next;
     });
   }, []);

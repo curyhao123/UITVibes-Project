@@ -26,6 +26,7 @@ builder.Services.AddScoped<IMessageService, ChatMessageService>();
 builder.Services.AddScoped<IFriendListRpcClient, FriendListRpcClient>();
 builder.Services.AddScoped<IOnlineTrackingService, OnlineTrackingService>();
 builder.Services.AddScoped<IUserProfileRpcClient, UserProfileRpcClient>();
+builder.Services.AddScoped<IBlockStatusRpcClient, BlockStatusRpcClient>();
 builder.Services.AddScoped<IMessageSentPublisher, MessageSentPublisher>();
 // Add SignalR with Redis backplane for scaling
 builder.Services.AddSignalR();

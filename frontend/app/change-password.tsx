@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { ScreenHeader } from '../components/ScreenHeader';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { FormInput } from '../components/FormInput';
 import { getCurrentUserEmail } from '../services/session';
