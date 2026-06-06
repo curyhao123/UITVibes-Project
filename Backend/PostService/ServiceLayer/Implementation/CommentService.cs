@@ -41,9 +41,18 @@ public class CommentService : ICommentService
 
     public async Task<CommentDto> CreateCommentAsync(Guid postId, Guid userId, CreateCommentRequest request)
     {
+        // Validate: must have either content or image
+        var hasContent = !string.IsNullOrWhiteSpace(request.Content);
+        var hasImage = !string.IsNullOrWhiteSpace(request.ImageUrl);
+
+        if (!hasContent && !hasImage)
+        {
+            throw new ArgumentException("Comment must have either content or an image");
+        }
+
         // Check if post exists
         var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
-        
+
         if (post == null)
             throw new KeyNotFoundException("Post not found");
 
@@ -79,7 +88,8 @@ public class CommentService : ICommentService
             Id = Guid.NewGuid(),
             PostId = postId,
             UserId = userId,
-            Content = request.Content,
+            Content = request.Content ?? string.Empty,
+            ImageUrl = hasImage ? request.ImageUrl : null,
             ParentCommentId = rootCommentId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -93,16 +103,21 @@ public class CommentService : ICommentService
 
         await _context.SaveChangesAsync();
 
-        var mentionedUsernames = ExtractMentions(comment.Content);
-        await ProcessMentionsAsync(post, comment, mentionedUsernames);
+        // Only process mentions if there's actual content
+        if (hasContent)
+        {
+            var mentionedUsernames = ExtractMentions(comment.Content);
+            await ProcessMentionsAsync(post, comment, mentionedUsernames);
+        }
 
         _logger.LogInformation("User {UserId} commented on post {PostId}", userId, postId);
 
         var commenterProfile = await _userProfileRpcClient.GetProfileAsync(userId);
         var commenterName = commenterProfile?.DisplayName ?? string.Empty;
-        var commentPreview = request.Content.Length <= 100
-            ? request.Content
-            : request.Content[..100];
+        var contentForPreview = request.Content ?? string.Empty;
+        var commentPreview = contentForPreview.Length <= 100
+            ? contentForPreview
+            : contentForPreview[..100];
 
         try
         {
@@ -128,9 +143,10 @@ public class CommentService : ICommentService
             return;
         var mentionerProfile = await _userProfileRpcClient.GetProfileAsync(comment.UserId);
         var mentionerName = mentionerProfile?.Found == true ? mentionerProfile.DisplayName : "Someone";
-        var commentPreview = comment.Content.Length <= 100
-            ? comment.Content
-            : comment.Content[..100];
+        var contentForMention = comment.Content ?? string.Empty;
+        var commentPreview = contentForMention.Length <= 100
+            ? contentForMention
+            : contentForMention[..100];
 
 
         foreach (var username in usernames)
@@ -339,6 +355,7 @@ public class CommentService : ICommentService
             PostId = comment.PostId,
             UserId = comment.UserId,
             Content = comment.Content,
+            ImageUrl = comment.ImageUrl,
             ParentCommentId = comment.ParentCommentId,
             LikesCount = comment.LikesCount,
             RepliesCount = comment.RepliesCount,

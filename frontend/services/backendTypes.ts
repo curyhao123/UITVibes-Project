@@ -165,6 +165,7 @@ export interface BE_CommentResponse {
   id: string;
   userId: string;
   content: string;
+  imageUrl?: string | null;
   likesCount: number;
   repliesCount?: number;
   isLikedByCurrentUser: boolean;

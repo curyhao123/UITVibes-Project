@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, GestureResponderEvent } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image, GestureResponderEvent } from 'react-native';
 import { Avatar } from './Avatar';
 import { Comment } from '../data/mockData';
 import { Feather } from '@expo/vector-icons';
@@ -148,6 +148,15 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               text={comment.text}
             />
 
+            {/* Comment image */}
+            {comment.image && (
+              <Image
+                source={{ uri: comment.image }}
+                style={styles.commentImage}
+                resizeMode="cover"
+              />
+            )}
+
             {/* Meta row: time · likes · reply */}
             <View style={styles.meta}>
               <Text style={styles.time}>{formatTimeAgo(comment.createdAt)}</Text>
@@ -254,6 +263,14 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: AppColors.text,
     marginBottom: 4,
+  },
+  commentImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    marginTop: 6,
+    marginBottom: 6,
+    backgroundColor: AppColors.borderLight,
   },
   meta: {
     flexDirection: 'row',

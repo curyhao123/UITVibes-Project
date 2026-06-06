@@ -24,7 +24,7 @@ public class CommentController : ControllerBase
     public async Task<ActionResult<CommentDto>> CreateComment(Guid postId, [FromBody] CreateCommentRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -34,6 +34,10 @@ public class CommentController : ControllerBase
         {
             var comment = await _commentService.CreateCommentAsync(postId, userId, request);
             return Ok(comment);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {

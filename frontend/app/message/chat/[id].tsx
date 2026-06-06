@@ -606,6 +606,9 @@ export default function ChatScreen() {
     const senderFromMembers = getSenderFromMembers(item.senderId);
     const sender = senderFromMembers ?? item.sender;
     const showAvatar = !mine && startsSenderGroup;
+    const isImageMessage = item.messageType === 'image' || !!item.image;
+    const hasText = !!item.text;
+    const imageOnlyMessage = isImageMessage && !hasText;
     const bubbleGroupStyle = mine
       ? groupedWithPrevious && groupedWithNext
         ? styles.bubbleMineMiddle
@@ -678,32 +681,48 @@ export default function ChatScreen() {
                 {sender?.displayName || sender?.username || 'User'}
               </Text>
             )}
-            <View
-              style={[
-                styles.bubble,
-                mine ? styles.bubbleMine : styles.bubbleTheirs,
-                bubbleGroupStyle,
-              ]}
-            >
-              {item.messageType === 'image' || item.image ? (
-                <>
+            {isImageMessage ? (
+              <View style={styles.messageContentStack}>
+                <View
+                  style={[
+                    styles.bubble,
+                    styles.bubbleImageOnly,
+                    bubbleGroupStyle,
+                  ]}
+                >
                   <Image
                     source={{ uri: item.image ?? '' }}
                     style={styles.messageImage}
                     resizeMode="cover"
                   />
-                  {item.text ? (
+                </View>
+                {hasText ? (
+                  <View
+                    style={[
+                      styles.bubble,
+                      mine ? styles.bubbleMine : styles.bubbleTheirs,
+                      bubbleGroupStyle,
+                    ]}
+                  >
                     <Text style={[styles.messageText, mine && styles.messageTextMine]}>
                       {item.text}
                     </Text>
-                  ) : null}
-                </>
-              ) : item.text ? (
+                  </View>
+                ) : null}
+              </View>
+            ) : item.text ? (
+              <View
+                style={[
+                  styles.bubble,
+                  mine ? styles.bubbleMine : styles.bubbleTheirs,
+                  bubbleGroupStyle,
+                ]}
+              >
                 <Text style={[styles.messageText, mine && styles.messageTextMine]}>
                   {item.text}
                 </Text>
-              ) : null}
-            </View>
+              </View>
+            ) : null}
             {showMessageTime && (
               <View style={[styles.msgMeta, mine && styles.msgMetaMine]}>
                 <Text style={styles.msgTime}>
@@ -924,20 +943,6 @@ export default function ChatScreen() {
                 { paddingBottom: Math.max(insets.bottom, 10) },
               ]}
             >
-              {/* Attach image button */}
-              <TouchableOpacity
-                onPress={pickImage}
-                style={styles.attachBtn}
-                disabled={isUploadingImage}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Feather
-                  name="image"
-                  size={22}
-                  color={isUploadingImage ? AppColors.iconMuted : AppColors.textMuted}
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
               <TextInput
                 style={styles.messageInput}
                 placeholder="Message..."
@@ -968,6 +973,24 @@ export default function ChatScreen() {
                 multiline
                 maxLength={4000}
               />
+              {!selectedImage && (
+                <TouchableOpacity
+                  onPress={pickImage}
+                  style={styles.attachBtn}
+                  disabled={isUploadingImage}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {isUploadingImage ? (
+                    <ActivityIndicator size="small" color={AppColors.primary} />
+                  ) : (
+                    <Feather
+                      name="camera"
+                      size={20}
+                      color={AppColors.iconMuted}
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
               {(messageText.length > 0 || !!selectedImage) && (
                 <TouchableOpacity
                   onPress={handleSend}
@@ -1537,6 +1560,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     marginLeft: 4,
   },
+  messageContentStack: {
+    gap: 6,
+  },
   bubble: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1558,6 +1584,11 @@ const styles = StyleSheet.create({
   },
   bubbleTheirs: {
     backgroundColor: AppColors.surfaceElevated,
+  },
+  bubbleImageOnly: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   bubbleTheirsSingle: {},
   bubbleTheirsFirst: {

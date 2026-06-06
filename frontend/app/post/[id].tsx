@@ -191,13 +191,20 @@ export default function PostDetailScreen() {
       });
   };
 
-  const handleSendComment = async (text: string) => {
-    if (!post || !text.trim() || isSubmitting) return;
+  const handleSendComment = async (text: string, imageUrl?: string) => {
+    if (!post || (!text.trim() && !imageUrl) || isSubmitting) {
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const newComment = await addComment(post.id, text, replyTo?.id);
+      const newComment = await addComment({
+        postId: post.id,
+        text,
+        parentCommentId: replyTo?.id,
+        imageUrl,
+      });
       if (newComment) {
         setPost((prev) => {
           if (!prev) return prev;
@@ -259,7 +266,7 @@ export default function PostDetailScreen() {
     }
   };
 
-  const handleSubmitEdit = async (text: string) => {
+  const handleSubmitEdit = async (text: string, _imageUrl?: string) => {
     if (!post || !editingComment || isSubmitting) return;
     const savedText = editingComment.text;
     setIsSubmitting(true);
@@ -512,11 +519,11 @@ export default function PostDetailScreen() {
         <CommentInput
           editingComment={editingComment}
           replyTo={replyTo}
-          onSubmit={(text) => {
+          onSubmit={(text, imageUrl) => {
             if (editingComment) {
-              handleSubmitEdit(text);
+              handleSubmitEdit(text, imageUrl);
             } else {
-              handleSendComment(text);
+              handleSendComment(text, imageUrl);
             }
           }}
           onCancelEdit={handleCancelEdit}

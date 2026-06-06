@@ -75,7 +75,12 @@ interface AppContextType {
   toggleBookmark: (postId: string) => Promise<void>;
   toggleRepost: (postId: string) => Promise<void>;
   repostedPosts: Post[];           // Danh sách repost của user hiện tại
-  addComment: (postId: string, text: string, parentCommentId?: string) => Promise<void>;
+  addComment: (params: {
+    postId: string;
+    text: string;
+    parentCommentId?: string;
+    imageUrl?: string;
+  }) => Promise<void>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
     images: string[],
@@ -539,9 +544,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
 
   const addComment = useCallback(
-    async (postId: string, text: string, parentCommentId?: string) => {
+    async ({
+      postId,
+      text,
+      parentCommentId,
+      imageUrl,
+    }: {
+      postId: string;
+      text: string;
+      parentCommentId?: string;
+      imageUrl?: string;
+    }) => {
       try {
-        const result = await api.addComment(postId, text, parentCommentId);
+        const result = await api.addComment({ postId, text, parentCommentId, imageUrl });
         if (result.success && result.comment) {
           // Update local posts/myPosts so the feed and profile grid show the new comment
           setPosts((prev) =>
