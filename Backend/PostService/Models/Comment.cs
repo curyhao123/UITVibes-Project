@@ -20,6 +20,9 @@ public class Comment
     public int LikesCount { get; set; }
     public int RepliesCount { get; set; }
 
+    /// Image attachment for comment
+    public string? ImageUrl { get; set; }
+
     /// Soft delete
     public bool IsDeleted { get; set; }
     

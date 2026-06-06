@@ -27,6 +27,7 @@ export interface Comment {
   userId: string;
   user: User;
   text: string;
+  image?: string;
   createdAt: string;
   likes: number;
   isLiked?: boolean;

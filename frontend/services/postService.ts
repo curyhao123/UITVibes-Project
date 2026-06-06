@@ -67,6 +67,7 @@ async function transformComment(
     userId: be.userId,
     user: resolvedUser,
     text: be.isDeleted ? "" : be.content,
+    image: be.imageUrl ?? undefined,
     createdAt: be.createdAt,
     likes: be.likesCount,
     isLiked: be.isLikedByCurrentUser,
@@ -86,10 +87,13 @@ export async function uploadMedia(
   height?: number;
   duration?: number;
 }> {
+  console.log("[uploadMedia] Starting upload for URI:", uri);
+
   if (
     uri.startsWith("https://res.cloudinary.com") ||
     uri.startsWith("https://")
   ) {
+    console.log("[uploadMedia] Already a Cloudinary URL, returning as-is");
     return { url: uri };
   }
 
@@ -99,6 +103,7 @@ export async function uploadMedia(
     const name =
       uri.split("/").pop() || (type === "video" ? "video.mp4" : "image.jpg");
     const mimeType = type === "video" ? "video/mp4" : "image/jpeg";
+    console.log("[uploadMedia] Uploading file with name:", name, "mimeType:", mimeType);
     (formData as any).append("File", { uri, type: mimeType, name } as any);
   } else if (
     typeof fetch !== "undefined" &&
@@ -114,6 +119,7 @@ export async function uploadMedia(
         ? "mp4"
         : "jpg";
     const name = `upload.${ext}`;
+    console.log("[uploadMedia] Uploading blob with name:", name, "mimeType:", mimeType);
     if (typeof File !== "undefined") {
       (formData as any).append(
         "File",
@@ -123,9 +129,11 @@ export async function uploadMedia(
       (formData as any).append("File", blob as any, name);
     }
   } else {
+    console.error("[uploadMedia] Unsupported URI scheme:", uri);
     throw new Error("Unsupported URI scheme for media upload: " + uri);
   }
 
+  console.log("[uploadMedia] Sending POST to /post/media");
   const { data } = await apiClient.post<{
     url: string;
     publicId: string;
@@ -137,6 +145,7 @@ export async function uploadMedia(
     headers: { "Content-Type": "multipart/form-data" } as any,
   });
 
+  console.log("[uploadMedia] Upload success, URL:", data.url);
   return data;
 }
 
@@ -497,20 +506,28 @@ export async function removeBookmark(postId: string): Promise<boolean> {
   }
 }
 
-export async function addComment(
-  postId: string,
-  text: string,
-  parentCommentId?: string,
-): Promise<{ success: boolean; comment?: CommentType }> {
-  const body: { content: string; parentCommentId?: string } = { content: text };
+export async function addComment({
+  postId,
+  text,
+  parentCommentId,
+  imageUrl,
+}: {
+  postId: string;
+  text: string;
+  parentCommentId?: string;
+  imageUrl?: string;
+}): Promise<{ success: boolean; comment?: CommentType }> {
+  const body: { Content: string; ParentCommentId?: string; ImageUrl?: string } = { Content: text };
   if (parentCommentId) {
-    body.parentCommentId = parentCommentId;
+    body.ParentCommentId = parentCommentId;
+  }
+  if (imageUrl) {
+    body.ImageUrl = imageUrl;
   }
   const { data } = await apiClient.post<BE_CommentResponse>(
     `/post/${postId}/comment`,
     body,
   );
-  const currentUser = await fetchUserById(data.userId);
   const comment = await transformComment(data, currentUser || undefined);
   return { success: true, comment };
 }
