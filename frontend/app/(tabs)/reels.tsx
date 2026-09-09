@@ -536,7 +536,7 @@ export default function ReelsScreen() {
             <Feather name="video" size={64} color={AppColors.iconMuted} />
             <Text style={styles.emptyTitle}>No reels yet</Text>
             <Text style={styles.emptySubtitle}>
-              When people you follow share reels, they'll appear here
+              When people you follow share reels, they&apos;ll appear here
             </Text>
           </>
         )}

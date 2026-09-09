@@ -255,7 +255,7 @@ export default function HelpCenterScreen() {
               <Feather name="search" size={32} color={AppColors.border} strokeWidth={1.5} />
               <Text style={styles.emptySearchTitle}>No results found</Text>
               <Text style={styles.emptySearchSub}>
-                Try a different keyword like "password", "privacy", or "notification"
+                Try a different keyword like &quot;password&quot;, &quot;privacy&quot;, or &quot;notification&quot;
               </Text>
             </View>
           )
@@ -280,7 +280,7 @@ export default function HelpCenterScreen() {
             </View>
             <Text style={styles.ctaTitle}>Still need help?</Text>
             <Text style={styles.ctaSubtitle}>
-              Our support team is here for you. Send us a message and we'll get back to you shortly.
+              Our support team is here for you. Send us a message and we&apos;ll get back to you shortly.
             </Text>
 
             <TouchableOpacity

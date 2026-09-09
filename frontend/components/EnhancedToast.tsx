@@ -356,14 +356,14 @@ export function Toast({
     }
   }, [visible, duration, onHide]);
 
-  if (!visible) return null;
-
-  const config = VARIANT_CONFIG[type];
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: opacity.value,
   }));
+
+  if (!visible) return null;
+
+  const config = VARIANT_CONFIG[type];
 
   return (
     <Animated.View

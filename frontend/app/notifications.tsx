@@ -119,7 +119,7 @@ export default function NotificationsScreen() {
             <Feather name="bell" size={48} color={AppColors.textMuted} />
             <Text style={styles.emptyTitle}>No notifications yet</Text>
             <Text style={styles.emptySubtitle}>
-              When someone interacts with your posts, you'll see it here.
+              When someone interacts with your posts, you&apos;ll see it here.
             </Text>
           </View>
         }

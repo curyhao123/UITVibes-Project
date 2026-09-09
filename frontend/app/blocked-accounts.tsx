@@ -157,7 +157,7 @@ export default function BlockedAccountsScreen() {
     () => (
       <View style={styles.listHeader}>
         <Text style={styles.subtitle}>
-          Accounts you blocked won't be able to message, follow, or interact
+          Accounts you blocked won&apos;t be able to message, follow, or interact
           with you.
         </Text>
       </View>

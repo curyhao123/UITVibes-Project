@@ -262,10 +262,6 @@ export function ModernTabBar({
   const currentRoute = state.routes[state.index]?.name;
   const shouldHideTabBar = currentRoute === 'create';
 
-  if (!isTabNavigator || shouldHideTabBar) {
-    return null;
-  }
-
   const positions = useSharedValue<number[]>([]);
 
   const handleTabPress = useCallback(
@@ -295,6 +291,10 @@ export function ModernTabBar({
       (_, i) => CAPSULE_PADDING + i * TAB_WIDTH + TAB_WIDTH / 2,
     );
   }, [positions]);
+
+  if (!isTabNavigator || shouldHideTabBar) {
+    return null;
+  }
 
   const totalHeight = BAR_HEIGHT + insets.bottom + BOTTOM_INSET + FLOAT_BOTTOM;
 

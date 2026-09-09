@@ -227,9 +227,9 @@ export default function OnboardingFindFriendsScreen() {
             <View style={styles.emptyIconWrap}>
               <Feather name="user-check" size={32} color={AppColors.iconMuted} strokeWidth={1.5} />
             </View>
-            <Text style={styles.emptyTitle}>You're all set!</Text>
+            <Text style={styles.emptyTitle}>You&apos;re all set!</Text>
             <Text style={styles.emptySubtitle}>
-              You've followed everyone we suggested. Check back later for more.
+              You&apos;ve followed everyone we suggested. Check back later for more.
             </Text>
           </View>
         }
@@ -249,7 +249,7 @@ export default function OnboardingFindFriendsScreen() {
                 onPress={handleSkip}
                 activeOpacity={0.7}
               >
-                <Text style={styles.seeMoreText}>I'll do this later</Text>
+                <Text style={styles.seeMoreText}>I&apos;ll do this later</Text>
               </TouchableOpacity>
             )}
           </View>

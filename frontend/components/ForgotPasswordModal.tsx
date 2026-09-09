@@ -132,7 +132,7 @@ function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) 
       {/* Heading */}
       <Text style={stepStyles.title}>Forgot password?</Text>
       <Text style={stepStyles.subtitle}>
-        Enter your email address and we'll send you a code to reset your password.
+        Enter your email address and we&apos;ll send you a code to reset your password.
       </Text>
 
       {/* Email input */}
@@ -438,7 +438,7 @@ function ForgotPasswordStep2({
 
       {/* Resend */}
       <View style={stepStyles.resendRow}>
-        <Text style={stepStyles.resendLabel}>Didn't receive the code?</Text>
+        <Text style={stepStyles.resendLabel}>Didn&apos;t receive the code?</Text>
         {resendCountdown > 0 ? (
           <Text style={stepStyles.countdownText}>Resend in {resendCountdown}s</Text>
         ) : (
