@@ -1,6 +1,6 @@
 import React, { memo, type ReactNode } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 
 interface SectionHeaderProps {

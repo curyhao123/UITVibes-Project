@@ -11,6 +11,7 @@
  *  - Data from getOnlineFriends() REST API
  */
 
+import { Feather } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -25,12 +26,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { Feather } from "@expo/vector-icons";
 
-import { Avatar } from "./Avatar";
-import { AppColors } from "../constants/theme";
 import { SPRING_PRESS, SPRING_SOFT } from "../animations/spring";
+import { AppColors } from "../constants/theme";
 import { getOnlineFriends, OnlineFriendDto } from "../services/onlineTrackingService";
+import { Avatar } from "./Avatar";
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 

@@ -5,29 +5,27 @@
  * 3. Real-time comment submission with reply support
  * 4. Hierarchical comment display with nested replies
  */
-import React, { useState, useEffect } from "react";
+import { Feather } from "@expo/vector-icons";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   FlatList,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, Stack, useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import { getPostById, toggleCommentLike, repostPost, undoRepost, toggleBookmark, removeBookmark } from "../../services/postService";
-import { Post, Comment } from "../../data/mockData";
-import { Avatar, CommentItem, ImageCarousel } from "../../components";
-import { CommentContextMenu, DeleteConfirmModal } from "../../components";
-import { useApp } from "../../context/AppContext";
-import { AppColors, layoutPadding } from "../../constants/theme";
-import { SkeletonShimmer } from "../../components/SkeletonLoader";
-import { updateComment, deleteComment } from "../../services/postService";
+import { Avatar, CommentItem, DeleteConfirmModal, ImageCarousel } from "../../components";
 import { CommentInput } from "../../components/CommentInput";
+import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
+import { AppColors, layoutPadding } from "../../constants/theme";
+import { useApp } from "../../context/AppContext";
+import { Comment, Post } from "../../data/mockData";
+import { deleteComment, getPostById, removeBookmark, repostPost, toggleBookmark, toggleCommentLike, undoRepost, updateComment } from "../../services/postService";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
 const PostDetailSkeleton = () => (

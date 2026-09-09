@@ -1,36 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import {
-  View,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  Pressable,
-  Platform,
+  View
 } from 'react-native';
-import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Feather } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
   FadeOut,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  interpolateColor,
 } from 'react-native-reanimated';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
-import { useApp } from '../../context/AppContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MentionInput } from '../../components/MentionInput';
+import { Toast } from '../../components/Toast';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import { Avatar } from '../../components/Avatar';
-import { Toast } from '../../components/Toast';
-import { MentionInput } from '../../components/MentionInput';
+import { useApp } from '../../context/AppContext';
 import {
   ContentVisibility,
   contentVisibilityToApiValue,
@@ -108,7 +106,7 @@ export default function CreateScreen() {
   const [selectedVisibility, setSelectedVisibility] = React.useState<PostVisibility>('Public');
   const [selectedAspectRatio, setSelectedAspectRatio] = React.useState<AspectRatioKey>('9:16');
   const [showVisibilityPicker, setShowVisibilityPicker] = React.useState(false);
-  const { createPost, createReel, currentUser } = useApp();
+  const { createPost, createReel} = useApp();
   const router = useRouter();
 
   const tabAnim = useSharedValue(createType === 'post' ? 0 : 1);

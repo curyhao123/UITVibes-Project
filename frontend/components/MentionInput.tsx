@@ -1,15 +1,15 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
+  View,
 } from 'react-native';
-import { Avatar } from './Avatar';
-import { searchUsers, getFollowing, User } from '../services/userService';
 import { AppColors } from '../constants/theme';
+import { getFollowing, searchUsers, User } from '../services/userService';
+import { Avatar } from './Avatar';
 
 interface MentionInputProps {
   value: string;

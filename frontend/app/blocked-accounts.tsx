@@ -1,34 +1,33 @@
+import { useRouter } from 'expo-router';
 import React, {
-  useState,
   useCallback,
-  useMemo,
   useEffect,
-  useRef,
+  useMemo,
+  useState
 } from 'react';
 import {
-  View,
-  FlatList,
-  StyleSheet,
   ActivityIndicator,
+  FlatList,
   LayoutAnimation,
   Platform,
+  StyleSheet,
+  Text,
   UIManager,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { getBlockedUsers, unblockUser } from '../services/blockService';
-import { getCurrentUserId } from '../services/session';
+import type { BlockedUserItemData } from '../components/blocked-accounts';
 import {
-  BlockedUserItem,
-  BlockedAccountsSearchBar,
   BlockedAccountsEmptyState,
+  BlockedAccountsSearchBar,
+  BlockedUserItem,
   UnblockConfirmModal,
 } from '../components/blocked-accounts';
-import type { BlockedUserItemData } from '../components/blocked-accounts';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
-import { Text } from 'react-native';
+import { getBlockedUsers, unblockUser } from '../services/blockService';
+import { getCurrentUserId } from '../services/session';
 
 if (
   Platform.OS === 'android' &&

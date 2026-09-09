@@ -2,26 +2,26 @@
  * ShareSheet — Bottom sheet for sharing reels.
  * Instagram-style share options with messaging apps and copy link.
  */
+import { Feather } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
 import {
-  View,
+  Dimensions,
+  Linking,
+  Platform,
+  Share,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Share,
-  Platform,
-  Linking,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AppColors } from '../constants/theme';
 import { SPRING_SOFT, TIMING_FAST } from '../animations/spring';
+import { AppColors } from '../constants/theme';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

@@ -1,20 +1,18 @@
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   FlatList,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useApp } from '../../context/AppContext';
-import { Button } from '../../components/Button';
 import { Avatar } from '../../components/Avatar';
+import { Button } from '../../components/Button';
 import { AppColors, borderRadius } from '../../constants/theme';
+import { useApp } from '../../context/AppContext';
 import { User } from '../../data/mockData';
 import * as api from '../../services/api';
 

@@ -1,35 +1,35 @@
 /**
  * ReportsScreen — Admin view of user & post reports
  */
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { AppColors, borderRadius } from "@/constants/theme";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Image,
-  Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import {
-  getUserReports,
-  getPostReports,
-  resolveUserReport,
-  resolvePostReport,
-  rejectUserReport,
-  rejectPostReport,
   changePostVisibility,
+  getPostReports,
+  getUserReports,
+  rejectPostReport,
+  rejectUserReport,
+  resolvePostReport,
+  resolveUserReport,
 } from "@/services/adminService";
 import type {
-  BE_UserReport,
-  BE_PostReport,
   AdminReportStatus,
+  BE_PostReport,
+  BE_UserReport,
 } from "@/services/backendTypes";
-import { AppColors, borderRadius } from "@/constants/theme";
+import { Feather } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ReportTab = "user" | "post";
 type FilterStatus = AdminReportStatus | "All";

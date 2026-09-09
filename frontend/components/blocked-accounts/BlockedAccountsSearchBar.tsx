@@ -1,6 +1,6 @@
-import React, { memo, useState, useCallback } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import React, { memo, useCallback } from 'react';
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 

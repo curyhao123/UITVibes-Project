@@ -1,10 +1,9 @@
-import React, { memo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import React, { memo, useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import defaultAvatar from '../../assets/images/default-avatar.png';
 import { formatRelativeTime } from '../../utils/time';
 
 export interface BlockedUserItemData {

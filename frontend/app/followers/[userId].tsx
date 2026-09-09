@@ -1,28 +1,27 @@
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
   ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import defaultAvatar from "../../assets/images/default-avatar.png";
+import { CompactHeader } from "../../components/StaticPremiumHeader";
+import { AppColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import { User } from "../../data/mockData";
 import {
   getFollowers,
   getFollowing,
-  toggleFollow,
   getUserById,
-  isFollowing,
+  isFollowing
 } from "../../services/api";
-import { AppColors } from "../../constants/theme";
-import { CompactHeader } from "../../components/StaticPremiumHeader";
-import defaultAvatar from "../../assets/images/default-avatar.png";
 
 export default function FollowersScreen() {
   const router = useRouter();

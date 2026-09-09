@@ -9,22 +9,20 @@
  *
  * Design: same animation pattern as UserActionsSheet / ReportUserSheet
  */
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Pressable,
-  Animated,
   Alert,
-  ActivityIndicator,
+  Animated,
   Dimensions,
+  Modal,
   Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 

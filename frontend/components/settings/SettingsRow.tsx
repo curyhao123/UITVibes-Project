@@ -1,13 +1,12 @@
+import { Feather } from '@expo/vector-icons';
 import React, { memo, useCallback } from 'react';
 import {
-  View,
+  StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
-  Switch,
-  StyleSheet,
-  Platform,
+  View
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 

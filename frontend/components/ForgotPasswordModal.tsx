@@ -19,35 +19,29 @@
  *   onClose: () => void — called when user dismisses the modal
  *   onSuccess: () => void — called after password is successfully reset
  */
-import React, { useState, useRef, useEffect } from "react";
+import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  TextInput,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  runOnJS,
   FadeIn,
-  FadeOut,
+  FadeOut
 } from "react-native-reanimated";
-import { Feather } from "@expo/vector-icons";
 import { AppColors, borderRadius } from "../constants/theme";
 import { Typography } from "../constants/typography";
-import { Button } from "./Button";
-import { Toast } from "./Toast";
-import OTPInput from "./OTPInput";
 import { forgotPassword, resetPassword } from "../services/authService";
+import { Button } from "./Button";
+import OTPInput from "./OTPInput";
+import { Toast } from "./Toast";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;

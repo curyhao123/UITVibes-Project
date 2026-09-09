@@ -120,5 +120,5 @@ export interface AdminReportStats {
   totalPending: number;
   totalResolved: number;
   totalDismissed: number;
-  topReasons: Array<{ reason: ReportReason; count: number }>;
+  topReasons: { reason: ReportReason; count: number }[];
 }

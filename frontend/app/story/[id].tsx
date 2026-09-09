@@ -5,24 +5,23 @@
  * Tracks progress bars per item, tap left/right to navigate,
  * auto-advances and marks each item viewed when it completes.
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import { Feather } from '@expo/vector-icons';
-import { getStoryDetail, markStoryViewed, Story, StoryItem } from '../../services/storyService';
+import defaultAvatar from '../../assets/images/default-avatar.png';
 import { AddToHighlightModal } from '../../components/highlight';
 import { useApp } from '../../context/AppContext';
-import defaultAvatar from '../../assets/images/default-avatar.png';
+import { getStoryDetail, markStoryViewed, Story, StoryItem } from '../../services/storyService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -82,7 +81,7 @@ export default function StoryViewerScreen() {
     } else {
       startProgress(pausedProgressRef.current);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isPaused, startProgress, clearTimer]);
 
   // Mark current item viewed (only once)

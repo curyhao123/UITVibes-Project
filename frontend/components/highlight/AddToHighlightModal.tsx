@@ -8,34 +8,34 @@
  * 4. API call to attach StoryItem to the selected HighlightGroup
  * 5. Success toast + close
  */
-import React, { useState, useEffect } from "react";
+import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Modal,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Image,
-  StyleSheet,
-  Alert,
-  Platform,
-  Dimensions,
-  KeyboardAvoidingView,
-  Keyboard,
+  View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
+import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
 import {
   HighlightGroup,
-  getUserHighlights,
-  createHighlightGroup,
   addStoryItemToHighlight,
+  createHighlightGroup,
+  getUserHighlights,
 } from "../../services/highlightService";
-import { AppColors, layoutPadding, borderRadius } from "../../constants/theme";
-import { Typography } from "../../constants/typography";
 
 interface AddToHighlightModalProps {
   visible: boolean;

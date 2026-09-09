@@ -1,24 +1,22 @@
-import React, { useState, useRef, useEffect } from "react";
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import * as api from "../../services/api";
-import { saveTokens } from "../../services/httpClient";
-import { setCurrentUser, setCurrentUserId } from "../../services/session";
-import { useApp } from "../../context/AppContext";
 import { Button } from "../../components/Button";
 import { Toast } from "../../components/Toast";
 import { AppColors, borderRadius } from "../../constants/theme";
+import { useApp } from "../../context/AppContext";
+import * as api from "../../services/api";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60; // seconds

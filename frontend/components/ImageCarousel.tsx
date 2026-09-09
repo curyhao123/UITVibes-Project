@@ -1,17 +1,16 @@
+import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  View,
-  FlatList,
-  StyleSheet,
   Dimensions,
-  TouchableOpacity,
-  ListRenderItem,
-  ViewToken,
+  FlatList,
   LayoutChangeEvent,
+  ListRenderItem,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  ViewToken,
 } from 'react-native';
-import { Image } from 'expo-image';
-import { Feather } from '@expo/vector-icons';
-import { AppColors } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

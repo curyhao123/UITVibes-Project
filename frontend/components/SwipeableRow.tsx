@@ -10,19 +10,19 @@
  * - Prevents conflict with internal tap gestures by using minimum distance
  */
 
-import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, Pressable, LayoutChangeEvent } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback } from 'react';
+import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-  interpolate,
   Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

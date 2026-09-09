@@ -1,22 +1,22 @@
 /**
  * DashboardScreen — Admin overview
  */
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { getAllUsers, getUserReports, getPostReports } from "@/services/adminService";
 import { AppColors, borderRadius } from "@/constants/theme";
 import { useApp } from "@/context/AppContext";
+import { getAllUsers, getPostReports, getUserReports } from "@/services/adminService";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Stats {
   totalUsers: number;

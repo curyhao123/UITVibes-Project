@@ -15,29 +15,29 @@
  * - Mock Reel type (with nested user object)
  * - API Reel type (with userId, ownerDisplayName, ownerAvatarUrl fields)
  */
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  Image,
-  TouchableOpacity,
-  Pressable,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-  withSequence,
   withDelay,
+  withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SPRING_BOUNCE, SPRING_SOFT } from '../animations/spring';
 import { AppColors } from '../constants/theme';
-import { SPRING_BOUNCE, SPRING_SOFT, SPRING_PRESS } from '../animations/spring';
 import { User } from '../data/mockData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

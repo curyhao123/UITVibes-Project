@@ -18,24 +18,24 @@
  * - All colors from AppColors palette; all spacing from layoutPadding / borderRadius
  * - LayoutAnimation (UI thread) for accordion — zero JS re-render cost
  */
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompactHeader } from '../components/StaticPremiumHeader';
-import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
-import { HighlightCard } from '../components/privacy/HighlightCard';
+import { SupportModal } from '../components/contact';
 import { InfoCard } from '../components/help/InfoCard';
 import { SectionHeader } from '../components/help/SectionHeader';
-import { SupportModal } from '../components/contact';
+import { HighlightCard } from '../components/privacy/HighlightCard';
+import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 
@@ -214,9 +214,6 @@ export default function PrivacyPolicyScreen() {
     setSupportModalVisible(true);
   };
 
-  const handleEmailPrivacy = () => {
-    // Linking.openURL handled inline
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

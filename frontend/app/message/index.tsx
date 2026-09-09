@@ -1,32 +1,28 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../context/AppContext";
-import * as api from "../../services/api";
-import { deleteConversation } from "../../services/messageService";
-import { invokeHub } from "../../services/signalrService";
-import { Conversation, Message, User } from "../../data/mockData";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Avatar } from "../../components/Avatar";
+import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
+import { OnlineFriendsList } from "../../components/OnlineFriendsList";
+import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
+import { SwipeableRow } from "../../components/SwipeableRow";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
-import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
-import { Avatar } from "../../components/Avatar";
-import { OnlineFriendsList } from "../../components/OnlineFriendsList";
-import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
-import { SwipeableRow } from "../../components/SwipeableRow";
+import { useApp } from "../../context/AppContext";
+import { Conversation, User } from "../../data/mockData";
+import * as api from "../../services/api";
+import { deleteConversation } from "../../services/messageService";
 import { formatDistanceToNow } from "../../utils/time";
 
 // ─── Conversation Item Component (extracted to use hooks properly) ───────────

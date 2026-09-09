@@ -8,26 +8,24 @@
  * - Smooth transitions
  */
 
-import React, { useEffect, useRef, useState, memo, type ReactNode } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Animated,
-  ScrollView,
-  FlatList,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
-import { Avatar } from './Avatar';
-import { User } from '../data/mockData';
+import React, { memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { User } from '../data/mockData';
+import { Avatar } from './Avatar';
 
 const HEADER_MAX_HEIGHT = 100;
 const HEADER_MIN_HEIGHT = 56;

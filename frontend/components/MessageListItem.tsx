@@ -9,18 +9,25 @@
  * - Smooth animations with haptic feedback
  */
 
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SwipeableRow } from './SwipeableRow';
-import { Avatar } from './Avatar';
-import { OnlineIndicator } from './OnlineIndicator';
-import { Conversation, User } from '../data/mockData';
+import React, { useCallback } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
-import { formatDistanceToNow } from '../utils/time';
+import { Conversation, User } from '../data/mockData';
 import { triggerHaptic } from '../hooks/useMicroInteractions';
+import { formatDistanceToNow } from '../utils/time';
+import { Avatar } from './Avatar';
+import { SwipeableRow } from './SwipeableRow';
+
+// ─── Swipeable Touchable ─────────────────────────────────────────────────────
+
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface MessageListItemProps {
   conversation: Conversation;
@@ -182,15 +189,6 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
     </SwipeableRow>
   );
 };
-
-// ─── Swipeable Touchable ─────────────────────────────────────────────────────
-
-import { TouchableOpacity, Platform } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 
 interface SwipeableTouchableProps {
   children: React.ReactNode;

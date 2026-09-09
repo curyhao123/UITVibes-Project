@@ -8,23 +8,23 @@
  * 3. Spring press feedback on tap (scale down → spring back)
  * 4. "Add story" circle pulses gently to draw attention
  */
-import React, { useCallback, useRef } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useRef } from 'react';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  useAnimatedScrollHandler,
-  interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
-import { Avatar } from './Avatar';
-import { Story } from '../services/storyService';
-import { useRouter } from 'expo-router';
+import { SPRING_PRESS, SPRING_SOFT } from '../animations/spring';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
-import { SPRING_PRESS, SPRING_SOFT } from '../animations/spring';
+import { Story } from '../services/storyService';
+import { Avatar } from './Avatar';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 const STORY_ITEM_WIDTH = 68;

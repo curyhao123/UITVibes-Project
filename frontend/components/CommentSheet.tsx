@@ -2,30 +2,29 @@
  * CommentSheet — Bottom sheet for reel comments.
  * Instagram-style comment section with reply support.
  */
-import React, { useState, useCallback } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
-  FlatList,
-  ActivityIndicator,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
-  runOnJS,
+  withTiming
 } from 'react-native-reanimated';
+import { SPRING_PRESS, SPRING_SOFT, TIMING_FAST } from '../animations/spring';
 import { AppColors } from '../constants/theme';
-import { SPRING_SOFT, SPRING_PRESS, TIMING_FAST } from '../animations/spring';
 import { Comment, User } from '../data/mockData';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 

@@ -1,21 +1,21 @@
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import { FormInput } from "../../components/FormInput";
 import { Button } from "../../components/Button";
+import { FormInput } from "../../components/FormInput";
+import { AppColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
-import { AppColors, borderRadius } from "../../constants/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();

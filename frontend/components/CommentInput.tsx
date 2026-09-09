@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  Image,
-  Alert,
+  View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { Feather } from "@expo/vector-icons";
-import { Avatar } from "./Avatar";
-import { Comment } from "../data/mockData";
-import { AppColors, layoutPadding } from "../constants/theme";
+import { AppColors } from "../constants/theme";
 import { useApp } from "../context/AppContext";
-import { MentionInput } from "./MentionInput";
+import { Comment } from "../data/mockData";
 import { uploadMedia } from "../services/postService";
+import { Avatar } from "./Avatar";
+import { MentionInput } from "./MentionInput";
 
 interface CommentInputProps {
   /** Comment being edited; null means Create Mode */

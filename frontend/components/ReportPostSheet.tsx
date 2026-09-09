@@ -11,22 +11,22 @@
  *
  * Design: same animation pattern as ReportUserSheet / UserActionsSheet
  */
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Pressable,
-  Animated,
-  TextInput,
-  Dimensions,
   ActivityIndicator,
-  Platform,
+  Animated,
+  Dimensions,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { REPORT_REASONS, type ReportReason } from '../services/backendTypes';

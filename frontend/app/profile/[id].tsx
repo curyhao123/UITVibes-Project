@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
-import { getUserReposts } from '../../services/postService';
-import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
-import { getCurrentUserId } from '../../services/session';
-import { User, Post } from '../../data/mockData';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, PostGrid } from '../../components';
 import { HighlightBar } from '../../components/highlight';
-import { AppColors, layoutPadding, borderRadius } from '../../constants/theme';
-import { Typography } from '../../constants/typography';
-import { CompactHeader } from '../../components/StaticPremiumHeader';
-import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
-import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
 import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
+import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
+import { CompactHeader } from '../../components/StaticPremiumHeader';
 import { Toast } from '../../components/Toast';
+import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
+import { Post, User } from '../../data/mockData';
+import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
+import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
+import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
+import { getUserReposts } from '../../services/postService';
+import { getCurrentUserId } from '../../services/session';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();

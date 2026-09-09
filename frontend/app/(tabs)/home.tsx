@@ -1,14 +1,13 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { PostCard, StoryBar } from '../../components';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback } from 'react';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FeedSkeleton, PostCard, StoryBar } from '../../components';
 import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
-import { useApp } from '../../context/AppContext';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
-import { FeedSkeleton } from '../../components';
+import { useApp } from '../../context/AppContext';
 
 export default function HomeScreen() {
   const router = useRouter();

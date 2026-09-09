@@ -17,33 +17,32 @@
  * - Smooth spring animation (not abrupt Alert style)
  * - Rounded top corners + shadow make it feel like a floating panel
  */
+import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React, { useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Pressable,
   Dimensions,
   Linking,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { Feather } from '@expo/vector-icons';
 import Animated, {
-  useSharedValue,
+  Extrapolation,
+  interpolate,
+  runOnJS,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
-  runOnJS,
-  interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
-import { ContactAvatar } from './ContactAvatar';
-import { ADMIN_CONTACTS, type AdminContact } from '../../data/adminContacts';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { ADMIN_CONTACTS, type AdminContact } from '../../data/adminContacts';
+import { ContactAvatar } from './ContactAvatar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

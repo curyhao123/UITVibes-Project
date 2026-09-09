@@ -20,20 +20,19 @@
  *     autoFocus
  *   />
  */
-import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
-  View,
-  TextInput,
-  StyleSheet,
   Platform,
+  StyleSheet,
+  TextInput,
+  View,
 } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 import { AppColors, borderRadius } from "../constants/theme";
-import { Typography } from "../constants/typography";
 
 export interface OTPInputRef {
   focus: () => void;
