@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace PostService.Messaging.Implementation
 {
-    public class PostLikedPublisher: IPostLikedPublisher
+    public class PostLikedPublisher : IPostLikedPublisher
     {
         private const string QueueName = "post.liked";
         private readonly IConnectionFactory _connectionFactory;

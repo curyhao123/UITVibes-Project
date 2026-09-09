@@ -123,7 +123,7 @@ public class PostDbContext : DbContext
         modelBuilder.Entity<Like>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             // Composite unique index to prevent duplicate likes
             entity.HasIndex(e => new { e.PostId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.UserId);
@@ -134,7 +134,7 @@ public class PostDbContext : DbContext
         modelBuilder.Entity<CommentLike>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             // Composite unique index to prevent duplicate likes
             entity.HasIndex(e => new { e.CommentId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.UserId);
@@ -144,7 +144,7 @@ public class PostDbContext : DbContext
         modelBuilder.Entity<Hashtag>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             // Unique index on normalized name
             entity.HasIndex(e => e.NormalizedName).IsUnique();
             entity.HasIndex(e => e.UsageCount);
@@ -159,7 +159,7 @@ public class PostDbContext : DbContext
         {
             // Composite primary key
             entity.HasKey(e => new { e.PostId, e.HashtagId });
-            
+
             entity.HasIndex(e => e.HashtagId);
             entity.HasIndex(e => e.CreatedAt);
 
@@ -191,7 +191,7 @@ public class PostDbContext : DbContext
         modelBuilder.Entity<Bookmark>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             // Composite unique index to prevent duplicate bookmarks
             entity.HasIndex(e => new { e.PostId, e.UserId }).IsUnique();
             entity.HasIndex(e => e.UserId);

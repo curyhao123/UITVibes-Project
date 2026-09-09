@@ -6,17 +6,17 @@ public class Post
 
     /// User who created the post (from AuthService)
     public Guid UserId { get; set; }
-    
+
     /// Post content/caption
 
     public string Content { get; set; } = string.Empty;
- 
+
     /// Media attachments (images/videos)
-  
+
     public List<PostMedia> Media { get; set; } = new();
-    
-    public PostVisibility Visibility { get; set; } = PostVisibility.Public; 
- 
+
+    public PostVisibility Visibility { get; set; } = PostVisibility.Public;
+
     /// Location/place tagged
 
     public string? Location { get; set; }
@@ -28,14 +28,14 @@ public class Post
     public int CommentsCount { get; set; }
     public int SharesCount { get; set; }
     public int ViewsCount { get; set; }
-    
+
     /// Original post if this is a share/repost
 
     public Guid? OriginalPostId { get; set; }
     public Post? OriginalPost { get; set; }
 
     /// Soft delete
- 
+
     public bool IsDeleted { get; set; }
 
     // Thêm: đếm nhanh số lượt repost
@@ -43,7 +43,7 @@ public class Post
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    
+
     // Navigation properties
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Like> Likes { get; set; } = new List<Like>();

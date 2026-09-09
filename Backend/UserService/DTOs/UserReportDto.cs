@@ -11,7 +11,7 @@ namespace UserService.DTOs
         public string ReportedDisplayName { get; set; } = null!;
         public string Reason { get; set; } = null!;
         public string? AdditionalDetails { get; set; }
- 
+
         public DateTime CreatedAt { get; set; }
         public ReportStatus Status { get; set; }
         public string? AdminNote { get; set; }

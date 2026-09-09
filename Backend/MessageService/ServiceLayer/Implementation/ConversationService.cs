@@ -289,7 +289,7 @@ namespace MessageService.ServiceLayer.Implementation
             if (member == null)
                 throw new KeyNotFoundException("You are not a member of this conversation");
 
-            
+
             member.LeftAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

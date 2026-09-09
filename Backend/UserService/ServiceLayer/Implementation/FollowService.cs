@@ -81,11 +81,11 @@ public class FollowService : IFollowService
         followerProfile.UpdatedAt = DateTime.UtcNow;
         followingProfile.UpdatedAt = DateTime.UtcNow;
 
-      
+
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("User {FollowerId} followed user {FollowingId}", followerId, followingId);
-        
+
         var followerName = followerProfile.DisplayName ?? "Someone";
         var followAt = follow.CreatedAt;
 

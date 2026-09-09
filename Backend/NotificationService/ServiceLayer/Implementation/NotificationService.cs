@@ -70,7 +70,7 @@ namespace NotificationService.ServiceLayer.Implementation
         {
             var notification = await _db.Notifications
                 .FirstOrDefaultAsync(x => x.Id == notificationId && x.UserId == userId, ct);
-            
+
             if (notification == null)
             {
                 _logger.LogWarning("Notification {NotificationId} not found for user {UserId}", notificationId, userId);

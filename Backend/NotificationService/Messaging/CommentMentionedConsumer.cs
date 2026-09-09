@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace NotificationService.Messaging
 {
-    public class CommentMentionedConsumer: BackgroundService
+    public class CommentMentionedConsumer : BackgroundService
     {
         private const string QueueName = "comment.mentioned";
         private readonly ILogger<CommentMentionedConsumer> _logger;

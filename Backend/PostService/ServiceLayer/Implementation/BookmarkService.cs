@@ -61,13 +61,13 @@ namespace PostService.ServiceLayer.Implementation
             return true;
         }
 
-        public async Task<List<BookmarkDto>> GetBookmarksByUserAsync(Guid userId,string? collection, int skip = 0, int take = 20)
+        public async Task<List<BookmarkDto>> GetBookmarksByUserAsync(Guid userId, string? collection, int skip = 0, int take = 20)
         {
             var query = _context.Bookmarks
                                     .Include(b => b.Post)
                                         .ThenInclude(p => p.Media)
                                     .Where(b => b.UserId == userId);
-            
+
             if (!string.IsNullOrEmpty(collection))
             {
                 query = query.Where(b => b.Collection == collection);

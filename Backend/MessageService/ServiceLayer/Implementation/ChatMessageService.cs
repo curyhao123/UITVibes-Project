@@ -8,7 +8,7 @@ using MessageService.Messaging.Interface;
 
 namespace MessageService.ServiceLayer.Implementation
 {
-    public class ChatMessageService: IMessageService
+    public class ChatMessageService : IMessageService
     {
         private readonly MessageDbContext _context;
         private readonly IHubContext<ChatHub> _hubContext;

@@ -5,7 +5,7 @@
         public Guid Id { get; set; }
         public Guid ReelId { get; set; }
         public Reel Reel { get; set; } = null!;
-        public Guid UserId { get; set; }        
+        public Guid UserId { get; set; }
         public string Content { get; set; } = string.Empty;
         public int LikeCount { get; set; } = 0;
         public int ReplyCount { get; set; } = 0;

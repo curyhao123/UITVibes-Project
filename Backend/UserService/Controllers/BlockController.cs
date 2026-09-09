@@ -16,7 +16,7 @@ public class BlockController : ControllerBase
         _blockService = blockService;
         _logger = logger;
     }
-    
+
     [HttpPost("{blockedId}")]
     public async Task<ActionResult<BlockDto>> BlockUser(Guid blockedId)
     {

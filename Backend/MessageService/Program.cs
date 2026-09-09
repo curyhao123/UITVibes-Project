@@ -30,7 +30,7 @@ builder.Services.AddScoped<IBlockStatusRpcClient, BlockStatusRpcClient>();
 builder.Services.AddScoped<IMessageSentPublisher, MessageSentPublisher>();
 // Add SignalR with Redis backplane for scaling
 builder.Services.AddSignalR();
-   
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -49,8 +49,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://127.0.0.1:5500", 
-                "http://localhost:3000", 
+            policy.WithOrigins("http://127.0.0.1:5500",
+                "http://localhost:3000",
                 "http://localhost:8081",
                 "http://localhost:7497")
                   .AllowAnyHeader()
@@ -104,7 +104,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseWebSockets();        // ← phải trước MapHub
 app.UseAuthentication();    // ← thêm vào
-app.UseAuthorization();     
+app.UseAuthorization();
 
 
 app.MapControllers();

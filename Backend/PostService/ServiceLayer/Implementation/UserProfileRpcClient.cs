@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace PostService.ServiceLayer.Implementation
 {
-    public class UserProfileRpcClient: IUserProfileRpcClient
+    public class UserProfileRpcClient : IUserProfileRpcClient
     {
         private const string QueueName = "user.profile.get";
         private readonly IConnectionFactory _connectionFactory;
