@@ -10,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  DimensionValue
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
@@ -31,7 +32,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   // ── Password strength indicator ──────────────────────────────────────────
-  const getPasswordStrength = (pwd: string): { label: string; color: string; width: string } => {
+  const getPasswordStrength = (pwd: string): { label: string; color: string; width: DimensionValue } => {
     const len = pwd.length;
     if (len === 0) return { label: "", color: "transparent", width: "0%" };
     if (len < 6) return { label: "Too short", color: AppColors.error, width: "20%" };

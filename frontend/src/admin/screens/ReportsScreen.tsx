@@ -258,7 +258,7 @@ export default function ReportsScreen() {
   const PAGE_SIZE = 20;
 
   // Stable ref so callbacks always call the latest fetchReports
-  const fetchReportsRef = useRef<(pageNum: number, isRefresh: boolean) => Promise<void>>();
+  const fetchReportsRef = useRef<((pageNum: number, isRefresh: boolean) => Promise<void>) | null>(null);
   const isFetchingRef = useRef(false);
 
   const fetchReports = useCallback(
@@ -422,7 +422,7 @@ export default function ReportsScreen() {
       {/* Filter chips */}
       <FilterChips active={filter} onChange={(s) => setFilter(s)} />
 
-      <FlatList
+      <FlatList<BE_UserReport | BE_PostReport>
         data={data}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}

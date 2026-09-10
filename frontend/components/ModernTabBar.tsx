@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -87,7 +88,7 @@ const ACTIVE_BOUNCE = {
 // ── Active Pill ──────────────────────────────────────────────────────────────
 
 interface ActivePillProps {
-  positions: Animated.SharedValue<number[]>;
+  positions: SharedValue<number[]>;
   currentIndex: number;
 }
 
@@ -268,18 +269,6 @@ export function ModernTabBar({
     (routeName: string, routeIndex: number) => {
       if (state.index !== routeIndex) {
         navigation.navigate(routeName);
-      }
-      if (state.events) {
-        const event = state.events.find(
-          (e) => e.target === state.routes?.[routeIndex]?.key,
-        );
-        if (event) {
-          navigation.emit({
-            type: 'tabPress',
-            target: event.target,
-            canPreventDefault: true,
-          });
-        }
       }
     },
     [navigation, state],

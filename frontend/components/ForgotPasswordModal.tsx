@@ -22,6 +22,7 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  DimensionValue,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -57,7 +58,7 @@ interface ForgotPasswordModalProps {
 function getPasswordStrength(password: string): {
   label: string;
   color: string;
-  width: string;
+  width: DimensionValue;
 } {
   const len = password.length;
   if (len === 0) return { label: "", color: "transparent", width: "0%" };

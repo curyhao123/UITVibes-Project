@@ -179,12 +179,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         activeOpacity={0.7}
       >
         <Avatar
-          user={{
-            id: item.id,
-            username: item.username,
-            displayName: item.displayName,
-            avatar: item.avatar,
-          }}
+          user={item}
           size="small"
         />
         <View style={styles.suggestionInfo}>

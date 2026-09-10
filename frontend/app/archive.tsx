@@ -78,7 +78,6 @@ export default function ArchiveScreen() {
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
       post={item}
-      onPress={() => handlePostPress(item)}
     />
   );
 

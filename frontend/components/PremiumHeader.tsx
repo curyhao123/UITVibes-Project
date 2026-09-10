@@ -341,7 +341,7 @@ export function useScrollHeader() {
   const scrollY = new Animated.Value(0);
   const isScrolled = scrollY.interpolate({
     inputRange: [0, 1],
-    outputRange: [false, true],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
   });
 

@@ -18,6 +18,7 @@ import Animated, {
   withSequence,
   withDelay,
   runOnJS,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { AppColors } from '../constants/theme';
@@ -61,8 +62,8 @@ export function useAnimatedHeart() {
 // ─── AnimatedHeart component ──────────────────────────────────────────────────
 
 interface AnimatedHeartProps {
-  scale: Animated.SharedValue<number>;
-  opacity: Animated.SharedValue<number>;
+  scale: SharedValue<number>;
+  opacity: SharedValue<number>;
 }
 
 export const AnimatedHeart: React.FC<AnimatedHeartProps> = ({ scale, opacity }) => {
@@ -87,7 +88,7 @@ export const AnimatedHeart: React.FC<AnimatedHeartProps> = ({ scale, opacity }) 
 
 interface AnimatedHeartIconProps {
   isLiked: boolean;
-  scale: Animated.SharedValue<number>;
+  scale: SharedValue<number>;
 }
 
 export const AnimatedHeartIcon: React.FC<AnimatedHeartIconProps> = ({ isLiked, scale }) => {

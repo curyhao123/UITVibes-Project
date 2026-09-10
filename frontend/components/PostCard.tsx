@@ -60,7 +60,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
-      await toggleLike(post.id, false);
+      await toggleLike(post.id);
     }
     playHeart();
   }, [localLiked, post.id, playHeart, toggleLike]);
@@ -80,7 +80,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const wasLiked = localLiked;
     setLocalLiked(!wasLiked);
     try {
-      await toggleLike(post.id, wasLiked);
+      await toggleLike(post.id);
     } catch {
       setLocalLiked(wasLiked);
     }
@@ -252,7 +252,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
         <View style={styles.postHeader}>
           <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
-            <Avatar user={post.user} size={36} />
+            <Avatar user={post.user} size="medium" />
             <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
           </TouchableOpacity>
 

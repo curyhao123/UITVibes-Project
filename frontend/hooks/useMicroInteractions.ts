@@ -32,7 +32,7 @@ const SPRING_Bounce = { damping: 12, stiffness: 400 };
 export function triggerHaptic(style: HapticStyle = 'light') {
   if (Platform.OS === 'web' || style === 'none') return;
 
-  const hapticMap: Record<HapticStyle, Haptics.ImpactFeedbackStyle | Haptics.NotificationFeedbackType | null> = {
+  const hapticMap: Record<HapticStyle, Haptics.ImpactFeedbackStyle | null> = {
     light: Haptics.ImpactFeedbackStyle.Light,
     medium: Haptics.ImpactFeedbackStyle.Medium,
     heavy: Haptics.ImpactFeedbackStyle.Heavy,

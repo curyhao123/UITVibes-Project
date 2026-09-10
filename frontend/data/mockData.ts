@@ -765,3 +765,38 @@ export const mockComments: Comment[] = [
     ],
   },
 ];
+
+export const mockNotifications: Notification[] = [
+  {
+    id: 'n1',
+    type: 'like',
+    user: u1,
+    post: mockPosts[0],
+    createdAt: '2024-01-15T21:30:00Z',
+    isRead: false,
+  },
+  {
+    id: 'n2',
+    type: 'follow',
+    user: u2,
+    createdAt: '2024-01-15T20:45:00Z',
+    isRead: false,
+  },
+  {
+    id: 'n3',
+    type: 'comment',
+    user: u3,
+    post: mockPosts[0],
+    comment: mockComments[0],
+    createdAt: '2024-01-15T19:00:00Z',
+    isRead: true,
+  },
+  {
+    id: 'n4',
+    type: 'share',
+    user: u4,
+    post: mockPosts[1],
+    createdAt: '2024-01-14T15:20:00Z',
+    isRead: true,
+  },
+];

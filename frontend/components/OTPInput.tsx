@@ -186,19 +186,16 @@ const OTPInput = forwardRef<OTPInputRef, OTPInputProps>(
               onFocus={() => handleFocus(index)}
               onSelectionChange={(e) => {
                 // Support paste: if user long-pastes, detect it
-                const { selection, text } = e.nativeEvent;
+                const { selection } = e.nativeEvent;
                 if (
-                  text &&
-                  text.length > 1 &&
                   selection.start === 0 &&
-                  selection.end === text.length
+                  selection.end > 1
                 ) {
-                  handlePaste(text);
+                  // paste detected via selection range; handled by onChangeText
                 }
               }}
               keyboardType="number-pad"
               maxLength={length}
-              numericButtons={["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]}
               selectTextOnFocus
               autoComplete="off"
               autoCorrect={false}

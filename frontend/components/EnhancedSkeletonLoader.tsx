@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { DimensionValue, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -30,7 +30,7 @@ const ENTRANCE_STAGGER = 80; // ms delay between items
 // ─── Traveling Shimmer Core ───────────────────────────────────────────────────
 
 interface TravelingShimmerProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -103,7 +103,7 @@ export const TravelingShimmer: React.FC<TravelingShimmerProps> = ({
 // ─── Pulse Shimmer (for subtle backgrounds) ───────────────────────────────────
 
 interface PulseShimmerProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -198,7 +198,7 @@ export const BounceEntrance: React.FC<BounceEntranceProps> = ({
 // ─── Higher-level primitives ───────────────────────────────────────────────────
 
 interface SkeletonLineProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -231,7 +231,7 @@ export const SkeletonCircle: React.FC<SkeletonCircleProps> = ({
 );
 
 interface SkeletonBoxProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;

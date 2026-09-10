@@ -275,6 +275,9 @@ export async function applyLocalUsernameToUser(user: User): Promise<User> {
 export function patchCurrentUserLocal(updates: {
   username?: string;
   displayName?: string;
+  fullName?: string;
+  gender?: string;
+  bio?: string;
 }): void {
   if (!currentUser) return;
   let next: User = { ...currentUser };
@@ -289,5 +292,8 @@ export function patchCurrentUserLocal(updates: {
     const t = updates.displayName.trim();
     if (t) next = { ...next, displayName: t };
   }
+  if (updates.fullName != null) next = { ...next, fullName: updates.fullName };
+  if (updates.gender != null) next = { ...next, gender: updates.gender };
+  if (updates.bio != null) next = { ...next, bio: updates.bio };
   currentUser = next;
 }

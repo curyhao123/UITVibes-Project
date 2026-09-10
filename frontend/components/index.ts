@@ -19,7 +19,6 @@ export { ReportPostSheet } from './ReportPostSheet';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {
-  SkeletonLoader,
   SkeletonShimmer,
   SkeletonLine,
   SkeletonCircle,
@@ -32,7 +31,7 @@ export { ImageCarousel } from './ImageCarousel';
 // Swipe & Interaction components
 export { SwipeableRow } from './SwipeableRow';
 export { AnimatedButton, AnimatedIconButton } from './AnimatedButton';
-export { EnhancedToast, ToastProvider, useToast } from './EnhancedToast';
+export { ToastProvider, useToast } from './EnhancedToast';
 // Message components
 export { MessageListItem } from './MessageListItem';
 // Skeleton components (Enhanced versions with traveling shimmer)

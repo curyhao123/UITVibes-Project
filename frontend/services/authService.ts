@@ -113,7 +113,7 @@ export async function login(email: string, password: string): Promise<User> {
     setCurrentUser(user);
     await setCurrentUserEmail(data.user.email ?? email);
     if (user.username) void writeLocalHandle(user.id, user.username);
-    await setPersistedUserRole(user.role);
+    await setPersistedUserRole(user.role ?? null);
     return user;
   } catch (error: any) {
     // Surface backend error message to callers while logging full error

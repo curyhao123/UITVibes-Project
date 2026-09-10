@@ -34,6 +34,7 @@ import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -116,7 +117,7 @@ function AdminCard({ admin, isFirst, isLast }: AdminCardProps) {
 // ─── Backdrop ─────────────────────────────────────────────────────────────────
 
 interface BackdropProps {
-  opacity: Animated.SharedValue<number>;
+  opacity: SharedValue<number>;
   onPress: () => void;
 }
 

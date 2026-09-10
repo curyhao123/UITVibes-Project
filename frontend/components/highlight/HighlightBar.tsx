@@ -162,7 +162,6 @@ const HighlightViewer: React.FC<HighlightViewerProps> = ({
                 <Image
                   source={{ uri: current.mediaUrl }}
                   style={viewerStyles.media}
-                  contentFit="cover"
                 />
               ) : (
                 <View style={viewerStyles.mediaPlaceholder}>

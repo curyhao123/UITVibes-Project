@@ -16,6 +16,7 @@ import { getCurrentUserId } from "./session";
 import {
   BE_StoryFeedItem,
   BE_StoryDetailResponse,
+  BE_StoryItemDetail,
 } from "./backendTypes";
 
 // ============================================================

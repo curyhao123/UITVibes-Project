@@ -10,7 +10,7 @@
  * All shimmer animations run on the UI thread via Reanimated — no JS timers.
  */
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import { DimensionValue, View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -29,7 +29,7 @@ const SHIMMER_DURATION = 1400; // ms — slow enough to be calm, fast enough to 
 // ─── Core shimmer atom ─────────────────────────────────────────────────────────
 
 interface SkeletonShimmerProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -85,7 +85,7 @@ export const SkeletonShimmer: React.FC<SkeletonShimmerProps> = ({
 // ─── Higher-level primitives ───────────────────────────────────────────────────
 
 interface SkeletonLineProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -118,7 +118,7 @@ export const SkeletonCircle: React.FC<SkeletonCircleProps> = ({
 );
 
 interface SkeletonBoxProps {
-  width?: number | string;
+  width?: DimensionValue;
   height?: number;
   borderRadius?: number;
   style?: StyleProp<ViewStyle>;
@@ -136,7 +136,7 @@ export const SkeletonBox: React.FC<SkeletonBoxProps> = ({
 // ─── Post skeleton (square image + caption + avatar) ──────────────────────────
 
 export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) => (
-  <Animated.View style={[postStyles.card, postStyles.cardEntrance(index)]}>
+  <Animated.View style={[postStyles.card, cardEntrance(index)]}>
     {/* Avatar + username row */}
     <View style={postStyles.avatarRow}>
       <SkeletonCircle size={36} />
@@ -186,7 +186,7 @@ export const FeedSkeleton: React.FC<FeedSkeletonProps> = ({ count = 3 }) => (
 // ─── Compact list skeleton (for followers / search) ────────────────────────────
 
 export const SkeletonListItem: React.FC<{ index?: number }> = ({ index = 0 }) => (
-  <Animated.View style={[listStyles.item, listStyles.itemEntrance(index)]}>
+  <Animated.View style={[listStyles.item, itemEntrance(index)]}>
     <SkeletonCircle size={48} />
     <View style={listStyles.textArea}>
       <SkeletonLine width="40%" height={13} />
@@ -246,9 +246,10 @@ const postStyles = StyleSheet.create({
     marginTop: 10,
     paddingHorizontal: 4,
   },
-  cardEntrance: (index: number) => ({
-    opacity: 1,
-  }),
+});
+
+const cardEntrance = (_index: number): ViewStyle => ({
+  opacity: 1,
 });
 
 const listStyles = StyleSheet.create({
@@ -263,7 +264,8 @@ const listStyles = StyleSheet.create({
     marginLeft: 12,
     justifyContent: 'center',
   },
-  itemEntrance: (index: number) => ({
-    opacity: 1,
-  }),
+});
+
+const itemEntrance = (_index: number): ViewStyle => ({
+  opacity: 1,
 });

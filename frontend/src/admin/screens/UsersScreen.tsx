@@ -135,7 +135,7 @@ const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanT
             />
             {user.isBanned && (
               <View style={styles.bannedOverlay}>
-                <Feather name="slash-circle" size={28} color="#fff" />
+                <Feather name="slash" size={28} color="#fff" />
               </View>
             )}
           </View>

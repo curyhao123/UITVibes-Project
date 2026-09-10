@@ -247,6 +247,7 @@ export default function PostDetailScreen() {
   };
 
   const handleEditComment = (commentId: string) => {
+    if (!post) return;
     const findComment = (comments: Comment[]): Comment | null => {
       for (const c of comments) {
         if (c.id === commentId) return c;
@@ -357,6 +358,7 @@ export default function PostDetailScreen() {
   };
 
   const handleBookmarkToggle = async () => {
+    if (!post) return;
     try {
       if (isBookmarked) {
         await removeBookmark(post.id);
