@@ -1,15 +1,15 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
+  View,
 } from 'react-native';
-import { Avatar } from './Avatar';
-import { searchUsers, getFollowing, User } from '../services/userService';
 import { AppColors } from '../constants/theme';
+import { getFollowing, searchUsers, User } from '../services/userService';
+import { Avatar } from './Avatar';
 
 interface MentionInputProps {
   value: string;
@@ -179,12 +179,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         activeOpacity={0.7}
       >
         <Avatar
-          user={{
-            id: item.id,
-            username: item.username,
-            displayName: item.displayName,
-            avatar: item.avatar,
-          }}
+          user={item}
           size="small"
         />
         <View style={styles.suggestionInfo}>

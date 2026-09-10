@@ -10,6 +10,7 @@ import React, {
 import {
   User,
   Post,
+  Comment,
   Conversation,
   Message,
   Notification,
@@ -35,7 +36,7 @@ interface AppContextType {
   logout: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
-
+  authError: string | null;
   // Onboarding
   onboardingStep: number;
   onboardingData: {
@@ -71,7 +72,7 @@ interface AppContextType {
   setFeedTab: (tab: "foryou" | "following") => void;
 
   // Post interactions
-  toggleLike: (postId: string) => Promise<void>;
+  toggleLike: (postId: string, isCurrentlyLiked?: boolean) => Promise<boolean>;
   toggleBookmark: (postId: string) => Promise<void>;
   toggleRepost: (postId: string) => Promise<void>;
   repostedPosts: Post[];           // Danh sách repost của user hiện tại
@@ -80,7 +81,7 @@ interface AppContextType {
     text: string;
     parentCommentId?: string;
     imageUrl?: string;
-  }) => Promise<void>;
+  }) => Promise<Comment | undefined>;
   deleteComment: (postId: string, commentId: string) => Promise<void>;
   createPost: (
     images: string[],
@@ -256,7 +257,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             ? error.message
             : "Login failed. Please check your credentials and try again.";
         setAuthError(message);
-        return false;
+        return null;
       } finally {
         setIsLoading(false);
       }
@@ -451,22 +452,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, []);
 
   const toggleLike = useCallback(
-    async (postId: string, isCurrentlyLiked: boolean) => {
+    async (postId: string, isCurrentlyLiked?: boolean): Promise<boolean> => {
+      const currentlyLiked = isCurrentlyLiked ?? posts.find((p) => p.id === postId)?.isLiked ?? false;
       // Optimistic update
       setPosts((prev) =>
         prev.map((post) => {
           if (post.id === postId) {
             return {
               ...post,
-              isLiked: !isCurrentlyLiked,
-              likes: isCurrentlyLiked ? post.likes - 1 : post.likes + 1,
+              isLiked: !currentlyLiked,
+              likes: currentlyLiked ? post.likes - 1 : post.likes + 1,
             };
           }
           return post;
         }),
       );
       try {
-        const newLikedState = await api.toggleLike(postId, isCurrentlyLiked);
+        const newLikedState = await api.toggleLike(postId, currentlyLiked);
         // Sync with server-returned state
         setPosts((prev) =>
           prev.map((post) => {
@@ -476,13 +478,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             return post;
           }),
         );
+        return newLikedState;
       } catch (error) {
         // Revert on failure
         await refreshPosts();
         console.error("Failed to toggle like:", error);
+        return currentlyLiked;
       }
     },
-    [refreshPosts],
+    [refreshPosts, posts],
   );
 
   const toggleBookmark = useCallback(
@@ -594,7 +598,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const deleteComment = useCallback(
     async (postId: string, commentId: string) => {
       try {
-        await api.deleteComment(postId, commentId);
+        await api.deleteComment(commentId);
         await refreshPosts();
       } catch (error) {
         console.error("Failed to delete comment:", error);
@@ -742,7 +746,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const toggleReelCommentLike = useCallback(async (commentId: string) => {
     try {
-      await api.toggleReelCommentLike(commentId);
+      await api.toggleReelCommentLike(commentId, false);
     } catch (error) {
       console.error("Failed to toggle reel comment like:", error);
     }

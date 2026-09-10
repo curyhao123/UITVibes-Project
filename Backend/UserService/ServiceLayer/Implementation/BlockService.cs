@@ -29,7 +29,7 @@ namespace UserService.ServiceLayer.Implementation
             if (existingBlock != null)
                 throw new InvalidOperationException("User is already blocked.");
             var block = new Block
-                {
+            {
                 Id = Guid.NewGuid(),
                 BlockerId = blockerId,
                 BlockedId = blockedId,

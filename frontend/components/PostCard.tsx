@@ -1,31 +1,30 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
-import { GestureDetector } from 'react-native-gesture-handler';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  useSharedValue,
   withSequence,
+  withSpring,
 } from 'react-native-reanimated';
-import { Avatar } from './Avatar';
-import { Post } from '../data/mockData';
-import { useApp } from '../context/AppContext';
+import { useDoubleTap } from '../animations/useDoubleTap';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
-import { useDoubleTap } from '../animations/useDoubleTap';
-import { useAnimatedHeart, AnimatedHeart, AnimatedHeartIcon } from './AnimatedHeart';
-import { SwipeableRow } from './SwipeableRow';
-import { repostPost, undoRepost, toggleBookmark, removeBookmark } from '../services/postService';
+import { useApp } from '../context/AppContext';
+import { Post } from '../data/mockData';
+import { triggerHaptic } from '../hooks/useMicroInteractions';
+import { type ReportReason } from '../services/backendTypes';
 import { blockUser } from '../services/blockService';
+import { removeBookmark, repostPost, undoRepost } from '../services/postService';
+import { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
+import { Avatar } from './Avatar';
 import { ImageCarousel } from './ImageCarousel';
+import { MentionText } from './MentionText';
 import { PostActionsSheet } from './PostActionsSheet';
 import { ReportPostSheet } from './ReportPostSheet';
-import { type ReportReason } from '../services/backendTypes';
-import { triggerHaptic } from '../hooks/useMicroInteractions';
-import { MentionText } from './MentionText';
+import { SwipeableRow } from './SwipeableRow';
 
 const ACTION_ICON = 24;
 
@@ -61,7 +60,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
-      await toggleLike(post.id, false);
+      await toggleLike(post.id);
     }
     playHeart();
   }, [localLiked, post.id, playHeart, toggleLike]);
@@ -81,7 +80,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const wasLiked = localLiked;
     setLocalLiked(!wasLiked);
     try {
-      await toggleLike(post.id, wasLiked);
+      await toggleLike(post.id);
     } catch {
       setLocalLiked(wasLiked);
     }
@@ -253,7 +252,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
         <View style={styles.postHeader}>
           <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
-            <Avatar user={post.user} size={36} />
+            <Avatar user={post.user} size="medium" />
             <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
           </TouchableOpacity>
 

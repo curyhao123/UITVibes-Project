@@ -10,17 +10,16 @@
  *   visible: boolean — controls modal visibility
  *   onClose: () => void — called when user dismisses the modal
  */
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Modal,
-  Animated,
-} from "react-native";
 import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableWithoutFeedback,
+  View
+} from "react-native";
 import { AppColors, borderRadius } from "../constants/theme";
 import { Button } from "./Button";
 

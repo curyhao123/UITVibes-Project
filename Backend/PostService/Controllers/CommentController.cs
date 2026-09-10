@@ -115,7 +115,7 @@ public class CommentController : ControllerBase
     public async Task<ActionResult<CommentDto>> UpdateComment(Guid commentId, [FromBody] UpdateCommentRequest request)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -143,7 +143,7 @@ public class CommentController : ControllerBase
     public async Task<IActionResult> DeleteComment(Guid commentId)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -171,7 +171,7 @@ public class CommentController : ControllerBase
     public async Task<ActionResult<CommentLikeResponse>> LikeComment(Guid commentId)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });
@@ -199,7 +199,7 @@ public class CommentController : ControllerBase
     public async Task<IActionResult> UnlikeComment(Guid commentId)
     {
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-        
+
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
         {
             return Unauthorized(new { message = "User ID not found in request headers" });

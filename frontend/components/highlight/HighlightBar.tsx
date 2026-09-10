@@ -5,31 +5,30 @@
  * - "Add story" circle (current user only) → navigates to /story/create
  * - Highlight circles (existing highlights) → opens viewer modal
  */
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-  Modal,
-} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
+import { Typography } from "../../constants/typography";
 import {
   HighlightGroup,
-  getHighlightDetail,
   deleteHighlightGroup,
+  getHighlightDetail,
 } from "../../services/highlightService";
-import { AppColors, layoutPadding, borderRadius } from "../../constants/theme";
-import { Typography } from "../../constants/typography";
 
 interface HighlightBarProps {
   highlights: HighlightGroup[];
@@ -163,7 +162,6 @@ const HighlightViewer: React.FC<HighlightViewerProps> = ({
                 <Image
                   source={{ uri: current.mediaUrl }}
                   style={viewerStyles.media}
-                  contentFit="cover"
                 />
               ) : (
                 <View style={viewerStyles.mediaPlaceholder}>

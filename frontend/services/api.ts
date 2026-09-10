@@ -29,7 +29,6 @@ export {
 export * from "./messageService";
 export * from "./onlineTrackingService";
 export * from "./notificationService";
-export * from "./musicService";
 export { patchCurrentUserLocal } from "./session";
 export * from "./blockService";
 

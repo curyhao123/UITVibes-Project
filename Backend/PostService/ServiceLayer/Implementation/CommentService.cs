@@ -16,8 +16,8 @@ public class CommentService : ICommentService
     private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly ICommentMentionedPublisher _commentMentionedPublisher;
 
-    public CommentService(PostDbContext context, ILogger<CommentService> logger, 
-        IPostCommentedPublisher postCommentedPublisher, 
+    public CommentService(PostDbContext context, ILogger<CommentService> logger,
+        IPostCommentedPublisher postCommentedPublisher,
         IUserProfileRpcClient userProfileRpcClient,
         ICommentMentionedPublisher commentMentionedPublisher)
     {
@@ -184,7 +184,7 @@ public class CommentService : ICommentService
     {
         // Check if post exists
         var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted);
-        
+
         if (!postExists)
             throw new KeyNotFoundException("Post not found");
 
@@ -203,7 +203,7 @@ public class CommentService : ICommentService
     {
         // Check if parent comment exists
         var parentExists = await _context.Comments.AnyAsync(c => c.Id == commentId && !c.IsDeleted);
-        
+
         if (!parentExists)
             throw new KeyNotFoundException("Comment not found");
 
@@ -279,7 +279,7 @@ public class CommentService : ICommentService
     {
         // Check if comment exists
         var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == commentId && !c.IsDeleted);
-        
+
         if (comment == null)
             throw new KeyNotFoundException("Comment not found");
 
@@ -329,7 +329,7 @@ public class CommentService : ICommentService
 
         // Get comment to decrement count
         var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == commentId);
-        
+
         if (comment == null)
             throw new KeyNotFoundException("Comment not found");
 

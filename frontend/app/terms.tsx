@@ -187,7 +187,7 @@ export default function TermsOfServiceScreen() {
             </View>
             <Text style={styles.supportTitle}>Questions about our Terms?</Text>
             <Text style={styles.supportSubtitle}>
-              Our support team is here to help. Reach out and we'll get back to you shortly.
+              Our support team is here to help. Reach out and we&apos;ll get back to you shortly.
             </Text>
 
             <TouchableOpacity

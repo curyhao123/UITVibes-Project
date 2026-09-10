@@ -189,7 +189,8 @@ public class StoryService : IStoryService
                 .ToListAsync();
         }
 
-        var result = groups.Select(group => {
+        var result = groups.Select(group =>
+        {
             var allViewed = group.Items.All(item => allViewsForGroups.Contains(item.Id));
             return MapGroupToFeedDto(group, allViewed).Result;
         }).ToList();
@@ -224,7 +225,8 @@ public class StoryService : IStoryService
                 .ToListAsync();
         }
 
-        var result = groups.Select(group => {
+        var result = groups.Select(group =>
+        {
             var allViewed = group.Items.All(item => allViewsForGroups.Contains(item.Id));
             return MapGroupToFeedDto(group, allViewed).Result;
         }).ToList();

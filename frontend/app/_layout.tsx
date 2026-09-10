@@ -6,9 +6,8 @@ import 'react-native-reanimated';
 import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AppProvider } from '@/context/AppContext';
+import { AppProvider , useApp } from '@/context/AppContext';
 import { AppColors } from '@/constants/theme';
-import { useApp } from '@/context/AppContext';
 import { ToastProvider } from '@/components/EnhancedToast';
 
 export const unstable_settings = {

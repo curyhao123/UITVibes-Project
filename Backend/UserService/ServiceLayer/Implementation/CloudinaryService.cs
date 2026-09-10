@@ -11,11 +11,11 @@ public class CloudinaryService : ICloudinaryService
 
     public CloudinaryService(IConfiguration configuration, ILogger<CloudinaryService> logger)
     {
-        var cloudName = configuration["Cloudinary:CloudName"] 
+        var cloudName = configuration["Cloudinary:CloudName"]
             ?? throw new InvalidOperationException("Cloudinary CloudName is not configured");
-        var apiKey = configuration["Cloudinary:ApiKey"] 
+        var apiKey = configuration["Cloudinary:ApiKey"]
             ?? throw new InvalidOperationException("Cloudinary ApiKey is not configured");
-        var apiSecret = configuration["Cloudinary:ApiSecret"] 
+        var apiSecret = configuration["Cloudinary:ApiSecret"]
             ?? throw new InvalidOperationException("Cloudinary ApiSecret is not configured");
 
         var account = new Account(cloudName, apiKey, apiSecret);
@@ -46,7 +46,7 @@ public class CloudinaryService : ICloudinaryService
         try
         {
             using var stream = file.OpenReadStream();
-            
+
             var uploadParams = new ImageUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
@@ -69,7 +69,7 @@ public class CloudinaryService : ICloudinaryService
             }
 
             _logger.LogInformation("Image uploaded successfully to Cloudinary: {PublicId}", uploadResult.PublicId);
-            
+
             return uploadResult.SecureUrl.ToString();
         }
         catch (Exception ex)
@@ -97,7 +97,7 @@ public class CloudinaryService : ICloudinaryService
                 return true;
             }
 
-            _logger.LogWarning("Failed to delete image from Cloudinary: {PublicId}, Result: {Result}", 
+            _logger.LogWarning("Failed to delete image from Cloudinary: {PublicId}, Result: {Result}",
                 publicId, result.Result);
             return false;
         }

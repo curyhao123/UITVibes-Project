@@ -28,7 +28,7 @@ public class UserCreatedConsumer : BackgroundService
         // Get RabbitMQ connection from DI
         using var scope = _serviceProvider.CreateScope();
         var connectionFactory = scope.ServiceProvider.GetRequiredService<IConnectionFactory>();
-        
+
         _connection = await connectionFactory.CreateConnectionAsync(stoppingToken);
         _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
@@ -44,7 +44,7 @@ public class UserCreatedConsumer : BackgroundService
         _logger.LogInformation("Waiting for UserCreated messages from queue: {QueueName}", QueueName);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
-        
+
         consumer.ReceivedAsync += async (model, ea) =>
         {
             try
@@ -56,12 +56,12 @@ public class UserCreatedConsumer : BackgroundService
                 if (userCreatedEvent != null)
                 {
                     _logger.LogInformation("Received UserCreated event for user {UserId}", userCreatedEvent.UserId);
-                    
+
                     using var serviceScope = _serviceProvider.CreateScope();
                     var userProfileService = serviceScope.ServiceProvider.GetRequiredService<IUserProfileService>();
-                    
+
                     await userProfileService.CreateProfileAsync(userCreatedEvent.UserId, userCreatedEvent.Username);
-                    
+
                     await _channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
                     _logger.LogInformation("Successfully created profile for user {UserId}", userCreatedEvent.UserId);
                 }
@@ -86,13 +86,13 @@ public class UserCreatedConsumer : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping UserCreatedConsumer");
-        
+
         if (_channel != null)
         {
             await _channel.CloseAsync(cancellationToken);
             await _channel.DisposeAsync();
         }
-        
+
         if (_connection != null)
         {
             await _connection.CloseAsync(cancellationToken);

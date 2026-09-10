@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 
 interface ContactAvatarProps {

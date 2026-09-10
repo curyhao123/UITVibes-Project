@@ -1,25 +1,24 @@
 /**
  * UsersScreen — Admin view of all user profiles
  */
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { AppColors, borderRadius } from "@/constants/theme";
+import { banUser, getAllUsers, unbanUser } from "@/services/adminService";
+import type { BE_AdminUserProfile } from "@/services/backendTypes";
+import { Feather } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   FlatList,
   Image,
-  TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
-  Modal,
-  Alert,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import { getAllUsers, banUser, unbanUser } from "@/services/adminService";
-import type { BE_AdminUserProfile } from "@/services/backendTypes";
-import { AppColors, borderRadius } from "@/constants/theme";
 
 const UserItem: React.FC<{
   user: BE_AdminUserProfile;
@@ -136,7 +135,7 @@ const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanT
             />
             {user.isBanned && (
               <View style={styles.bannedOverlay}>
-                <Feather name="slash-circle" size={28} color="#fff" />
+                <Feather name="slash" size={28} color="#fff" />
               </View>
             )}
           </View>

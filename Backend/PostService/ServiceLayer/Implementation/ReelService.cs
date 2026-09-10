@@ -17,9 +17,9 @@ namespace PostService.ServiceLayer.Implementation
         private readonly IPostLikedPublisher _postLikedPublisher;
         private readonly IPostCommentedPublisher _postCommentedPublisher;
         private readonly ICommentMentionedPublisher _commentMentionedPublisher;
-     
 
-        public ReelService(PostDbContext context, ILogger<ReelService> logger, 
+
+        public ReelService(PostDbContext context, ILogger<ReelService> logger,
             IUserProfileRpcClient userProfileRpcClient, ICloudinaryService cloudinaryService,
             IPostLikedPublisher postLikedPublisher, IPostCommentedPublisher postCommentedPublisher,
             ICommentMentionedPublisher commentMentionedPublisher)
@@ -76,7 +76,7 @@ namespace PostService.ServiceLayer.Implementation
             _context.Reels.Add(reel);
             await _context.SaveChangesAsync();
 
-            
+
             // Map to DTO
             var reelDto = new ReelDto
             {

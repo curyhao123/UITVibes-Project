@@ -1,2 +1,2 @@
 // Barrel export for admin service
-export * from "./adminService";
+export * from "../adminService";

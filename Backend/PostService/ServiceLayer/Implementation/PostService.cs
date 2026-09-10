@@ -625,7 +625,7 @@ public class PostService : IPostService
         // Auto-hide post if it has 3 or more pending reports
         var pendingReportCount = await _context.PostReports
             .CountAsync(r => r.PostId == request.PostId && r.Status == ReportStatus.Pending);
-        
+
         if (pendingReportCount >= 2) // After adding this report, count will be >= 3
         {
             post.Visibility = PostVisibility.Hidden;

@@ -12,8 +12,7 @@ import {
   BE_RepostStatusResponse,
   BE_BookmarkResponse,
 } from "./backendTypes";
-import { fetchUserById } from "./userService";
-import { getCurrentUser } from "./api";
+import { fetchUserById, getCurrentUserProfile as getCurrentUser } from "./userService";
 import { getCurrentUserId } from "./session";
 
 // ─── Comment transformer ─────────────────────────────────────────────────────
@@ -528,6 +527,7 @@ export async function addComment({
     `/post/${postId}/comment`,
     body,
   );
+  const currentUser = await getCurrentUser();
   const comment = await transformComment(data, currentUser || undefined);
   return { success: true, comment };
 }

@@ -55,7 +55,7 @@ export default function SearchScreen() {
   const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
 
   const mapHashtagOptions = (
-    items: Array<{ id: string; name: string; usageCount: number }>,
+    items: { id: string; name: string; usageCount: number }[],
   ): HashtagOption[] =>
     items.map((item) => ({
       id: item.id,

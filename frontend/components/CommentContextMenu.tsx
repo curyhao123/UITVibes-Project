@@ -8,27 +8,26 @@
  *  - Dismiss: tap outside, swipe down, or press Escape
  *  - Delete triggers DeleteConfirmModal
  */
-import React, { useEffect, useRef } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useEffect } from 'react';
 import {
-  View,
+  Dimensions,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Pressable,
-  Platform,
-  Dimensions,
+  View,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
-  runOnJS,
+  withTiming
 } from 'react-native-reanimated';
-import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../constants/theme';
 import { SPRING_GENTLE } from '../animations/spring';
+import { AppColors, borderRadius } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IS_DESKTOP = Platform.OS === 'web' || SCREEN_WIDTH >= 640;

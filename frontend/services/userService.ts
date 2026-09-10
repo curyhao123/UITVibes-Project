@@ -118,9 +118,11 @@ export async function getSuggestedUsers(): Promise<User[]> {
       id: p.userId,
       username: "",
       displayName: p.displayName,
+      fullName: p.fullName || p.displayName || "",
       avatar: p.avatarUrl || "",
       coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
+      gender: p.gender || "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -141,9 +143,11 @@ export async function getUsers(): Promise<User[]> {
       id: p.userId,
       username: "",
       displayName: p.displayName,
+      fullName: p.fullName || p.displayName || "",
       avatar: p.avatarUrl || "",
       coverImage: p.coverImageUrl || "",
       bio: p.bio || "",
+      gender: p.gender || "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -174,9 +178,11 @@ export async function searchUsers(query: string): Promise<User[]> {
       id: p.userId,
       username: "",
       displayName: p.displayName,
+      fullName: p.displayName || "",
       avatar: p.avatarUrl || "",
       coverImage: "",
       bio: p.bio || "",
+      gender: "",
       followers: p.followersCount ?? 0,
       following: 0,
       posts: 0,
@@ -301,40 +307,6 @@ export async function getUserById(id: string): Promise<User | undefined> {
     } as User;
     return mockUsers.find((user) => user.id === id);
   }
-}
-
-export async function getUserPosts(userId: string): Promise<Post[]> {
-  const targetId = userId === "current" ? getCurrentUserId() : userId;
-  const { data } = await apiClient.get<BE_PostResponse[]>(
-    `/post/user/${targetId}`,
-    {
-      params: { skip: 0, take: 20 },
-    },
-  );
-  const posts = await Promise.all(
-    data.map(async (post) => {
-      const author = await fetchUserById(post.userId);
-      const allImages = post.media?.map((m) => m.url) ?? [];
-      return {
-        id: post.id,
-        userId: post.userId,
-        user: author,
-        image: allImages[0] ?? "",
-        images: allImages,
-        caption: post.content,
-        likes: post.likesCount,
-        comments: [],
-        createdAt: post.createdAt,
-        isLiked: post.isLikedByCurrentUser,
-        isBookmarked: post.isBookmarkedByCurrentUser,
-        shareCount: post.sharesCount || 0,
-        views: post.viewsCount || 0,
-        location: post.location || undefined,
-        tags: post.hashtags || [],
-      } as Post;
-    }),
-  );
-  return posts;
 }
 
 export async function getCurrentUserProfile(): Promise<User> {
@@ -473,9 +445,11 @@ export async function getFollowers(userId: string): Promise<User[]> {
       id: p.userId,
       username: "",
       displayName: p.displayName,
+      fullName: p.displayName || "",
       avatar: p.avatarUrl || "",
       coverImage: "",
       bio: "",
+      gender: "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -498,9 +472,11 @@ export async function getFollowing(userId: string): Promise<User[]> {
       id: p.userId,
       username: "",
       displayName: p.displayName,
+      fullName: p.displayName || "",
       avatar: p.avatarUrl || "",
       coverImage: "",
       bio: "",
+      gender: "",
       followers: 0,
       following: 0,
       posts: 0,
@@ -795,6 +771,7 @@ export async function saveRecentSearch(profile: {
       displayName: profile.displayName,
       bio: profile.bio || "",
       avatarUrl: profile.avatarUrl || "",
+      avatarPublicId: (profile as any).avatarPublicId || "",
       followersCount: profile.followersCount ?? 0,
     } satisfies BE_SearchUserProfileDto);
   } catch {
@@ -829,3 +806,5 @@ export async function clearAllRecentSearches(): Promise<void> {
     ),
   );
 }
+
+export { User };

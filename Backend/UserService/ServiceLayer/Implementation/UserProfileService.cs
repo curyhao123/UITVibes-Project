@@ -628,7 +628,7 @@ public class UserProfileService : IUserProfileService
         return results;
     }
     public async Task<List<UserReportDto>> GetUserReportsAsync(
-        int skip = 0, 
+        int skip = 0,
         int take = 20,
         ReportStatus? status = null)
     {

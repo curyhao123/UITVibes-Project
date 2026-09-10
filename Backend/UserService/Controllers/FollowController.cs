@@ -49,7 +49,7 @@ public class FollowController : ControllerBase
         }
     }
 
-  
+
     //[Authorize]
     [HttpDelete("{userId}")]
     public async Task<IActionResult> UnfollowUser(Guid userId)
@@ -80,7 +80,7 @@ public class FollowController : ControllerBase
         }
     }
 
-    
+
     //[Authorize]
     [HttpGet("{userId}/is-following")]
     public async Task<ActionResult<bool>> IsFollowing(Guid userId, [FromQuery] Guid? currentUserId = null)
@@ -93,7 +93,7 @@ public class FollowController : ControllerBase
         return Ok(new { isFollowing });
     }
 
- 
+
     [HttpGet("{userId}/stats")]
     public async Task<ActionResult<UserFollowStatsDto>> GetFollowStats(Guid userId, [FromQuery] Guid? currentUserId = null)
     {
@@ -115,7 +115,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var followers = await _followService.GetFollowersAsync(userId, skip, take);
         return Ok(followers);
     }
@@ -128,7 +128,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var following = await _followService.GetFollowingAsync(userId, skip, take);
         return Ok(following);
     }
@@ -139,7 +139,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
         {
@@ -155,7 +155,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 50)
     {
         if (take > 100) take = 100; // Limit max results
-        
+
         var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
         if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
         {
@@ -172,7 +172,7 @@ public class FollowController : ControllerBase
         [FromQuery] int take = 20)
     {
         if (take > 20) take = 20; // Limit max results
-        
+
         var friends = await _followService.GetFriendListsAsync(userId, skip, take);
         return Ok(friends);
     }

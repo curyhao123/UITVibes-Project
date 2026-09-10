@@ -15,21 +15,21 @@
  * Design: Instagram-style modal, rounded sheet, frosted-like blur via tint,
  * danger action with red text.
  */
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Pressable,
-  Animated,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Animated,
   Dimensions,
+  Modal,
   Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 

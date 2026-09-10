@@ -14,18 +14,18 @@ export async function markNotificationRead(
   notificationId: string,
 ): Promise<void> {
   await delay(100);
-  const notif = mockNotifications.find((n) => n.id === notificationId);
+  const notif = mockNotifications.find((n: { id: string; }) => n.id === notificationId);
   if (notif) notif.isRead = true;
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
   await delay(200);
-  mockNotifications.forEach((n) => {
+  mockNotifications.forEach((n: { isRead: boolean; }) => {
     n.isRead = true;
   });
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
   await delay(100);
-  return mockNotifications.filter((n) => !n.isRead).length;
+  return mockNotifications.filter((n: { isRead: any; }) => !n.isRead).length;
 }

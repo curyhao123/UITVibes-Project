@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace NotificationService.Messaging
 {
-    public class UserFollowedConsumer: BackgroundService
+    public class UserFollowedConsumer : BackgroundService
     {
         private const string QueueName = "user.followed";
         private readonly ILogger<UserFollowedConsumer> _logger;

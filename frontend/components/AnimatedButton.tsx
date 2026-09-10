@@ -10,18 +10,17 @@
  * - Size options: sm, md, lg
  */
 
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback } from 'react';
-import { Text, StyleSheet, ActivityIndicator, Platform, ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
   runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius } from '../constants/theme';
 
 type HapticType = 'light' | 'medium' | 'heavy' | 'none';

@@ -9,25 +9,26 @@
  * - Equal spacing with centered layout
  */
 
-import React, { useCallback, useEffect } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  Dimensions,
-} from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback } from 'react';
+import {
+  Dimensions,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
-  useSharedValue,
+  SharedValue,
   useAnimatedStyle,
-  withSpring,
+  useSharedValue,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppColors } from '../constants/theme';
 
@@ -87,7 +88,7 @@ const ACTIVE_BOUNCE = {
 // ── Active Pill ──────────────────────────────────────────────────────────────
 
 interface ActivePillProps {
-  positions: Animated.SharedValue<number[]>;
+  positions: SharedValue<number[]>;
   currentIndex: number;
 }
 
@@ -262,28 +263,12 @@ export function ModernTabBar({
   const currentRoute = state.routes[state.index]?.name;
   const shouldHideTabBar = currentRoute === 'create';
 
-  if (!isTabNavigator || shouldHideTabBar) {
-    return null;
-  }
-
   const positions = useSharedValue<number[]>([]);
 
   const handleTabPress = useCallback(
     (routeName: string, routeIndex: number) => {
       if (state.index !== routeIndex) {
         navigation.navigate(routeName);
-      }
-      if (state.events) {
-        const event = state.events.find(
-          (e) => e.target === state.routes?.[routeIndex]?.key,
-        );
-        if (event) {
-          navigation.emit({
-            type: 'tabPress',
-            target: event.target,
-            canPreventDefault: true,
-          });
-        }
       }
     },
     [navigation, state],
@@ -295,6 +280,10 @@ export function ModernTabBar({
       (_, i) => CAPSULE_PADDING + i * TAB_WIDTH + TAB_WIDTH / 2,
     );
   }, [positions]);
+
+  if (!isTabNavigator || shouldHideTabBar) {
+    return null;
+  }
 
   const totalHeight = BAR_HEIGHT + insets.bottom + BOTTOM_INSET + FLOAT_BOTTOM;
 

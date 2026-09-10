@@ -20,20 +20,19 @@
  *     autoFocus
  *   />
  */
-import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import {
-  View,
-  TextInput,
-  StyleSheet,
   Platform,
+  StyleSheet,
+  TextInput,
+  View,
 } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 import { AppColors, borderRadius } from "../constants/theme";
-import { Typography } from "../constants/typography";
 
 export interface OTPInputRef {
   focus: () => void;
@@ -187,19 +186,16 @@ const OTPInput = forwardRef<OTPInputRef, OTPInputProps>(
               onFocus={() => handleFocus(index)}
               onSelectionChange={(e) => {
                 // Support paste: if user long-pastes, detect it
-                const { selection, text } = e.nativeEvent;
+                const { selection } = e.nativeEvent;
                 if (
-                  text &&
-                  text.length > 1 &&
                   selection.start === 0 &&
-                  selection.end === text.length
+                  selection.end > 1
                 ) {
-                  handlePaste(text);
+                  // paste detected via selection range; handled by onChangeText
                 }
               }}
               keyboardType="number-pad"
               maxLength={length}
-              numericButtons={["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]}
               selectTextOnFocus
               autoComplete="off"
               autoCorrect={false}

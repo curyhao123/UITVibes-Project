@@ -1,16 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image, GestureResponderEvent } from 'react-native';
-import { Avatar } from './Avatar';
-import { Comment } from '../data/mockData';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, layoutPadding } from '../constants/theme';
+import React, { useRef, useState } from 'react';
+import { GestureResponderEvent, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { CommentContextMenu } from './CommentContextMenu';
 import { SPRING_BOUNCE, SPRING_GENTLE } from '../animations/spring';
+import { AppColors } from '../constants/theme';
+import { Comment } from '../data/mockData';
+import { Avatar } from './Avatar';
+import { CommentContextMenu } from './CommentContextMenu';
 import { MentionText } from './MentionText';
 
 interface CommentItemProps {

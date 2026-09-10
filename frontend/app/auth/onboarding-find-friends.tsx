@@ -1,20 +1,18 @@
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   FlatList,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useApp } from '../../context/AppContext';
-import { Button } from '../../components/Button';
 import { Avatar } from '../../components/Avatar';
+import { Button } from '../../components/Button';
 import { AppColors, borderRadius } from '../../constants/theme';
+import { useApp } from '../../context/AppContext';
 import { User } from '../../data/mockData';
 import * as api from '../../services/api';
 
@@ -229,9 +227,9 @@ export default function OnboardingFindFriendsScreen() {
             <View style={styles.emptyIconWrap}>
               <Feather name="user-check" size={32} color={AppColors.iconMuted} strokeWidth={1.5} />
             </View>
-            <Text style={styles.emptyTitle}>You're all set!</Text>
+            <Text style={styles.emptyTitle}>You&apos;re all set!</Text>
             <Text style={styles.emptySubtitle}>
-              You've followed everyone we suggested. Check back later for more.
+              You&apos;ve followed everyone we suggested. Check back later for more.
             </Text>
           </View>
         }
@@ -251,7 +249,7 @@ export default function OnboardingFindFriendsScreen() {
                 onPress={handleSkip}
                 activeOpacity={0.7}
               >
-                <Text style={styles.seeMoreText}>I'll do this later</Text>
+                <Text style={styles.seeMoreText}>I&apos;ll do this later</Text>
               </TouchableOpacity>
             )}
           </View>

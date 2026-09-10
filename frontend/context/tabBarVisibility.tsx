@@ -28,7 +28,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type RootStackParamList = ParamListBase & {
-  '(tabs)': NavigatorScreenParams;
+  '(tabs)': NavigatorScreenParams<ParamListBase>;
   'post/[id]': undefined;
   'profile/[id]': undefined;
   'story/create': undefined;

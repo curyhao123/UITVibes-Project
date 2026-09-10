@@ -9,7 +9,7 @@
         public string? Content { get; set; }
         public MessageType Type { get; set; } = MessageType.Text;
 
-      
+
         /// Media URL (for image/video/file messages)
         public string? MediaUrl { get; set; }
         public string? MediaPublicId { get; set; }

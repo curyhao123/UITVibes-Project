@@ -8,23 +8,23 @@
  * - Navigate to post detail on tap
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import { Feather } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import { getBookmarkedPosts } from "../services/postService";
-import { Post } from "../data/mockData";
 import { PostCard } from "../components/PostCard";
 import { AppColors, layoutPadding } from "../constants/theme";
+import { Post } from "../data/mockData";
+import { getBookmarkedPosts } from "../services/postService";
 
 const EmptyState = () => (
   <View style={styles.emptyContainer}>
@@ -43,7 +43,6 @@ export default function ArchiveScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
   const loadBookmarks = useCallback(async (refresh = false) => {
@@ -79,7 +78,6 @@ export default function ArchiveScreen() {
   const renderPost = ({ item }: { item: Post }) => (
     <PostCard
       post={item}
-      onPress={() => handlePostPress(item)}
     />
   );
 

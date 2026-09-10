@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { Text, TextStyle, StyleProp, ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { searchUsers } from '../services/userService';
+import React, { useMemo } from 'react';
+import { StyleProp, Text, TextStyle } from 'react-native';
 import { AppColors } from '../constants/theme';
+import { searchUsers } from '../services/userService';
 
 interface MentionTextProps {
   text: string;
@@ -28,7 +28,7 @@ export const MentionText: React.FC<MentionTextProps> = ({
   const parsedText = useMemo(() => {
     // Split by @username pattern - same as backend: @(\w+)
     const mentionRegex = /@(\w+)/g;
-    const parts: Array<{ type: 'text' | 'mention'; content: string }> = [];
+    const parts: { type: 'text' | 'mention'; content: string }[] = [];
     let lastIndex = 0;
     let match;
 

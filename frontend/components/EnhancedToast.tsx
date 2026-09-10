@@ -10,21 +10,20 @@
  * - Different variants: success, error, info, warning
  */
 
-import React, { useCallback, useEffect, useRef, useState, createContext, useContext } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-  useAnimatedReaction,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated';
 import { AppColors, borderRadius } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -357,14 +356,14 @@ export function Toast({
     }
   }, [visible, duration, onHide]);
 
-  if (!visible) return null;
-
-  const config = VARIANT_CONFIG[type];
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: opacity.value,
   }));
+
+  if (!visible) return null;
+
+  const config = VARIANT_CONFIG[type];
 
   return (
     <Animated.View

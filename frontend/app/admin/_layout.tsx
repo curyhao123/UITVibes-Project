@@ -4,13 +4,13 @@
  * Admin Stack Navigator — wraps all admin routes with AdminNavigator guard.
  * Non-Admin users are redirected to /(tabs)/home automatically.
  */
-import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import { Stack, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { AdminNavigator } from "../../src/admin/navigation/AdminNavigator";
-import { useApp } from "../../context/AppContext";
+import { Stack, useRouter } from "expo-router";
+import React from "react";
+import { StyleSheet, TouchableOpacity } from "react-native";
 import { AppColors } from "../../constants/theme";
+import { useApp } from "../../context/AppContext";
+import { AdminNavigator } from "../../src/admin/navigation/AdminNavigator";
 
 function AdminLogoutButton() {
   const { logout } = useApp();

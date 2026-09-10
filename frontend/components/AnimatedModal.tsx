@@ -10,25 +10,24 @@
  * - Haptic feedback on open/close
  */
 
-import React, { useEffect, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect } from 'react';
 import {
-  View,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   Modal as RNModal,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
-  Platform,
-  KeyboardAvoidingView,
+  View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withTiming,
+  useSharedValue,
   withSequence,
-  Easing,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { AppColors, borderRadius } from '../constants/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

@@ -16,7 +16,7 @@ public class HashtagService : IHashtagService
         _logger = logger;
     }
 
-   
+
     /// Get trending hashtags sorted by usage count and recency
     public async Task<List<HashtagDto>> GetTrendingHashtagsAsync(int skip = 0, int take = 20)
     {
@@ -40,7 +40,7 @@ public class HashtagService : IHashtagService
         return hashtags;
     }
 
-   
+
     /// Search hashtags by name (autocomplete)
     public async Task<List<HashtagDto>> SearchHashtagsAsync(string query, int skip = 0, int take = 20)
     {
@@ -68,7 +68,7 @@ public class HashtagService : IHashtagService
         return hashtags;
     }
 
-  
+
     /// Get all posts that contain a specific hashtag
     public async Task<List<PostDto>> GetPostsByHashtagAsync(string hashtagName, Guid? currentUserId = null, int skip = 0, int take = 20)
     {

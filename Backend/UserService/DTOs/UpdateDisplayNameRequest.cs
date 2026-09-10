@@ -4,6 +4,6 @@ namespace UserService.DTOs
 {
     public class UpdateDisplayNameRequest
     {
-        public string? DisplayName {get; set;}
+        public string? DisplayName { get; set; }
     }
 }

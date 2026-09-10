@@ -4,7 +4,6 @@
  * Admin home — redirects to dashboard.
  * This is the entry point for the /admin route.
  */
-import { useEffect } from "react";
 import { Redirect } from "expo-router";
 import { useApp } from "../../context/AppContext";
 

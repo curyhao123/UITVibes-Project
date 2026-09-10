@@ -11,44 +11,45 @@
  * - User profile navigation
  * - Follow/unfollow functionality
  */
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  Dimensions,
-  StatusBar,
-  ActivityIndicator,
-  RefreshControl,
+  View,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { memo } from 'react';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
-import { ReelCard, ReelDisplayData } from '../../components/ReelCard';
-import { CommentSheet } from '../../components/CommentSheet';
-import { ShareSheet } from '../../components/ShareSheet';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar } from '../../components/Avatar';
+import { CommentSheet } from '../../components/CommentSheet';
+import { TAB_BAR_BOTTOM_OFFSET } from '../../components/ModernTabBar';
+import { ReelCard, ReelDisplayData } from '../../components/ReelCard';
+import { ShareSheet } from '../../components/ShareSheet';
 import { useApp } from '../../context/AppContext';
+import { reelsUserCache } from '../../context/reelsUserCache';
 import type { Comment as CommentType } from '../../data/mockData';
-import { fetchUserById } from '../../services/userService';
 import { User } from '../../data/mockData';
 import type { Reel as APIReel } from '../../services/postService';
 import {
-  getReelComments,
   addReelComment as createReelComment,
+  getReelComments,
   deleteReelComment as removeReelComment,
   toggleReelCommentLike as setReelCommentLike,
 } from '../../services/postService';
-import { TAB_BAR_BOTTOM_OFFSET } from '../../components/ModernTabBar';
-import { reelsUserCache, clearReelsUserCache } from '../../context/reelsUserCache';
+import { fetchUserById } from '../../services/userService';
+
+import { AppColors } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
@@ -535,7 +536,7 @@ export default function ReelsScreen() {
             <Feather name="video" size={64} color={AppColors.iconMuted} />
             <Text style={styles.emptyTitle}>No reels yet</Text>
             <Text style={styles.emptySubtitle}>
-              When people you follow share reels, they'll appear here
+              When people you follow share reels, they&apos;ll appear here
             </Text>
           </>
         )}
@@ -637,8 +638,6 @@ export default function ReelsScreen() {
     </View>
   );
 }
-
-import { AppColors, layoutPadding } from '../../constants/theme';
 
 // ─── Exported function to clear user cache ──────────────────────────────────
 // Called by AppContext when user follows/unfollows someone to ensure

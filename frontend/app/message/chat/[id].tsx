@@ -12,52 +12,50 @@
  *           ├── index              ← Inbox
  *           └── chat/[id]         ← This screen (tab bar hidden ✅)
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
+  ActivityIndicator,
+  Alert,
   FlatList,
-  TouchableOpacity,
-  StyleSheet,
   Image,
   KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ActivityIndicator,
-  Pressable,
   Modal,
+  Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Avatar } from '../../../components/Avatar';
+import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { EditMessageModal } from '../../../components/EditMessageModal';
+import { MessageContextMenu } from '../../../components/MessageContextMenu';
+import { AppColors, layoutPadding } from '../../../constants/theme';
+import { Typography } from '../../../constants/typography';
 import { useApp } from '../../../context/AppContext';
 import * as api from '../../../services/api';
-import {
-  addMemberToGroup,
-  removeMemberFromGroup,
-  leaveGroup,
-  getConversationById,
-} from '../../../services/messageService';
 import {
   blockUser,
   getBlockStatus,
   unblockUser,
   type BlockStatusDto,
 } from '../../../services/blockService';
+import {
+  addMemberToGroup,
+  getConversationById,
+  leaveGroup,
+  removeMemberFromGroup,
+} from '../../../services/messageService';
 import { invokeHub } from '../../../services/signalrService';
-import { Avatar } from '../../../components/Avatar';
-import { ConfirmationModal } from '../../../components/ConfirmationModal';
-import { OnlineIndicator } from '../../../components/OnlineIndicator';
-import { MessageContextMenu } from '../../../components/MessageContextMenu';
-import { EditMessageModal } from '../../../components/EditMessageModal';
 import { formatDistanceToNow } from '../../../utils/time';
-import { AppColors, layoutPadding } from '../../../constants/theme';
-import { Typography } from '../../../constants/typography';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

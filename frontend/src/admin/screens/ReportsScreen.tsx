@@ -1,35 +1,35 @@
 /**
  * ReportsScreen — Admin view of user & post reports
  */
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { AppColors, borderRadius } from "@/constants/theme";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Image,
-  Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import {
-  getUserReports,
-  getPostReports,
-  resolveUserReport,
-  resolvePostReport,
-  rejectUserReport,
-  rejectPostReport,
   changePostVisibility,
+  getPostReports,
+  getUserReports,
+  rejectPostReport,
+  rejectUserReport,
+  resolvePostReport,
+  resolveUserReport,
 } from "@/services/adminService";
 import type {
-  BE_UserReport,
-  BE_PostReport,
   AdminReportStatus,
+  BE_PostReport,
+  BE_UserReport,
 } from "@/services/backendTypes";
-import { AppColors, borderRadius } from "@/constants/theme";
+import { Feather } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ReportTab = "user" | "post";
 type FilterStatus = AdminReportStatus | "All";
@@ -258,7 +258,7 @@ export default function ReportsScreen() {
   const PAGE_SIZE = 20;
 
   // Stable ref so callbacks always call the latest fetchReports
-  const fetchReportsRef = useRef<(pageNum: number, isRefresh: boolean) => Promise<void>>();
+  const fetchReportsRef = useRef<((pageNum: number, isRefresh: boolean) => Promise<void>) | null>(null);
   const isFetchingRef = useRef(false);
 
   const fetchReports = useCallback(
@@ -422,7 +422,7 @@ export default function ReportsScreen() {
       {/* Filter chips */}
       <FilterChips active={filter} onChange={(s) => setFilter(s)} />
 
-      <FlatList
+      <FlatList<BE_UserReport | BE_PostReport>
         data={data}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}

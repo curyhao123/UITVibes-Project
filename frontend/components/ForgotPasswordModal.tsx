@@ -19,35 +19,30 @@
  *   onClose: () => void — called when user dismisses the modal
  *   onSuccess: () => void — called after password is successfully reset
  */
-import React, { useState, useRef, useEffect } from "react";
+import { Feather } from "@expo/vector-icons";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  TextInput,
+  DimensionValue,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  runOnJS,
   FadeIn,
-  FadeOut,
+  FadeOut
 } from "react-native-reanimated";
-import { Feather } from "@expo/vector-icons";
 import { AppColors, borderRadius } from "../constants/theme";
 import { Typography } from "../constants/typography";
-import { Button } from "./Button";
-import { Toast } from "./Toast";
-import OTPInput from "./OTPInput";
 import { forgotPassword, resetPassword } from "../services/authService";
+import { Button } from "./Button";
+import OTPInput from "./OTPInput";
+import { Toast } from "./Toast";
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -63,7 +58,7 @@ interface ForgotPasswordModalProps {
 function getPasswordStrength(password: string): {
   label: string;
   color: string;
-  width: string;
+  width: DimensionValue;
 } {
   const len = password.length;
   if (len === 0) return { label: "", color: "transparent", width: "0%" };
@@ -138,7 +133,7 @@ function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) 
       {/* Heading */}
       <Text style={stepStyles.title}>Forgot password?</Text>
       <Text style={stepStyles.subtitle}>
-        Enter your email address and we'll send you a code to reset your password.
+        Enter your email address and we&apos;ll send you a code to reset your password.
       </Text>
 
       {/* Email input */}
@@ -444,7 +439,7 @@ function ForgotPasswordStep2({
 
       {/* Resend */}
       <View style={stepStyles.resendRow}>
-        <Text style={stepStyles.resendLabel}>Didn't receive the code?</Text>
+        <Text style={stepStyles.resendLabel}>Didn&apos;t receive the code?</Text>
         {resendCountdown > 0 ? (
           <Text style={stepStyles.countdownText}>Resend in {resendCountdown}s</Text>
         ) : (
