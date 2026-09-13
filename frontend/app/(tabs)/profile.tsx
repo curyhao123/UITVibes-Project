@@ -130,7 +130,7 @@ export default function ProfileScreen() {
         title={currentUser.displayName}
         showAvatar
         avatarUser={currentUser}
-        onNotificationPress={() => router.push('/notifications')}
+        onNotificationPress={() => router.push('/notifications' as any)}
         rightAction={
           <TouchableOpacity
             onPress={() => router.push('/settings')}

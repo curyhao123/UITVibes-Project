@@ -1,11 +1,9 @@
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
   useCallback,
   ReactNode,
-  useRef,
 } from 'react';
 import {
   User,
@@ -13,19 +11,18 @@ import {
   Comment,
   Conversation,
   Message,
-  Notification,
 } from '../data/mockData';
+import type { Notification } from '../services/notificationService';
 import * as api from '../services/api';
 import type { Story } from '../services/storyService';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
-import { getConnection } from '../services/signalrService';
-import type { BE_MessageResponse } from '../services/backendTypes';
-import { transformBEMessage } from '../services/messageService';
-import type { Reel as APIReel } from '../services/postService';
 import { clearReelsUserCache } from '../context/reelsUserCache';
+import { useAuthState } from './useAuthState';
+import { useFeedState } from './useFeedState';
+import { useChatState } from './useChatState';
+import { useNotificationState } from './useNotificationState';
 
 interface AppContextType {
-  // Auth / User
   currentUser: User | null;
   isLoading: boolean;
   isNewUser: boolean;
@@ -37,7 +34,7 @@ interface AppContextType {
   deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
   authError: string | null;
-  // Onboarding
+
   onboardingStep: number;
   onboardingData: {
     fullName: string;
@@ -51,12 +48,10 @@ interface AppContextType {
   completeOnboardingStep: () => void;
   resetOnboarding: () => void;
 
-  // Suggested Users
   suggestedUsers: User[];
   fetchSuggestedUsers: () => Promise<void>;
   followSuggestedUser: (userId: string) => Promise<void>;
 
-  // Feed
   posts: Post[];
   stories: Story[];
   refreshPosts: () => Promise<void>;
@@ -64,18 +59,16 @@ interface AppContextType {
   lastPostsFetch: number;
   lastStoriesFetch: number;
 
-  myPosts: Post[];           // Posts của user hiện tại cho profile
-  refreshMyPosts: () => Promise<void>; // Fetch riêng từ /post/my-posts
+  myPosts: Post[];
+  refreshMyPosts: () => Promise<void>;
 
-  // Feed filter
-  feedTab: "foryou" | "following";
-  setFeedTab: (tab: "foryou" | "following") => void;
+  feedTab: 'foryou' | 'following';
+  setFeedTab: (tab: 'foryou' | 'following') => void;
 
-  // Post interactions
   toggleLike: (postId: string, isCurrentlyLiked?: boolean) => Promise<boolean>;
   toggleBookmark: (postId: string) => Promise<void>;
   toggleRepost: (postId: string) => Promise<void>;
-  repostedPosts: Post[];           // Danh sách repost của user hiện tại
+  repostedPosts: Post[];
   addComment: (params: {
     postId: string;
     text: string;
@@ -93,8 +86,7 @@ interface AppContextType {
   updatePost: (postId: string, caption: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
 
-  // Reels
-  reels: APIReel[];
+  reels: any[];
   refreshReels: () => Promise<void>;
   toggleReelLike: (reelId: string, isLiked: boolean) => Promise<void>;
   toggleReelBookmark: (reelId: string) => Promise<void>;
@@ -103,7 +95,6 @@ interface AppContextType {
   toggleReelCommentLike: (commentId: string) => Promise<void>;
   deleteReel: (reelId: string) => Promise<void>;
 
-  // User / Follow
   refreshUser: () => Promise<void>;
   toggleFollow: (userId: string) => Promise<void>;
   updateProfile: (updates: {
@@ -118,11 +109,10 @@ interface AppContextType {
   deleteAvatar: () => Promise<void>;
   deleteCover: () => Promise<void>;
 
-  // Messages
   conversations: Conversation[];
   activeConversation: Conversation | null;
   messages: Message[];
-  conversationMembers: Conversation["members"];
+  conversationMembers: Conversation['members'];
   isLoadingConversations: boolean;
   isLoadingMessages: boolean;
   conversationError: string | null;
@@ -153,17 +143,14 @@ interface AppContextType {
   removeGroupMember: (conversationId: string, targetUserId: string) => Promise<Conversation | null>;
   leaveGroupConversation: (conversationId: string) => Promise<void>;
 
-  // Typing
   partnerTyping: boolean;
 
-  // Notifications
   notifications: Notification[];
   unreadCount: number;
   refreshNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
 
-  // Online Status (SignalR + Redis)
   isUserOnline: (userId: string) => boolean;
   onlineSignalRConnected: boolean;
 }
@@ -173,7 +160,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const useApp = (): AppContextType => {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error("useApp must be used within an AppProvider");
+    throw new Error('useApp must be used within an AppProvider');
   }
   return context;
 };
@@ -183,608 +170,34 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  // ─── Auth / User ────────────────────────────────────────
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const auth = useAuthState();
+  const feed = useFeedState();
+  const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(auth.isAuthenticated);
+  const chat = useChatState(auth.currentUser, onlineSignalRConnected);
+  const notifications = useNotificationState();
 
-  // ─── Pending Verification (after register, before OTP verify) ────
-  // Stores user data temporarily so AuthGuard doesn't redirect to home
-  const [pendingAuthUser, setPendingAuthUser] = useState<User | null>(null);
-
-  const markUserActive = useCallback(() => setIsNewUser(false), []);
-
-  // ─── Onboarding ─────────────────────────────────────────
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [onboardingData, setOnboardingData] = useState({
-    fullName: "",
-    username: "",
-    displayName: "",
-    gender: "",
-    bio: "",
-    avatar: "",
-  });
-
-  // ─── Suggested Users ─────────────────────────────────────
-  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
-
-  const fetchSuggestedUsers = useCallback(async () => {
-    try {
-      const users = await api.getSuggestedUsers();
-      setSuggestedUsers(users);
-    } catch (error) {
-      console.error("Failed to fetch suggested users:", error);
-    }
-  }, []);
-
-  const followSuggestedUser = useCallback(
-    async (userId: string) => {
-      setSuggestedUsers((prev) => prev.filter((u) => u.id !== userId));
-      try {
-        await api.toggleFollow(userId);
-      } catch (error) {
-        await fetchSuggestedUsers();
-        console.error("Failed to follow user:", error);
-      }
-    },
-    [fetchSuggestedUsers],
-  );
-
-  // ─── Auth Actions ────────────────────────────────────────
-  const login = useCallback(
-    async (email: string, password: string): Promise<User | null> => {
-      setIsLoading(true);
-      setAuthError(null);
-      try {
-        const user = await api.login(email, password);
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-        // isNewUser = posts === 0 (tài khoản mới tạo chưa có bài viết)
-        setIsNewUser(user.posts === 0);
-        return user;
-      } catch (error) {
-        console.error("Login failed:", error);
-        const errorCode = (error as any)?.errorCode;
-        if (errorCode) {
-          setIsLoading(false);
-          const errWithCode = error as Error & { errorCode: string; email: string };
-          throw errWithCode;
-        }
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "Login failed. Please check your credentials and try again.";
-        setAuthError(message);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  const register = useCallback(
-    async (
-      email: string,
-      password: string,
-      username: string,
-    ): Promise<boolean> => {
-      setIsLoading(true);
-      setAuthError(null);
-      try {
-        const user = await api.register(email, password, username);
-        // Store user temporarily for pending verification — do NOT set isAuthenticated yet
-        // This prevents AuthGuard from redirecting to home before OTP verification
-        setPendingAuthUser(user);
-        setCurrentUser(user);
-        setOnboardingStep(0);
-        return true;
-      } catch (error) {
-        console.error("Registration failed:", error);
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "Registration failed. Please try again.";
-        setAuthError(message);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  // Called from email-verification after OTP is successfully verified
-  const confirmPendingAuth = useCallback((user: User) => {
-    setPendingAuthUser(null);
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-    setIsNewUser(true); // posts = 0 for new account
-  }, []);
-
-  const resetSessionAfterSignOut = useCallback(() => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setIsNewUser(false);
-    setAuthError(null);
-    setOnboardingStep(0);
-    setPendingAuthUser(null);
-    setPosts([]);
-    setStories([]);
-    setConversations([]);
-    setNotifications([]);
-  }, []);
-
-  const logout = useCallback(async () => {
-    await api.logout();
-    resetSessionAfterSignOut();
-  }, [resetSessionAfterSignOut]);
-
-  const deleteAccount = useCallback(
-    async (password: string) => {
-      await api.deleteAccount(password);
-      resetSessionAfterSignOut();
-    },
-    [resetSessionAfterSignOut],
-  );
-
-  const saveOnboardingData = useCallback(
-    (data: Partial<AppContextType["onboardingData"]>) => {
-      setOnboardingData((prev) => ({ ...prev, ...data }));
-      if (typeof data.username === "string" && data.username.trim()) {
-        const handle = data.username.trim();
-        setCurrentUser((prev) => (prev ? { ...prev, username: handle } : prev));
-        api.patchCurrentUserLocal({ username: handle });
-      }
-      if (typeof data.displayName === "string" && data.displayName.trim()) {
-        const name = data.displayName.trim();
-        setCurrentUser((prev) =>
-          prev ? { ...prev, displayName: name } : prev,
-        );
-        api.patchCurrentUserLocal({ displayName: name });
-      }
-      if (typeof data.fullName === "string" && data.fullName.trim()) {
-        const name = data.fullName.trim();
-        setCurrentUser((prev) =>
-          prev ? { ...prev, fullName: name } : prev,
-        );
-        api.patchCurrentUserLocal({ fullName: name });
-      }
-      if (typeof data.gender === "string") {
-        const gender = data.gender;
-        setCurrentUser((prev) =>
-          prev ? { ...prev, gender } : prev,
-        );
-        api.patchCurrentUserLocal({ gender });
-      }
-      if (typeof data.bio === "string") {
-        const bio = data.bio;
-        setCurrentUser((prev) =>
-          prev ? { ...prev, bio } : prev,
-        );
-        api.patchCurrentUserLocal({ bio });
-      }
-    },
-    [],
-  );
-
-  const completeOnboardingStep = useCallback(() => {
-    setOnboardingStep((prev) => prev + 1);
-  }, []);
-
-  const resetOnboarding = useCallback(() => {
-    setOnboardingStep(0);
-    setIsNewUser(false);
-    setOnboardingData({ fullName: "", username: "", displayName: "", gender: "", bio: "", avatar: "" });
-  }, []);
-
-  // ─── Feed ────────────────────────────────────────────────
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
-  const [feedTab, setFeedTab] = useState<"foryou" | "following">("foryou");
-  const [myPosts, setMyPosts] = useState<Post[]>([]); // Posts của user hiện tại cho profile
-  const [repostedPosts, setRepostedPosts] = useState<Post[]>([]); // Danh sách repost của user hiện tại
-  const [lastPostsFetch, setLastPostsFetch] = useState(0); // Timestamp of last successful fetch for stale-while-revalidate
-  const [lastStoriesFetch, setLastStoriesFetch] = useState(0);
-
-  // ─── Reels ────────────────────────────────────────────────────────────────
-  const [reels, setReels] = useState<APIReel[]>([]);
-
-  // ─── Messages ─────────────────────────────────────────────
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversation, setActiveConversation] =
-    useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationMembers, setConversationMembers] = useState<Conversation["members"]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [conversationError, setConversationError] = useState<string | null>(null);
-  const [messageError, setMessageError] = useState<string | null>(null);
-
-  // Ref to store current conversationMembers without triggering effect re-runs
-  const conversationMembersRef = useRef<Conversation["members"]>([]);
-  const locallyReadConversationIdsRef = useRef<Set<string>>(new Set());
-  // Ref to track activeConversation for use in closures without stale values
-  const activeConversationRef = useRef<Conversation | null>(null);
-  activeConversationRef.current = activeConversation;
-
-  // ─── Notifications ───────────────────────────────────────
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // ─── Typing ──────────────────────────────────────────────
-  const [partnerTyping, setPartnerTyping] = useState(false);
-
-  // ─── Online Status ────────────────────────────────────────
-  const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(isAuthenticated);
-
-  // ─── Feed Actions ────────────────────────────────────────
-  const refreshPosts = useCallback(async () => {
-    try {
-      const data = await api.getPosts();
-      setPosts(data);
-      setLastPostsFetch(Date.now());
-    } catch (error) {
-      console.error("Failed to fetch posts:", error);
-    }
-  }, []);
-
-  const refreshStories = useCallback(async () => {
-    try {
-      const data = await api.getStories();
-      setStories(data);
-      setLastStoriesFetch(Date.now());
-    } catch (error) {
-      console.error("Failed to fetch stories:", error);
-    }
-  }, []);
-
-  // Fetch posts của user hiện tại cho profile page
-  const refreshMyPosts = useCallback(async () => {
-    try {
-      const data = await api.getMyPosts();
-      setMyPosts(data);
-    } catch (error: any) {
-      console.error("[AppContext] refreshMyPosts: ERROR", error?.response?.status, error?.message);
-    }
-  }, []);
-
-  const toggleLike = useCallback(
-    async (postId: string, isCurrentlyLiked?: boolean): Promise<boolean> => {
-      const currentlyLiked = isCurrentlyLiked ?? posts.find((p) => p.id === postId)?.isLiked ?? false;
-      // Optimistic update
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              isLiked: !currentlyLiked,
-              likes: currentlyLiked ? post.likes - 1 : post.likes + 1,
-            };
-          }
-          return post;
-        }),
-      );
-      try {
-        const newLikedState = await api.toggleLike(postId, currentlyLiked);
-        // Sync with server-returned state
-        setPosts((prev) =>
-          prev.map((post) => {
-            if (post.id === postId) {
-              return { ...post, isLiked: newLikedState };
-            }
-            return post;
-          }),
-        );
-        return newLikedState;
-      } catch (error) {
-        // Revert on failure
-        await refreshPosts();
-        console.error("Failed to toggle like:", error);
-        return currentlyLiked;
-      }
-    },
-    [refreshPosts, posts],
-  );
-
-  const toggleBookmark = useCallback(
-    async (postId: string) => {
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id === postId) {
-            return { ...post, isBookmarked: !post.isBookmarked };
-          }
-          return post;
-        }),
-      );
-      try {
-        await api.toggleBookmark(postId);
-      } catch (error) {
-        await refreshPosts();
-        console.error("Failed to toggle bookmark:", error);
-      }
-    },
-    [refreshPosts],
-  );
-  const toggleRepost = useCallback(
-    async (postId: string) => {
-      // 1. Cập nhật isReposted trên feed posts (local)
-      setPosts((prev) =>
-        prev.map((post) => {
-          if (post.id === postId) {
-            const willRepost = !post.isReposted;
-            return {
-              ...post,
-              isReposted: willRepost,
-              repostCount: Math.max(0, (post.repostCount ?? 0) + (willRepost ? 1 : -1)),
-            };
-          }
-          return post;
-        }),
-      );
-
-      // 2. Tìm post trong feed
-      const targetPost = posts.find((p) => p.id === postId);
-      if (!targetPost) return;
-
-      const willRepost = !targetPost.isReposted;
-
-      if (willRepost) {
-        // Thêm vào danh sách repost (local)
-        setRepostedPosts((prev) => {
-          const exists = prev.some((p) => p.id === postId);
-          if (exists) return prev;
-          return [{ ...targetPost, isReposted: true, repostCount: (targetPost.repostCount ?? 0) + 1 }, ...prev];
-        });
-      } else {
-        // Xóa khỏi danh sách repost (local)
-        setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
-      }
-    },
-    [posts],
-  );
-
-
-  const addComment = useCallback(
-    async ({
-      postId,
-      text,
-      parentCommentId,
-      imageUrl,
-    }: {
-      postId: string;
-      text: string;
-      parentCommentId?: string;
-      imageUrl?: string;
-    }) => {
-      try {
-        const result = await api.addComment({ postId, text, parentCommentId, imageUrl });
-        if (result.success && result.comment) {
-          // Update local posts/myPosts so the feed and profile grid show the new comment
-          setPosts((prev) =>
-            prev.map((post) => {
-              if (post.id === postId) {
-                return {
-                  ...post,
-                  comments: [result.comment!, ...post.comments],
-                };
-              }
-              return post;
-            }),
-          );
-          setMyPosts((prev) =>
-            prev.map((post) => {
-              if (post.id === postId) {
-                return {
-                  ...post,
-                  comments: [result.comment!, ...post.comments],
-                };
-              }
-              return post;
-            }),
-          );
-        }
-        return result.comment;
-      } catch (error) {
-        console.error("Failed to add comment:", error);
-        throw error;
-      }
-    },
-    [],
-  );
-
-  const deleteComment = useCallback(
-    async (postId: string, commentId: string) => {
-      try {
-        await api.deleteComment(commentId);
-        await refreshPosts();
-      } catch (error) {
-        console.error("Failed to delete comment:", error);
-      }
-    },
-    [refreshPosts],
-  );
-
-  const createPost = useCallback(
-    async (
-      images: string[],
-      caption: string,
-      location?: string,
-      visibility?: number,
-    ): Promise<Post | null> => {
-      try {
-        const newPost = await api.createPost(images, caption, location, visibility);
-        setPosts((prev) => [newPost, ...prev]);
-        setMyPosts((prev) => [newPost, ...prev]);
-        await refreshMyPosts();
-        setCurrentUser((prev) => (prev ? { ...prev, posts: prev.posts + 1 } : prev));
-        setIsNewUser(false);
-        return newPost;
-      } catch (error) {
-        console.error("Failed to create post:", error);
-        return null;
-      }
-    },
-    [refreshMyPosts],
-  );
-
-  const createReel = useCallback(
-    async (videoUri: string, caption: string, duration?: number): Promise<any> => {
-      try {
-        const newReel = await api.createReel(videoUri, caption, duration);
-        return newReel;
-      } catch (error) {
-        console.error("Failed to create reel:", error);
-        throw error;
-      }
-    },
-    [],
-  );
-
-  const updatePost = useCallback(
-    async (postId: string, caption: string) => {
-      try {
-        await api.updatePost(postId, caption);
-        await refreshPosts();
-      } catch (error) {
-        console.error("Failed to update post:", error);
-      }
-    },
-    [refreshPosts],
-  );
-
-  const deletePost = useCallback(async (postId: string) => {
-    try {
-      await api.deletePost(postId);
-      setPosts((prev) => prev.filter((p) => p.id !== postId));
-      setMyPosts((prev) => prev.filter((p) => p.id !== postId)); // Xóa khỏi myPosts
-      // Cập nhật số posts trên profile khi xóa
-      setCurrentUser((prev) => (prev ? { ...prev, posts: Math.max(0, prev.posts - 1) } : prev));
-    } catch (error) {
-      console.error("Failed to delete post:", error);
-    }
-  }, []);
-
-  // ─── Reels ─────────────────────────────────────────────────────────────
-  const refreshReels = useCallback(async () => {
-    try {
-      const data = await api.getReels();
-      setReels(data);
-    } catch (error) {
-      console.error("Failed to fetch reels:", error);
-    }
-  }, []);
-
-  const toggleReelLike = useCallback(
-    async (reelId: string, isCurrentlyLiked: boolean) => {
-      // Optimistic update
-      setReels((prev) =>
-        prev.map((reel) => {
-          if (reel.id === reelId) {
-            return {
-              ...reel,
-              isLiked: !isCurrentlyLiked,
-              likeCount: isCurrentlyLiked ? reel.likeCount - 1 : reel.likeCount + 1,
-            };
-          }
-          return reel;
-        }),
-      );
-      try {
-        await api.toggleReelLike(reelId, isCurrentlyLiked);
-      } catch (error) {
-        // Revert on failure
-        await refreshReels();
-        console.error("Failed to toggle reel like:", error);
-      }
-    },
-    [refreshReels],
-  );
-
-  const toggleReelBookmark = useCallback(
-    async (reelId: string) => {
-      const reel = reels.find((r) => r.id === reelId);
-      if (!reel) return;
-
-      // Optimistic update - toggle isBookmarked state
-      setReels((prev) =>
-        prev.map((r) =>
-          r.id === reelId ? { ...r, isBookmarked: !(r as any).isBookmarked } : r,
-        ),
-      );
-      try {
-        await api.toggleReelBookmark(reelId);
-      } catch (error) {
-        // Revert on failure
-        await refreshReels();
-        console.error("Failed to toggle reel bookmark:", error);
-      }
-    },
-    [reels, refreshReels],
-  );
-
-  const addReelComment = useCallback(
-    async (reelId: string, text: string, parentCommentId?: string) => {
-      try {
-        await api.addReelComment(reelId, text, parentCommentId);
-      } catch (error) {
-        console.error("Failed to add reel comment:", error);
-      }
-    },
-    [],
-  );
-
-  const deleteReelComment = useCallback(async (commentId: string) => {
-    try {
-      await api.deleteReelComment(commentId);
-    } catch (error) {
-      console.error("Failed to delete reel comment:", error);
-    }
-  }, []);
-
-  const toggleReelCommentLike = useCallback(async (commentId: string) => {
-    try {
-      await api.toggleReelCommentLike(commentId, false);
-    } catch (error) {
-      console.error("Failed to toggle reel comment like:", error);
-    }
-  }, []);
-
-  const deleteReelFn = useCallback(async (reelId: string) => {
-    try {
-      await api.deleteReel(reelId);
-      setReels((prev) => prev.filter((r) => r.id !== reelId));
-    } catch (error) {
-      console.error("Failed to delete reel:", error);
-    }
-  }, []);
-
-  // ─── User / Follow ───────────────────────────────────────
   const refreshUser = useCallback(async () => {
     try {
       const user = await api.getCurrentUser();
-      setCurrentUser(user);
+      auth.setCurrentUser(user);
     } catch (error) {
-      console.error("Failed to refresh user:", error);
+      console.error('Failed to refresh user:', error);
     }
-  }, []);
+  }, [auth]);
 
   const toggleFollow = useCallback(
     async (userId: string) => {
       try {
         await api.toggleFollow(userId);
         await refreshUser();
-        await refreshPosts();
-        await refreshReels();
-        // Clear reels user cache so the follow button state refreshes correctly
+        await feed.refreshPosts();
+        await feed.refreshReels();
         clearReelsUserCache();
       } catch (error) {
-        console.error("Failed to toggle follow:", error);
+        console.error('Failed to toggle follow:', error);
       }
     },
-    [refreshUser, refreshPosts, refreshReels],
+    [feed, refreshUser],
   );
 
   const updateProfile = useCallback(
@@ -799,7 +212,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.updateProfile(updates);
         await refreshUser();
       } catch (error) {
-        console.error("Failed to update profile:", error);
+        console.error('Failed to update profile:', error);
         throw error;
       }
     },
@@ -808,32 +221,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateAvatar = useCallback(
     async (avatarUri: string) => {
-      // Optimistic update
-      setCurrentUser((prev) => (prev ? { ...prev, avatar: avatarUri } : prev));
+      auth.setCurrentUser((prev) => (prev ? { ...prev, avatar: avatarUri } : prev));
       try {
         await api.updateAvatar(avatarUri);
         await refreshUser();
       } catch (error) {
-        // Revert on failure
         await refreshUser();
-        console.error("Failed to update avatar:", error);
+        console.error('Failed to update avatar:', error);
         throw error;
       }
     },
-    [refreshUser],
+    [auth, refreshUser],
   );
 
   const deleteAvatar = useCallback(async () => {
-    setCurrentUser((prev) => (prev ? { ...prev, avatar: "" } : prev));
+    auth.setCurrentUser((prev) => (prev ? { ...prev, avatar: '' } : prev));
     try {
       await api.deleteAvatar();
       await refreshUser();
     } catch (error) {
       await refreshUser();
-      console.error("Failed to delete avatar:", error);
+      console.error('Failed to delete avatar:', error);
       throw error;
     }
-  }, [refreshUser]);
+  }, [auth, refreshUser]);
 
   const updateCover = useCallback(
     async (coverUri: string) => {
@@ -841,7 +252,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         await api.updateCover(coverUri);
         await refreshUser();
       } catch (error) {
-        console.error("Failed to update cover:", error);
+        console.error('Failed to update cover:', error);
         throw error;
       }
     },
@@ -853,688 +264,203 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       await api.deleteCover();
       await refreshUser();
     } catch (error) {
-      console.error("Failed to delete cover:", error);
+      console.error('Failed to delete cover:', error);
       throw error;
     }
   }, [refreshUser]);
 
-  // ─── Messages ─────────────────────────────────────────────
-  const refreshConversations = useCallback(async () => {
-    setIsLoadingConversations(true);
-    setConversationError(null);
-    try {
-      const data = await api.getConversations();
-      setConversations((prev) => {
-        const previousIds = new Set(prev.map((c) => c.id));
-        return data.map((conv) => ({
-          ...conv,
-          unreadCount:
-            previousIds.has(conv.id) &&
-            locallyReadConversationIdsRef.current.has(conv.id)
-              ? 0
-              : conv.unreadCount,
-        }));
-      });
-    } catch (error: any) {
-      const msg = error?.response?.data?.message ?? "Failed to load conversations.";
-      console.error("[AppContext] refreshConversations: FAILED —", msg, error);
-      setConversationError(msg);
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  }, []);
+  const logout = useCallback(async () => {
+    await auth.logout();
+    feed.setPosts([]);
+    feed.setStories([]);
+    feed.setMyPosts([]);
+    feed.setRepostedPosts([]);
+    chat.setConversations([]);
+    notifications.setNotifications([]);
+  }, [auth, chat, feed, notifications]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    setIsLoadingMessages(true);
-    setMessageError(null);
-    setMessages([]);
-    try {
-      const { messages: msgs, members } = await api.getMessages(conversationId);
-      // API trả về: tin mới nhất ở đầu → cần đảo để có thứ tự Cũ→Mới (đúng cho FlatList)
-      const orderedMessages = [...msgs].reverse();
-      setMessages(orderedMessages);
-      setConversationMembers(members);
-      return orderedMessages;
-    } catch (error: any) {
-      const msg = error?.response?.data?.message ?? "Failed to load messages.";
-      setMessageError(msg);
-      console.error("[AppContext] loadMessages:", msg, error);
-      return [];
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, []);
-
-  const sendMessageFn = useCallback(
-    async (
-      conversationId: string,
-      payload: string | {
-        content?: string;
-        mediaUri?: string;
-        mediaUrl?: string;
-        mediaPublicId?: string;
-        fileName?: string;
-        fileSize?: number;
-        type?: 0 | 1 | 2 | 3;
-      },
-    ) => {
-      try {
-        const newMsg = await api.sendMessage(
-          conversationId,
-          payload,
-          conversationMembersRef.current,
-        );
-        if (newMsg.senderId === currentUser?.id && !newMsg.sender?.displayName) {
-          newMsg.sender = currentUser;
-        }
-        setMessages((prev) => {
-          const isDuplicate = prev.some((m) => m.id === newMsg.id);
-          if (isDuplicate) {
-            return prev;
-          }
-          return [...prev, newMsg];
-        });
-        await refreshConversations();
-      } catch (error: any) {
-        const msg = error?.response?.data?.message ?? "Failed to send message.";
-        console.error("[AppContext] sendMessage:", msg, error);
-        throw new Error(msg);
-      }
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await auth.deleteAccount(password);
+      feed.setPosts([]);
+      feed.setStories([]);
+      feed.setMyPosts([]);
+      feed.setRepostedPosts([]);
+      chat.setConversations([]);
+      notifications.setNotifications([]);
     },
-    [currentUser, refreshConversations],
+    [auth, chat, feed, notifications],
   );
 
-  const editMessage = useCallback(
-    async (conversationId: string, messageId: string, text: string) => {
-      try {
-        await api.editMessage(conversationId, messageId, text);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId
-              ? { ...m, text, editedAt: new Date().toISOString() }
-              : m,
-          )
-        );
-      } catch (error: any) {
-        const msg = error?.response?.data?.message ?? "Failed to edit message.";
-        console.error("[AppContext] editMessage:", msg, error);
-        throw new Error(msg);
-      }
-    },
-    [],
-  );
-
-  const deleteMessageFn = useCallback(
-    async (conversationId: string, messageId: string) => {
-      try {
-        await api.deleteMessage(conversationId, messageId);
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
-      } catch (error: any) {
-        const msg = error?.response?.data?.message ?? "Failed to delete message.";
-        console.error("[AppContext] deleteMessage:", msg, error);
-        throw new Error(msg);
-      }
-    },
-    [],
-  );
-
-  const markMessagesRead = useCallback(
-    async (conversationId: string, lastMessageId?: string) => {
-      try {
-        const fallbackLastMsg = messages[messages.length - 1];
-        const messageIdToRead = lastMessageId ?? fallbackLastMsg?.id;
-        if (messageIdToRead) {
-          await api.markMessagesRead(conversationId, messageIdToRead);
-        }
-        locallyReadConversationIdsRef.current.add(conversationId);
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
-          )
-        );
-      } catch (error) {
-        console.error("[AppContext] markMessagesRead:", error);
-      }
-    },
-    [messages],
-  );
-
-  // ─── Mark Conversation As Read (Local State Update) ───────────────────────
-  // Updates local state immediately — does NOT call API (markMessagesRead handles that)
-  const markConversationAsRead = useCallback(
-  async (conversationId: string) => {
-    locallyReadConversationIdsRef.current.add(conversationId);
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
-      )
-    );
-    try {
-      const conv = conversations.find((c) => c.id === conversationId);
-      const lastMsgId = conv?.lastMessage?.id;
-      if (lastMsgId) {
-        await api.markMessagesRead(conversationId, lastMsgId);
-      }
-    } catch (error) {
-      console.error("[AppContext] markConversationAsRead: API call failed:", error);
-    }
-  },
-  [conversations]
-);
-
-  const startConversation = useCallback(
-  async (userId: string) => {
-    let conv;
-    try {
-      conv = await api.createPrivateConversation(userId);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? "Failed to start conversation.";
-      console.error("[AppContext] startConversation: API FAILED —", msg, err);
-      throw new Error(msg);
-    }
-    setConversations((prev) => {
-      const exists = prev.some((c) => c.id === conv.id);
-      if (exists) return prev;
-      return [conv, ...prev];
-    });
-    return conv;
-  },
-  [],
-);
-
-  // ─── Notifications ───────────────────────────────────────
-  const createGroup = useCallback(
-    async (name: string, memberUserIds: string[]) => {
-      const conv = await api.createGroupConversation(name, memberUserIds);
-      setConversations((prev) => {
-        const withoutExisting = prev.filter((c) => c.id !== conv.id);
-        return [conv, ...withoutExisting];
-      });
-      setActiveConversation(conv);
-      return conv;
-    },
-    [],
-  );
-
-  const addGroupMember = useCallback(
-    async (conversationId: string, targetUserId: string) => {
-      await api.addMemberToGroup(conversationId, targetUserId);
-      const updated = await api.getConversationById(conversationId);
-      if (!updated) return null;
-
-      setConversations((prev) =>
-        prev.map((conv) => (conv.id === conversationId ? updated : conv)),
-      );
-      setActiveConversation((prev) =>
-        prev?.id === conversationId ? updated : prev,
-      );
-      setConversationMembers(updated.members);
-      return updated;
-    },
-    [],
-  );
-
-  const removeGroupMember = useCallback(
-    async (conversationId: string, targetUserId: string) => {
-      await api.removeMemberFromGroup(conversationId, targetUserId);
-      const updated = await api.getConversationById(conversationId);
-      if (!updated) return null;
-
-      setConversations((prev) =>
-        prev.map((conv) => (conv.id === conversationId ? updated : conv)),
-      );
-      setActiveConversation((prev) =>
-        prev?.id === conversationId ? updated : prev,
-      );
-      setConversationMembers(updated.members);
-      return updated;
-    },
-    [],
-  );
-
-  const leaveGroupConversation = useCallback(
-    async (conversationId: string) => {
-      await api.leaveGroup(conversationId);
-      setConversations((prev) => prev.filter((conv) => conv.id !== conversationId));
-      setActiveConversation((prev) => (prev?.id === conversationId ? null : prev));
-      setConversationMembers([]);
-      setMessages([]);
-    },
-    [],
-  );
-
-  const refreshNotifications = useCallback(async () => {
-    try {
-      const [notifs, count] = await Promise.all([
-        api.getNotifications(),
-        api.getUnreadNotificationCount(),
-      ]);
-      setNotifications(notifs);
-      setUnreadCount(count);
-    } catch (error) {
-    }
-  }, []);
-
-  const markNotificationRead = useCallback(async (id: string) => {
-    try {
-      await api.markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Failed to mark notification read:", error);
-    }
-  }, []);
-
-  const markAllNotificationsRead = useCallback(async () => {
-    try {
-      await api.markAllNotificationsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Failed to mark all notifications read:", error);
-    }
-  }, []);
-
-  // ─── Init: thử restore session từ JWT đã lưu ─────────────
   useEffect(() => {
+    let isActive = true;
+
     const initializeData = async () => {
-      setIsLoading(true);
+      auth.setIsLoading(true);
       try {
-        // Thử khôi phục session từ token đã lưu
         const restoredUser = await api.refreshSession();
 
-        if (restoredUser) {
-          // Có token hợp lệ → khôi phục session
-          setCurrentUser(restoredUser);
-          setIsAuthenticated(true);
-          setIsNewUser(restoredUser.posts === 0);
+        if (!isActive) return;
 
-          // Load dữ liệu song song
+        if (restoredUser) {
+          auth.setCurrentUser(restoredUser);
+          auth.setIsAuthenticated(true);
+          auth.setIsNewUser(restoredUser.posts === 0);
+
           await Promise.all([
-            refreshPosts(),
-            refreshMyPosts(),
-            refreshStories(),
-            refreshReels(),
-            refreshConversations(),
-            refreshNotifications(),
-            fetchSuggestedUsers(),
+            feed.refreshPosts(),
+            feed.refreshMyPosts(),
+            feed.refreshStories(),
+            feed.refreshReels(),
+            chat.refreshConversations(),
+            notifications.refreshNotifications(),
+            auth.fetchSuggestedUsers(),
           ]);
         } else {
-          // Không có token hoặc token hết hạn → chưa đăng nhập
-          // Vẫn load dữ liệu mẫu để preview app (nếu cần)
           await Promise.all([
-            refreshPosts(),
-            refreshStories(),
-            refreshReels(),
-            refreshConversations(),
-            refreshNotifications(),
+            feed.refreshPosts(),
+            feed.refreshStories(),
+            feed.refreshReels(),
+            chat.refreshConversations(),
+            notifications.refreshNotifications(),
           ]);
         }
       } catch (error) {
-        console.error("Failed to initialize data:", error);
-        // Fallback: load mock data
+        console.error('Failed to initialize data:', error);
+        if (!isActive) return;
+
         await Promise.all([
-          refreshPosts(),
-          refreshStories(),
-          refreshReels(),
-          refreshConversations(),
-          refreshNotifications(),
+          feed.refreshPosts(),
+          feed.refreshStories(),
+          feed.refreshReels(),
+          chat.refreshConversations(),
+          notifications.refreshNotifications(),
         ]);
       } finally {
-        setIsLoading(false);
+        if (isActive) {
+          auth.setIsLoading(false);
+        }
       }
     };
 
-    initializeData();
+    void initializeData();
+
+    return () => {
+      isActive = false;
+    };
   }, [
-    refreshPosts,
-    refreshStories,
-    refreshReels,
-    refreshConversations,
-    refreshNotifications,
-    fetchSuggestedUsers,
+    auth.setCurrentUser,
+    auth.setIsAuthenticated,
+    auth.setIsLoading,
+    auth.setIsNewUser,
+    auth.fetchSuggestedUsers,
+    feed.refreshPosts,
+    feed.refreshMyPosts,
+    feed.refreshStories,
+    feed.refreshReels,
+    chat.refreshConversations,
+    notifications.refreshNotifications,
   ]);
 
-  // ─── Sync conversationMembers to ref (without triggering listener re-run) ───
-  useEffect(() => {
-    conversationMembersRef.current = conversationMembers;
-  }, [conversationMembers]);
-
-  // Ref to track partnerTyping setter for use in handlers without deps issues
-  const setPartnerTypingRef = useRef(setPartnerTyping);
-  setPartnerTypingRef.current = setPartnerTyping;
-
-  // ─── Listen to SignalR ReceiveMessage events ──────────────
-  useEffect(() => {
-    if (!activeConversation) return;
-    if (!onlineSignalRConnected) return;
-
-    const connection = getConnection();
-    if (!connection) {
-      console.warn("[AppContext] SignalR connection not available for message listener");
-      return;
-    }
-
-
-    // Handler to receive new messages from SignalR
-    const messageHandler = (messageData: BE_MessageResponse) => {
-      // Ensure this message belongs to the current conversation
-      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
-      if (messageConvId !== activeConversation.id) {
-        return;
+  const value: AppContextType = {
+    currentUser: auth.currentUser,
+    isLoading: auth.isLoading,
+    isNewUser: auth.isNewUser,
+    markUserActive: auth.markUserActive,
+    login: auth.login,
+    register: auth.register,
+    confirmPendingAuth: auth.confirmPendingAuth,
+    logout,
+    deleteAccount,
+    isAuthenticated: auth.isAuthenticated,
+    authError: auth.authError,
+    onboardingStep: auth.onboardingStep,
+    onboardingData: auth.onboardingData,
+    saveOnboardingData: auth.saveOnboardingData,
+    completeOnboardingStep: auth.completeOnboardingStep,
+    resetOnboarding: auth.resetOnboarding,
+    suggestedUsers: auth.suggestedUsers,
+    fetchSuggestedUsers: auth.fetchSuggestedUsers,
+    followSuggestedUser: auth.followSuggestedUser,
+    posts: feed.posts,
+    stories: feed.stories,
+    refreshPosts: feed.refreshPosts,
+    refreshStories: feed.refreshStories,
+    lastPostsFetch: feed.lastPostsFetch,
+    lastStoriesFetch: feed.lastStoriesFetch,
+    myPosts: feed.myPosts,
+    refreshMyPosts: feed.refreshMyPosts,
+    feedTab: feed.feedTab,
+    setFeedTab: feed.setFeedTab,
+    toggleLike: feed.toggleLike,
+    toggleBookmark: feed.toggleBookmark,
+    toggleRepost: feed.toggleRepost,
+    repostedPosts: feed.repostedPosts,
+    addComment: feed.addComment,
+    deleteComment: feed.deleteComment,
+    createPost: async (images, caption, location, visibility) => {
+      const newPost = await feed.createPost(images, caption, location, visibility);
+      if (newPost) {
+        auth.setCurrentUser((prev) => (prev ? { ...prev, posts: prev.posts + 1 } : prev));
+        auth.setIsNewUser(false);
       }
+      return newPost;
+    },
+    createReel: feed.createReel,
+    updatePost: feed.updatePost,
+    deletePost: async (postId: string) => {
+      await feed.deletePost(postId);
+      auth.setCurrentUser((prev) => (prev ? { ...prev, posts: Math.max(0, prev.posts - 1) } : prev));
+    },
+    reels: feed.reels,
+    refreshReels: feed.refreshReels,
+    toggleReelLike: feed.toggleReelLike,
+    toggleReelBookmark: feed.toggleReelBookmark,
+    addReelComment: feed.addReelComment,
+    deleteReelComment: feed.deleteReelComment,
+    toggleReelCommentLike: feed.toggleReelCommentLike,
+    deleteReel: feed.deleteReel,
+    refreshUser,
+    toggleFollow,
+    updateProfile,
+    updateAvatar,
+    updateCover,
+    deleteAvatar,
+    deleteCover,
+    conversations: chat.conversations,
+    activeConversation: chat.activeConversation,
+    messages: chat.messages,
+    conversationMembers: chat.conversationMembers,
+    isLoadingConversations: chat.isLoadingConversations,
+    isLoadingMessages: chat.isLoadingMessages,
+    conversationError: chat.conversationError,
+    messageError: chat.messageError,
+    refreshConversations: chat.refreshConversations,
+    loadMessages: chat.loadMessages,
+    sendMessage: chat.sendMessage,
+    editMessage: chat.editMessage,
+    deleteMessage: chat.deleteMessage,
+    setActiveConversation: chat.setActiveConversation,
+    setMessages: chat.setMessages,
+    markMessagesRead: chat.markMessagesRead,
+    markConversationAsRead: chat.markConversationAsRead,
+    startConversation: chat.startConversation,
+    createGroup: chat.createGroup,
+    addGroupMember: chat.addGroupMember,
+    removeGroupMember: chat.removeGroupMember,
+    leaveGroupConversation: chat.leaveGroupConversation,
+    partnerTyping: chat.partnerTyping,
+    notifications: notifications.notifications,
+    unreadCount: notifications.unreadCount,
+    refreshNotifications: notifications.refreshNotifications,
+    markNotificationRead: notifications.markNotificationRead,
+    markAllNotificationsRead: notifications.markAllNotificationsRead,
+    isUserOnline: isOnline,
+    onlineSignalRConnected,
+  };
 
-      // Transform backend message format to frontend Message type using ref (won't re-trigger effect)
-      const newMessage = transformBEMessage(messageData, conversationMembersRef.current);
-
-      // Add to messages state
-      setMessages((prev) => {
-        // Avoid duplicates: check if message ID already exists
-        const isDuplicate = prev.some((m) => m.id === newMessage.id);
-        if (isDuplicate) {
-          return prev;
-        }
-        return [...prev, newMessage];
-      });
-    };
-
-    // Register the listener
-    connection.on("ReceiveMessage", messageHandler);
-
-    // Cleanup: unregister listener when conversation changes
-    return () => {
-      connection.off("ReceiveMessage", messageHandler);
-    };
-  }, [activeConversation, onlineSignalRConnected]);
-
-  // ─── Update conversations list when a new message arrives (any conversation) ──
-  // This listener runs independently of activeConversation so the ChatList updates
-  // in real-time even when no conversation is open.
-  useEffect(() => {
-    if (!onlineSignalRConnected) return;
-
-    const connection = getConnection();
-    if (!connection) return;
-
-    const convListHandler = (messageData: BE_MessageResponse) => {
-      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
-      const senderId = messageData.senderId ?? (messageData as any).SenderId;
-      const content = messageData.content ?? (messageData as any).Content ?? "";
-      const mediaUrl = messageData.mediaUrl ?? (messageData as any).MediaUrl ?? null;
-      const rawType = messageData.type ?? (messageData as any).Type ?? "Text";
-      const normalizedType = (rawType as string).toLowerCase();
-      const messageType: Message["messageType"] =
-        normalizedType === "image" ? "image"
-        : normalizedType === "video" ? "video"
-        : normalizedType === "file" ? "file"
-        : normalizedType === "system" ? "system"
-        : "text";
-      const createdAt = messageData.createdAt ?? (messageData as any).CreatedAt;
-      if (!messageConvId) return;
-
-      setConversations((prev) => {
-        const idx = prev.findIndex((c) => c.id === messageConvId);
-        if (idx === -1) return prev;
-
-        const updated = [...prev];
-        const conv = { ...updated[idx] };
-        conv.lastMessage = {
-          id: messageData.id ?? (messageData as any).Id ?? "",
-          conversationId: messageConvId,
-          senderId,
-          sender: { id: senderId } as User,
-          text: content,
-          image: mediaUrl || undefined,
-          messageType,
-          createdAt: createdAt ?? new Date().toISOString(),
-          isRead: false,
-        };
-
-        // Only increment unreadCount when NOT the active conversation
-        // Use ref to avoid stale closure
-        const isActive = activeConversationRef.current?.id === messageConvId;
-        conv.unreadCount = isActive ? 0 : (conv.unreadCount ?? 0) + 1;
-        if (!isActive) {
-          locallyReadConversationIdsRef.current.delete(messageConvId);
-        }
-
-        // Move conversation to top
-        updated.splice(idx, 1);
-        return [conv, ...updated];
-      });
-
-      // Clear typing indicator when partner sends a message
-      const isMsgFromPartner = senderId !== currentUser?.id;
-      if (isMsgFromPartner) {
-        setPartnerTypingRef.current(false);
-      }
-    };
-
-    connection.on("ReceiveMessage", convListHandler);
-    return () => {
-      connection.off("ReceiveMessage", convListHandler);
-    };
-  }, [currentUser, onlineSignalRConnected]);
-
-  useEffect(() => {
-    if (!onlineSignalRConnected) return;
-
-    const connection = getConnection();
-    if (!connection) return;
-
-    const editedHandler = (messageData: BE_MessageResponse) => {
-      const messageConvId = messageData.conversationId ?? (messageData as any).ConversationId;
-      const messageId = messageData.id ?? (messageData as any).Id;
-      const content = messageData.content ?? (messageData as any).Content ?? "";
-      const editedAt =
-        messageData.editedAt ?? (messageData as any).EditedAt ?? new Date().toISOString();
-
-      setMessages((prev) =>
-        prev.map((message) =>
-          message.id === messageId ? { ...message, text: content, editedAt } : message,
-        ),
-      );
-
-      setConversations((prev) =>
-        prev.map((conversation) => {
-          if (conversation.id !== messageConvId) return conversation;
-          if (conversation.lastMessage?.id !== messageId) return conversation;
-          return {
-            ...conversation,
-            lastMessage: conversation.lastMessage
-              ? { ...conversation.lastMessage, text: content, editedAt }
-              : conversation.lastMessage,
-          };
-        }),
-      );
-    };
-
-    const deletedHandler = (data: {
-      conversationId?: string;
-      ConversationId?: string;
-      messageId?: string;
-      MessageId?: string;
-    }) => {
-      const conversationId = data.conversationId ?? data.ConversationId;
-      const messageId = data.messageId ?? data.MessageId;
-      if (!messageId) return;
-
-      setMessages((prev) => prev.filter((message) => message.id !== messageId));
-
-      setConversations((prev) =>
-        prev.map((conversation) => {
-          if (conversation.id !== conversationId) return conversation;
-          if (conversation.lastMessage?.id !== messageId) return conversation;
-          return { ...conversation, lastMessage: undefined };
-        }),
-      );
-    };
-
-    const readHandler = (data: {
-      conversationId?: string;
-      ConversationId?: string;
-      userId?: string;
-      UserId?: string;
-      messageId?: string;
-      MessageId?: string;
-    }) => {
-      const conversationId = data.conversationId ?? data.ConversationId;
-      const readerId = data.userId ?? data.UserId;
-      const messageId = data.messageId ?? data.MessageId;
-      if (!conversationId || !readerId || !messageId) return;
-
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.id === conversationId && readerId === currentUser?.id
-            ? { ...conversation, unreadCount: 0 }
-            : conversation,
-        ),
-      );
-      if (readerId === currentUser?.id) {
-        locallyReadConversationIdsRef.current.add(conversationId);
-      }
-
-      if (readerId === currentUser?.id) return;
-
-      setMessages((prev) =>
-        prev.map((message) =>
-          message.id === messageId && message.senderId === currentUser?.id
-            ? { ...message, isRead: true }
-            : message,
-        ),
-      );
-    };
-
-    connection.on("MessageEdited", editedHandler);
-    connection.on("MessageDeleted", deletedHandler);
-    connection.on("MessagesRead", readHandler);
-
-    return () => {
-      connection.off("MessageEdited", editedHandler);
-      connection.off("MessageDeleted", deletedHandler);
-      connection.off("MessagesRead", readHandler);
-    };
-  }, [currentUser?.id, onlineSignalRConnected]);
-
-  // ─── Listen to SignalR UserTyping events ──────────────────
-  useEffect(() => {
-    if (!onlineSignalRConnected) return;
-
-    const connection = getConnection();
-    if (!connection) return;
-
-    const typingHandler = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
-      const typingConvId = data.conversationId;
-      const typingUserId = data.userId;
-      const isTyping = data.isTyping;
-
-      // Only care about the active conversation
-      if (typingConvId !== activeConversation?.id) return;
-      // Ignore typing events from ourselves
-      if (typingUserId === currentUser?.id) return;
-
-      setPartnerTyping(isTyping);
-    };
-
-    connection.on("UserTyping", typingHandler);
-    return () => {
-      connection.off("UserTyping", typingHandler);
-    };
-  }, [activeConversation, currentUser, onlineSignalRConnected]);
-
-  // ─── Provider ──────────────────────────────────────────────
   return (
-    <AppContext.Provider
-      value={{
-        currentUser,
-        isLoading,
-        isNewUser,
-        authError,
-        markUserActive,
-        login,
-        register,
-        confirmPendingAuth,
-        logout,
-        deleteAccount,
-        isAuthenticated,
-        onboardingStep,
-        onboardingData,
-        saveOnboardingData,
-        completeOnboardingStep,
-        resetOnboarding,
-        suggestedUsers,
-        fetchSuggestedUsers,
-        followSuggestedUser,
-        posts,
-        myPosts,
-        repostedPosts,
-        stories,
-        refreshPosts,
-        refreshMyPosts,
-        refreshStories,
-        lastPostsFetch,
-        lastStoriesFetch,
-        feedTab,
-        setFeedTab,
-        toggleLike,
-        toggleRepost,
-        toggleBookmark,
-        addComment,
-        deleteComment,
-        createPost,
-        createReel,
-        updatePost,
-        deletePost,
-        // Reels
-        reels,
-        refreshReels,
-        toggleReelLike,
-        toggleReelBookmark,
-        addReelComment,
-        deleteReelComment,
-        toggleReelCommentLike,
-        deleteReel: deleteReelFn,
-        refreshUser,
-        toggleFollow,
-        updateProfile,
-        updateAvatar,
-        updateCover,
-        deleteAvatar,
-        deleteCover,
-        conversations,
-        activeConversation,
-        messages,
-        conversationMembers,
-        isLoadingConversations,
-        isLoadingMessages,
-        conversationError,
-        messageError,
-        refreshConversations,
-        loadMessages,
-        sendMessage: sendMessageFn,
-        editMessage,
-        deleteMessage: deleteMessageFn,
-        setActiveConversation,
-        setMessages,
-        markMessagesRead,
-        markConversationAsRead,
-        startConversation,
-        createGroup,
-        addGroupMember,
-        removeGroupMember,
-        leaveGroupConversation,
-        partnerTyping,
-        notifications,
-        unreadCount,
-        refreshNotifications,
-        markNotificationRead,
-        markAllNotificationsRead,
-        isUserOnline: isOnline,
-        onlineSignalRConnected,
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

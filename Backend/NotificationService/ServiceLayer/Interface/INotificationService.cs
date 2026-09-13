@@ -8,7 +8,7 @@ namespace NotificationService.ServiceLayer.Interface
         Task MarkAsReadAsync(Guid notificationId, Guid userId, CancellationToken ct = default);
         Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default);
         Task<PagedResult<NotificationDto>> GetByUserAsync(
-       Guid userId, int page, int pageSize, CancellationToken ct = default);
+        Guid userId, int page, int pageSize, CancellationToken ct = default);
         Task<int> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
 
     }

@@ -22,6 +22,7 @@ export default function HomeScreen() {
     feedTab,
     setFeedTab,
     unreadCount,
+    refreshNotifications,
     isNewUser,
     lastPostsFetch,
     lastStoriesFetch,
@@ -34,37 +35,15 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Auto-revalidate feed on focus (stale-while-revalidate pattern)
-  // If data is stale (>5 min), fetch fresh data silently in background
-  // If data is fresh, skip unnecessary network call
-  const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-  const [isRevalidating, setIsRevalidating] = React.useState(false);
-
+  // Refresh when the screen regains focus so actions taken on another screen
+  // (like/comment/post back navigation) are reflected immediately.
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now();
-      const postsStale = now - lastPostsFetch > STALE_THRESHOLD_MS;
-      const storiesStale = now - lastStoriesFetch > STALE_THRESHOLD_MS;
-
-      if (postsStale || storiesStale) {
-        // Silently revalidate without spinner (stale-while-revalidate)
-        setIsRevalidating(true);
-        Promise.all([
-          postsStale ? refreshPosts() : Promise.resolve(),
-          storiesStale ? refreshStories() : Promise.resolve(),
-        ]).finally(() => {
-          setIsRevalidating(false);
-        });
-      }
-    }, [lastPostsFetch, lastStoriesFetch, refreshPosts, refreshStories]),
+      void refreshPosts();
+      void refreshStories();
+      void refreshNotifications();
+    }, [refreshPosts, refreshStories, refreshNotifications]),
   );
-
-  // Update isRevalidating state based on AppContext fetch timestamps
-  React.useEffect(() => {
-    if (lastPostsFetch === 0 && lastStoriesFetch === 0) {
-      setIsRevalidating(false);
-    }
-  }, [lastPostsFetch, lastStoriesFetch]);
 
   // Mở màn hình tạo story
   const handleAddStory = () => {
@@ -82,7 +61,7 @@ export default function HomeScreen() {
           title="Home"
           showAvatar
           avatarUser={currentUser}
-          onNotificationPress={() => router.push('/notifications')}
+          onNotificationPress={() => router.push('/notifications' as any)}
           notificationCount={unreadCount}
         />
         <View style={styles.feedTabsContainer}>
@@ -107,7 +86,7 @@ export default function HomeScreen() {
         title="Home"
         showAvatar
         avatarUser={currentUser}
-        onNotificationPress={() => router.push('/notifications')}
+        onNotificationPress={() => router.push('/notifications' as any)}
         notificationCount={unreadCount}
         largeTitle
       />

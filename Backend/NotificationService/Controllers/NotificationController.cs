@@ -19,7 +19,7 @@ namespace NotificationService.Controllers
         }
 
         // PUT /api/notifications/{id}/read
-        [HttpPut("{id:guid}/read")]
+        [HttpPut("{notificationId:guid}/read")]
         public async Task<IActionResult> MarkAsRead(Guid notificationId, CancellationToken ct)
         {
             var userId = GetUserId();
