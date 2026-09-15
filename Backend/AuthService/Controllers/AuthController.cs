@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AuthService.DTOs;
-using AuthService.ServiceLayer;
 using AuthService.ServiceLayer.Interface;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
@@ -32,7 +30,7 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during registration");
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "REGISTER_ERROR", Message = ex.Message });
             }
         }
 
@@ -49,9 +47,10 @@ namespace AuthService.Controllers
                 _logger.LogError(ex, "Error during login");
                 if (ex.Message.StartsWith("IS_BANNED|"))
                 {
-                    return BadRequest(new { errorCode = "IS_BANNED", message = ex.Message.Substring("IS_BANNED|".Length) });
+                    var banReason = ex.Message.Substring("IS_BANNED|".Length);
+                    return BadRequest(new ErrorResponse { ErrorCode = "IS_BANNED", Message = banReason });
                 }
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "LOGIN_ERROR", Message = ex.Message });
             }
         }
         [HttpPost("refresh-token")]
@@ -67,11 +66,13 @@ namespace AuthService.Controllers
                 _logger.LogError(ex, "Error during token refresh");
                 if (ex.Message.StartsWith("IS_BANNED|"))
                 {
-                    return BadRequest(new { errorCode = "IS_BANNED", message = ex.Message.Substring("IS_BANNED|".Length) });
+                    var banReason = ex.Message.Substring("IS_BANNED|".Length);
+                    return BadRequest(new ErrorResponse { ErrorCode = "IS_BANNED", Message = banReason });
                 }
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "REFRESH_TOKEN_ERROR", Message = ex.Message });
             }
         }
+
         [HttpPost("validate")]
         public async Task<IActionResult> ValidateToken([FromBody] ValidateTokenRequest request)
         {
@@ -83,21 +84,22 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during token validation");
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "VALIDATE_TOKEN_ERROR", Message = ex.Message });
             }
         }
+
         [HttpPost("revoke")]
         public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest request)
         {
             try
             {
                 await _authService.RevokeTokenAsync(request.RefreshToken);
-                return Ok(new { message = "Token revoked successfully" });
+                return Ok(new SuccessResponse { Message = "Token revoked successfully" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during token revocation");
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "REVOKE_TOKEN_ERROR", Message = ex.Message });
             }
         }
 
@@ -107,18 +109,18 @@ namespace AuthService.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             {
-                return Unauthorized(new { message = "Invalid or missing user identity" });
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "Invalid or missing user identity" });
             }
 
             try
             {
                 await _authService.DeleteAccountAsync(userId, request?.Password ?? string.Empty);
-                return Ok(new { message = "Account deleted successfully" });
+                return Ok(new SuccessResponse { Message = "Account deleted successfully" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting account for user {UserId}", userId);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "ERROR", Message = ex.Message });
             }
         }
 
@@ -129,12 +131,12 @@ namespace AuthService.Controllers
             try
             {
                 await _authService.SendOtpAsync(request.Email);
-                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+                return Ok(new SuccessResponse { Message = "Mã OTP đã được gửi về email của bạn" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending OTP to {Email}", request.Email);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "OTP_ERROR", Message = ex.Message });
             }
         }
 
@@ -145,12 +147,12 @@ namespace AuthService.Controllers
             try
             {
                 await _authService.VerifyOtpAsync(request.Email, request.OtpCode);
-                return Ok(new { message = "Xác thực tài khoản thành công" });
+                return Ok(new SuccessResponse { Message = "Xác thực tài khoản thành công" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error verifying OTP for {Email}", request.Email);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "OTP_ERROR", Message = ex.Message });
             }
         }
 
@@ -161,12 +163,12 @@ namespace AuthService.Controllers
             try
             {
                 await _authService.SendForgotPasswordOtpAsync(request.Email);
-                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+                return Ok(new SuccessResponse { Message = "Mã OTP đã được gửi về email của bạn" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending forgot password OTP to {Email}", request.Email);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "OTP_ERROR", Message = ex.Message });
             }
         }
 
@@ -180,12 +182,12 @@ namespace AuthService.Controllers
                     request.Email,
                     request.OtpCode,
                     request.NewPassword);
-                return Ok(new { message = "Đổi mật khẩu thành công" });
+                return Ok(new SuccessResponse { Message = "Đổi mật khẩu thành công" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error resetting password for {Email}", request.Email);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "ERROR", Message = ex.Message });
             }
         }
 
@@ -197,18 +199,18 @@ namespace AuthService.Controllers
 
             if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
             {
-                return Unauthorized(new { message = "User ID not found in request headers" });
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "User ID not found in request headers" });
             }
 
             try
             {
                 await _authService.SendChangePasswordOtpAsync(userId, request.OldPassword);
-                return Ok(new { message = "Mã OTP đã được gửi về email của bạn" });
+                return Ok(new SuccessResponse { Message = "Mã OTP đã được gửi về email của bạn" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending change password OTP for user {UserId}", userId);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "ERROR", Message = ex.Message });
             }
         }
 
@@ -219,7 +221,7 @@ namespace AuthService.Controllers
 
             if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
             {
-                return Unauthorized(new { message = "User ID not found in request headers" });
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "User ID not found in request headers" });
             }
 
             try
@@ -227,17 +229,17 @@ namespace AuthService.Controllers
                 var result = await _authService.BanUserAsync(userId);
                 if (result)
                 {
-                    return Ok(new { message = "User banned successfully" });
+                    return Ok(new SuccessResponse { Message = "User banned successfully" });
                 }
                 else
                 {
-                    return NotFound(new { message = "User not found or already banned" });
+                    return NotFound(new ErrorResponse { ErrorCode = "NOT_FOUND", Message = "User not found or already banned" });
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error banning user {UserId}", userId);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "BAN_USER_ERROR", Message = ex.Message });
             }
         }
 
@@ -248,7 +250,7 @@ namespace AuthService.Controllers
 
             if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
             {
-                return Unauthorized(new { message = "User ID not found in request headers" });
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "User ID not found in request headers" });
             }
 
             try
@@ -256,17 +258,17 @@ namespace AuthService.Controllers
                 var result = await _authService.UnbanUserAsync(userId);
                 if (result)
                 {
-                    return Ok(new { message = "User unbanned successfully" });
+                    return Ok(new SuccessResponse { Message = "User unbanned successfully" });
                 }
                 else
                 {
-                    return NotFound(new { message = "User not found or not banned" });
+                    return NotFound(new ErrorResponse { ErrorCode = "NOT_FOUND", Message = "User not found or not banned" });
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error unbanning user {UserId}", userId);
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ErrorResponse { ErrorCode = "ERROR", Message = ex.Message });
             }
         }
     }
