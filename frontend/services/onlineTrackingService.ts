@@ -37,11 +37,16 @@ export async function getOnlineFriends(
   skip = 0,
   take = 50
 ): Promise<OnlineFriendDto[]> {
-  const { data } = await apiClient.get<OnlineFriendDto[]>(
-    `${GW}/onlinetracking/online-friends`,
-    { params: { skip, take } }
-  );
-  return data;
+  try {
+    const { data } = await apiClient.get<OnlineFriendDto[]>(
+      `${GW}/onlinetracking/online-friends`,
+      { params: { skip, take } }
+    );
+    return data || [];
+  } catch (error) {
+    console.error("[getOnlineFriends] error:", error);
+    return [];
+  }
 }
 
 /**
@@ -53,9 +58,14 @@ export async function getOnlineFriends(
 export async function getOnlineUsers(
   userIds: string[]
 ): Promise<string[]> {
-  const { data } = await apiClient.post<string[]>(
-    `${GW}/onlinetracking/online-users`,
-    { userIds } as GetOnlineUsersRequest
-  );
-  return data;
+  try {
+    const { data } = await apiClient.post<string[]>(
+      `${GW}/onlinetracking/online-users`,
+      { userIds } as GetOnlineUsersRequest
+    );
+    return data || [];
+  } catch (error) {
+    console.error("[getOnlineUsers] error:", error);
+    return [];
+  }
 }

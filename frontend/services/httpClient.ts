@@ -6,6 +6,7 @@ import axios, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import { router } from "expo-router";
 
 /** API Gateway (UITVibes-Microservices.ApiService) — not PostgreSQL (5432). */
 const DEFAULT_API_PORT = 5512;
@@ -98,6 +99,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// Biến lưu trữ Promise làm mới token đang chạy để xử lý race condition (nhiều request 401 cùng lúc)
+let isRefreshing = false;
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
+
+function redirectToLogin(): void {
+  try {
+    router.replace("/auth/login" as any);
+  } catch {
+    // Bỏ qua lỗi nếu router chưa sẵn sàng
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -105,24 +118,61 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint =
+      originalRequest?.url?.includes("/auth/login") ||
+      originalRequest?.url?.includes("/auth/register") ||
+      originalRequest?.url?.includes("/auth/send-otp") ||
+      originalRequest?.url?.includes("/auth/verify-otp") ||
+      originalRequest?.url?.includes("/auth/forgot-password") ||
+      originalRequest?.url?.includes("/auth/refresh-token");
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
+
       try {
-        const refreshToken = await getRefreshTokenFromStorage();
-        if (refreshToken) {
-          // Phải khớp gateway: /auth/{**catch-all} → /api/{**catch-all} (AuthController = /api/Auth/...)
-          const { data } = await axios.post(
-            `${API_BASE_URL}/auth/auth/refresh-token`,
-            { refreshToken },
-          );
-          await saveTokens(data.accessToken, data.refreshToken);
+        if (!isRefreshing) {
+          isRefreshing = true;
+          refreshPromise = (async () => {
+            try {
+              const refreshToken = await getRefreshTokenFromStorage();
+              if (!refreshToken) {
+                await clearTokens();
+                redirectToLogin();
+                return null;
+              }
+              const { data } = await axios.post(
+                `${API_BASE_URL}/auth/auth/refresh-token`,
+                { refreshToken },
+              );
+              await saveTokens(data.accessToken, data.refreshToken);
+              return { accessToken: data.accessToken, refreshToken: data.refreshToken };
+            } catch {
+              // Refresh token không hợp lệ hoặc đã bị revoked
+              await clearTokens();
+              redirectToLogin();
+              return null;
+            } finally {
+              isRefreshing = false;
+            }
+          })();
+        }
+
+        const newTokens = await refreshPromise;
+        if (newTokens?.accessToken) {
           if (!originalRequest.headers) originalRequest.headers = {} as any;
-          (originalRequest.headers as any).Authorization =
-            `Bearer ${data.accessToken}`;
+          (originalRequest.headers as any).Authorization = `Bearer ${newTokens.accessToken}`;
           return apiClient(originalRequest);
+        } else {
+          redirectToLogin();
         }
       } catch {
         await clearTokens();
+        redirectToLogin();
       }
     }
 

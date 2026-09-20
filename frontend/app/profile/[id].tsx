@@ -135,10 +135,14 @@ export default function UserProfileScreen() {
 
   const handleBlockUser = async () => {
     if (!user) return;
-    await blockUser(user.id);
-    setBlockStatus({ blockedByMe: true, blockedMe: false });
-    setUser(null);
-    setPosts([]);
+    try {
+      await blockUser(user.id);
+      setBlockStatus({ blockedByMe: true, blockedMe: false });
+      setUser(null);
+      setPosts([]);
+    } catch (e) {
+      console.error("[Profile] Failed to block user:", e);
+    }
   };
 
   const handleReportUser = () => {

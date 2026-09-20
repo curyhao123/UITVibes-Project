@@ -37,27 +37,47 @@ export async function getNotifications(
   page = 1,
   pageSize = 20,
 ): Promise<PagedResult<Notification>> {
-  const { data } = await apiClient.get<PagedResult<Notification>>(BASE, {
-    params: { page, pageSize },
-  });
-  return data;
+  try {
+    const { data } = await apiClient.get<PagedResult<Notification>>(BASE, {
+      params: { page, pageSize },
+    });
+    return data;
+  } catch (err) {
+    console.warn("[getNotifications] API error:", err);
+    return {
+      items: [],
+      totalCount: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+      hasNext: false,
+    };
+  }
 }
 
 export async function markNotificationRead(
   notificationId: string,
 ): Promise<void> {
-  await apiClient.put(`${BASE}/${notificationId}/read`);
+  try {
+    await apiClient.put(`${BASE}/${notificationId}/read`);
+  } catch {}
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  await apiClient.put(`${BASE}/read-all`);
+  try {
+    await apiClient.put(`${BASE}/read-all`);
+  } catch {}
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
-  const { data } = await apiClient.get<{ unreadCount: number }>(
-    `${BASE}/unread-count`,
-  );
-  return data.unreadCount;
+  try {
+    const { data } = await apiClient.get<{ unreadCount: number }>(
+      `${BASE}/unread-count`,
+    );
+    return data?.unreadCount ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 // --- Notification settings ---
@@ -66,8 +86,12 @@ export interface NotificationSetting {
 }
 
 export async function getNotificationSetting(): Promise<NotificationSetting> {
-  const { data } = await apiClient.get<NotificationSetting>(SETTINGS_BASE);
-  return data;
+  try {
+    const { data } = await apiClient.get<NotificationSetting>(SETTINGS_BASE);
+    return data || { isEnabled: true };
+  } catch {
+    return { isEnabled: true };
+  }
 }
 
 export async function updateNotificationSetting(

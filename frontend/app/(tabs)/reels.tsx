@@ -228,8 +228,13 @@ export default function ReelsScreen() {
   useEffect(() => {
     const loadReels = async () => {
       setIsLoading(true);
-      await refreshReels();
-      setIsLoading(false);
+      try {
+        await refreshReels();
+      } catch (e) {
+        console.warn("[Reels] Failed to load reels:", e);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadReels();
   }, [refreshReels]);

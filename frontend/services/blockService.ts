@@ -78,37 +78,53 @@ export async function getBlockedUsers(
   skip = 0,
   take = 50,
 ): Promise<BlockListDto[]> {
-  const res = await apiClient.get<Record<string, unknown>[] | BlockListDto[]>('/user/block', {
-    params: { skip, take },
-  });
-  return res.data.map((item) =>
-    typeof item === 'object' && item !== null
-      ? normalizeBlockListItem(item as Record<string, unknown>)
-      : (item as BlockListDto),
-  );
+  try {
+    const res = await apiClient.get<Record<string, unknown>[] | BlockListDto[]>('/user/block', {
+      params: { skip, take },
+    });
+    return (res.data || []).map((item) =>
+      typeof item === 'object' && item !== null
+        ? normalizeBlockListItem(item as Record<string, unknown>)
+        : (item as BlockListDto),
+    );
+  } catch (err) {
+    console.error("[getBlockedUsers] error:", err);
+    return [];
+  }
 }
 
 /** GET /user/block/{blockedId}/is-blocked */
 export async function checkIsBlocked(blockedId: string): Promise<boolean> {
-  const res = await apiClient.get<{ isBlocked: boolean }>(
-    `/user/block/${blockedId}/is-blocked`,
-  );
-  return res.data.isBlocked;
+  try {
+    const res = await apiClient.get<{ isBlocked: boolean }>(
+      `/user/block/${blockedId}/is-blocked`,
+    );
+    return res.data?.isBlocked ?? false;
+  } catch {
+    return false;
+  }
 }
 
 /** GET /user/block/{userId}/status */
 export async function getBlockStatus(userId: string): Promise<BlockStatusDto> {
-  const res = await apiClient.get<Record<string, unknown>>(
-    `/user/block/${userId}/status`,
-  );
-  const data = res.data as {
-    blockedByMe?: boolean;
-    blockedMe?: boolean;
-    BlockedByMe?: boolean;
-    BlockedMe?: boolean;
-  };
-  return {
-    blockedByMe: data.blockedByMe ?? data.BlockedByMe ?? false,
-    blockedMe: data.blockedMe ?? data.BlockedMe ?? false,
-  };
+  try {
+    const res = await apiClient.get<Record<string, unknown>>(
+      `/user/block/${userId}/status`,
+    );
+    const data = (res.data || {}) as {
+      blockedByMe?: boolean;
+      blockedMe?: boolean;
+      BlockedByMe?: boolean;
+      BlockedMe?: boolean;
+    };
+    return {
+      blockedByMe: data.blockedByMe ?? data.BlockedByMe ?? false,
+      blockedMe: data.blockedMe ?? data.BlockedMe ?? false,
+    };
+  } catch {
+    return {
+      blockedByMe: false,
+      blockedMe: false,
+    };
+  }
 }

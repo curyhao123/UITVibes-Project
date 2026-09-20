@@ -59,8 +59,12 @@ export default function ProfileScreen() {
 
   const refreshHighlights = useCallback(async () => {
     if (!currentUser?.id) return;
-    const data = await getUserHighlights(currentUser.id);
-    setHighlights(data);
+    try {
+      const data = await getUserHighlights(currentUser.id);
+      setHighlights(data || []);
+    } catch {
+      setHighlights([]);
+    }
   }, [currentUser?.id]);
 
   // Load highlights when profile is focused
@@ -76,6 +80,8 @@ export default function ProfileScreen() {
     setIsRefreshing(true);
     try {
       await Promise.all([refreshMyPosts(), refreshHighlights()]);
+    } catch (e) {
+      console.warn("[Profile] handleRefresh error:", e);
     } finally {
       setIsRefreshing(false);
     }
