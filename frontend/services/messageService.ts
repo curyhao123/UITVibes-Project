@@ -144,21 +144,33 @@ export function transformBEMessage(m: BE_MessageResponse, members: Conversation[
 
 /** GET /conversations — list user's conversations */
 export async function getConversations(): Promise<Conversation[]> {
-  const { data } = await apiClient.get<BE_ConversationResponse[]>(
-    `${GW}/conversations`,
-    { params: { skip: 0, take: 50 } },
-  );
-  return data.map(transformBEConversation);
+  try {
+    const { data } = await apiClient.get<BE_ConversationResponse[]>(
+      `${GW}/conversations`,
+      { params: { skip: 0, take: 50 } },
+    );
+    if (!data || !Array.isArray(data)) return [];
+    return data.map(transformBEConversation);
+  } catch (error) {
+    console.error("[getConversations] API error:", error);
+    return [];
+  }
 }
 
 /** GET /conversations/{id} — get single conversation */
 export async function getConversationById(
   id: string,
 ): Promise<Conversation | undefined> {
-  const { data } = await apiClient.get<BE_ConversationResponse>(
-    `${GW}/conversations/${id}`,
-  );
-  return transformBEConversation(data);
+  try {
+    const { data } = await apiClient.get<BE_ConversationResponse>(
+      `${GW}/conversations/${id}`,
+    );
+    if (!data) return undefined;
+    return transformBEConversation(data);
+  } catch (error) {
+    console.error("[getConversationById] API error:", error);
+    return undefined;
+  }
 }
 
 /** POST /conversations/private — create or get private conversation */
@@ -217,50 +229,58 @@ export async function leaveGroup(
 export async function getMessages(
   conversationId: string,
 ): Promise<{ messages: Message[]; members: Conversation["members"] }> {
-  const [msgRes, convRes] = await Promise.all([
-    apiClient.get<BE_MessageResponse[]>(
-      `${GW}/conversations/${conversationId}/message`,
-      { params: { skip: 0, take: 100 } },
-    ),
-    apiClient.get<BE_ConversationResponse>(
-      `${GW}/conversations/${conversationId}`,
-    ),
-  ]);
+  try {
+    const [msgRes, convRes] = await Promise.all([
+      apiClient.get<BE_MessageResponse[]>(
+        `${GW}/conversations/${conversationId}/message`,
+        { params: { skip: 0, take: 100 } },
+      ),
+      apiClient.get<BE_ConversationResponse>(
+        `${GW}/conversations/${conversationId}`,
+      ),
+    ]);
 
-  // Members from the conversation list endpoint have { userId, username?, displayName, avatarUrl }
-  // Build the member map using whichever shape the backend returned.
-  const convRaw = convRes.data as unknown as Record<string, any>;
-  const rawMembers = (convRes.data.members ?? convRaw.Members ?? []) as RawConversationMember[];
-  const members: Conversation["members"] = rawMembers.map((m) => ({
-    id: m.userId ?? m.UserId ?? "",
-    username: "username" in m && typeof m.username === "string"
-      ? m.username
-      : m.UserId ?? m.userId ?? "",
-    displayName: "displayName" in m && typeof m.displayName === "string"
-      ? m.displayName
-      : m.nickname ?? m.Nickname ?? m.UserId ?? m.userId ?? m.name ?? "User",
-    fullName: "displayName" in m && typeof m.displayName === "string"
-      ? m.displayName
-      : m.nickname ?? m.Nickname ?? "",
-    avatar:
-      "avatarUrl" in m && typeof m.avatarUrl === "string"
-        ? m.avatarUrl
-        : "AvatarUrl" in m && typeof (m as Record<string, any>).AvatarUrl === "string"
-        ? (m as Record<string, any>).AvatarUrl
-        : "",
-    coverImage: "",
-    bio: "",
-    gender: "",
-    followers: 0,
-    following: 0,
-    posts: 0,
-    isVerified: false,
-  }));
+    // Members from the conversation list endpoint have { userId, username?, displayName, avatarUrl }
+    // Build the member map using whichever shape the backend returned.
+    const convRaw = convRes.data as unknown as Record<string, any>;
+    const rawMembers = (convRes.data.members ?? convRaw.Members ?? []) as RawConversationMember[];
+    const members: Conversation["members"] = rawMembers.map((m) => ({
+      id: m.userId ?? m.UserId ?? "",
+      username: "username" in m && typeof m.username === "string"
+        ? m.username
+        : m.UserId ?? m.userId ?? "",
+      displayName: "displayName" in m && typeof m.displayName === "string"
+        ? m.displayName
+        : m.nickname ?? m.Nickname ?? m.UserId ?? m.userId ?? m.name ?? "User",
+      fullName: "displayName" in m && typeof m.displayName === "string"
+        ? m.displayName
+        : m.nickname ?? m.Nickname ?? "",
+      avatar:
+        "avatarUrl" in m && typeof m.avatarUrl === "string"
+          ? m.avatarUrl
+          : "AvatarUrl" in m && typeof (m as Record<string, any>).AvatarUrl === "string"
+          ? (m as Record<string, any>).AvatarUrl
+          : "",
+      coverImage: "",
+      bio: "",
+      gender: "",
+      followers: 0,
+      following: 0,
+      posts: 0,
+      isVerified: false,
+    }));
 
-  return {
-    messages: msgRes.data.map((m) => transformBEMessage(m, members)),
-    members,
-  };
+    return {
+      messages: (msgRes.data || []).map((m) => transformBEMessage(m, members)),
+      members,
+    };
+  } catch (error) {
+    console.error("[getMessages] API error:", error);
+    return {
+      messages: [],
+      members: [],
+    };
+  }
 }
 
 type SendMessagePayload = {

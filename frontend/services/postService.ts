@@ -187,27 +187,42 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
 }
 
 export async function getPosts(): Promise<Post[]> {
-  const { data } = await apiClient.get<BE_PostResponse[]>("/post/feed", {
-    params: { skip: 0, take: 20 },
-  });
-  const posts = await Promise.all(
-    data.map(async (post) => {
-      const author = await fetchUserById(post.userId);
-      return transformBEPost(post, author);
-    }),
-  );
-  return posts;
+  try {
+    const { data } = await apiClient.get<BE_PostResponse[]>("/post/feed", {
+      params: { skip: 0, take: 20 },
+    });
+    if (!data || !Array.isArray(data)) return [];
+    const posts = await Promise.all(
+      data.map(async (post) => {
+        try {
+          const author = await fetchUserById(post.userId);
+          return transformBEPost(post, author);
+        } catch {
+          return transformBEPost(post, undefined);
+        }
+      }),
+    );
+    return posts;
+  } catch (err: any) {
+    console.error("[getPosts] API error:", err?.response?.status, err?.message);
+    return [];
+  }
 }
 
 export async function getTrendingHashtags(
   skip = 0,
   take = 20,
 ): Promise<BE_HashtagDto[]> {
-  const { data } = await apiClient.get<BE_HashtagDto[]>(
-    "/post/hashtag/trending",
-    { params: { skip, take } },
-  );
-  return data || [];
+  try {
+    const { data } = await apiClient.get<BE_HashtagDto[]>(
+      "/post/hashtag/trending",
+      { params: { skip, take } },
+    );
+    return data || [];
+  } catch (err) {
+    console.error("[getTrendingHashtags] API error:", err);
+    return [];
+  }
 }
 
 export async function searchHashtags(
@@ -217,11 +232,16 @@ export async function searchHashtags(
 ): Promise<BE_HashtagDto[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
-  const { data } = await apiClient.get<BE_HashtagDto[]>(
-    "/post/hashtag/search",
-    { params: { q: trimmed, skip, take } },
-  );
-  return data || [];
+  try {
+    const { data } = await apiClient.get<BE_HashtagDto[]>(
+      "/post/hashtag/search",
+      { params: { q: trimmed, skip, take } },
+    );
+    return data || [];
+  } catch (err) {
+    console.error("[searchHashtags] API error:", err);
+    return [];
+  }
 }
 
 export async function getPostsByHashtag(
@@ -231,38 +251,54 @@ export async function getPostsByHashtag(
 ): Promise<Post[]> {
   const normalized = hashtagName.trim().replace(/^#+/, "");
   if (!normalized) return [];
-  const { data } = await apiClient.get<BE_PostResponse[]>(
-    `/post/hashtag/${encodeURIComponent(normalized)}/posts`,
-    { params: { skip, take } },
-  );
-  const posts = await Promise.all(
-    (data || []).map(async (post) => {
-      try {
-        const author = await fetchUserById(post.userId);
-        return transformBEPost(post, author);
-      } catch {
-        return transformBEPost(post, undefined);
-      }
-    }),
-  );
-  return posts;
+  try {
+    const { data } = await apiClient.get<BE_PostResponse[]>(
+      `/post/hashtag/${encodeURIComponent(normalized)}/posts`,
+      { params: { skip, take } },
+    );
+    const posts = await Promise.all(
+      (data || []).map(async (post) => {
+        try {
+          const author = await fetchUserById(post.userId);
+          return transformBEPost(post, author);
+        } catch {
+          return transformBEPost(post, undefined);
+        }
+      }),
+    );
+    return posts;
+  } catch (err) {
+    console.error("[getPostsByHashtag] API error:", err);
+    return [];
+  }
 }
 
 export async function getPostById(id: string): Promise<Post | undefined> {
-  const { data } = await apiClient.get<BE_PostResponse>(`/post/${id}`);
-  const author = await fetchUserById(data.userId);
+  try {
+    const { data } = await apiClient.get<BE_PostResponse>(`/post/${id}`);
+    if (!data) return undefined;
+    const author = await fetchUserById(data.userId);
 
-  // Fetch comments separately
-  const comments = await getPostComments(id);
+    // Fetch comments separately
+    const comments = await getPostComments(id);
 
-  const post = transformBEPost(data, author);
-  post.comments = comments;
-  return post;
+    const post = transformBEPost(data, author);
+    post.comments = comments;
+    return post;
+  } catch (err) {
+    console.error("[getPostById] API error:", err);
+    return undefined;
+  }
 }
 
 export async function getPostLikes(postId: string): Promise<BE_LikeDto[]> {
-  const { data } = await apiClient.get<BE_LikeDto[]>(`/post/${postId}/likes`);
-  return data;
+  try {
+    const { data } = await apiClient.get<BE_LikeDto[]>(`/post/${postId}/likes`);
+    return data || [];
+  } catch (err) {
+    console.error("[getPostLikes] API error:", err);
+    return [];
+  }
 }
 
 export async function getPostComments(postId: string): Promise<CommentType[]> {
@@ -328,7 +364,7 @@ export async function getMyPosts(): Promise<Post[]> {
       e?.response?.data,
       e?.message,
     );
-    throw e;
+    return [];
   }
 }
 

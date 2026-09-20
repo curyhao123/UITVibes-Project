@@ -49,11 +49,16 @@ export async function getAllUsers(
   skip = 0,
   take = 20,
 ): Promise<BE_AdminUserProfile[]> {
-  const { data } = await apiClient.get<BE_AdminUserProfile[]>(
-    `${BASE_USER}`,
-    { params: { skip, take } },
-  );
-  return data;
+  try {
+    const { data } = await apiClient.get<BE_AdminUserProfile[]>(
+      `${BASE_USER}`,
+      { params: { skip, take } },
+    );
+    return data || [];
+  } catch (err) {
+    console.error("[getAllUsers] error:", err);
+    return [];
+  }
 }
 
 /** GET /userprofile/reports?skip=0&take=20&status=Pending */
@@ -62,11 +67,16 @@ export async function getUserReports(
   take = 20,
   status?: AdminReportStatus,
 ): Promise<BE_UserReport[]> {
-  const { data } = await apiClient.get<BE_UserReport[]>(
-    `${BASE_USER}/reports`,
-    { params: { skip, take, ...(status ? { status } : {}) } },
-  );
-  return data;
+  try {
+    const { data } = await apiClient.get<BE_UserReport[]>(
+      `${BASE_USER}/reports`,
+      { params: { skip, take, ...(status ? { status } : {}) } },
+    );
+    return data || [];
+  } catch (err) {
+    console.error("[getUserReports] error:", err);
+    return [];
+  }
 }
 
 // ─── Post Reports ──────────────────────────────────────────────────────────────
@@ -77,11 +87,16 @@ export async function getPostReports(
   take = 20,
   status?: AdminReportStatus,
 ): Promise<BE_PostReport[]> {
-  const { data } = await apiClient.get<BE_PostReport[]>(
-    `${BASE_POST}/post-report`,
-    { params: { skip, take, ...(status ? { status } : {}) } },
-  );
-  return data;
+  try {
+    const { data } = await apiClient.get<BE_PostReport[]>(
+      `${BASE_POST}/post-report`,
+      { params: { skip, take, ...(status ? { status } : {}) } },
+    );
+    return data || [];
+  } catch (err) {
+    console.error("[getPostReports] error:", err);
+    return [];
+  }
 }
 
 // ─── Resolve / Reject Reports ───────────────────────────────────────────────────

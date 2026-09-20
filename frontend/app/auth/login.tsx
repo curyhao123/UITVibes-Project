@@ -31,6 +31,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -54,32 +55,39 @@ export default function LoginScreen() {
   const isFormFilled = email.trim().length > 0 && password.trim().length > 0;
 
   // ── Validators ────────────────────────────────────────────────────────────
-  const validateEmail = (value: string) => {
+  const validateEmail = (value: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value.trim()) {
       setEmailError("Email is required.");
+      return false;
     } else if (!emailRegex.test(value)) {
       setEmailError("Please enter a valid email address.");
+      return false;
     } else {
       setEmailError("");
+      return true;
     }
   };
 
-  const validatePassword = (value: string) => {
+  const validatePassword = (value: string): boolean => {
     if (!value) {
       setPasswordError("Password is required.");
+      return false;
     } else if (value.length < 6) {
       setPasswordError("Password must be at least 6 characters.");
+      return false;
     } else {
       setPasswordError("");
+      return true;
     }
   };
 
   // ── Login handler ─────────────────────────────────────────────────────────
   const handleLogin = async () => {
-    validateEmail(email);
-    validatePassword(password);
-    if (emailError || passwordError) return;
+    setGeneralError("");
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    if (!isEmailValid || !isPasswordValid) return;
 
     setIsLoading(true);
     try {
@@ -94,8 +102,11 @@ export default function LoginScreen() {
       } else if (err?.errorCode === "IS_BANNED") {
         setBannedModalVisible(true);
       } else {
+        const errorMsg =
+          err?.message ?? "Invalid email or password. Please check your credentials.";
+        setGeneralError(errorMsg);
         setToastType("error");
-        setToastMessage(err?.message ?? "Login failed. Please try again.");
+        setToastMessage(errorMsg);
         setToastVisible(true);
       }
     } finally {
@@ -184,12 +195,20 @@ export default function LoginScreen() {
 
           {/* ── Form ── */}
           <View style={styles.formSection}>
+            {generalError ? (
+              <View style={styles.errorBanner}>
+                <Feather name="alert-circle" size={18} color={AppColors.error} />
+                <Text style={styles.errorBannerText}>{generalError}</Text>
+              </View>
+            ) : null}
+
             <FormInput
               label="Email"
               placeholder="you@example.com"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                if (generalError) setGeneralError("");
                 if (emailError) validateEmail(text);
               }}
               onBlur={() => validateEmail(email)}
@@ -206,6 +225,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
+                if (generalError) setGeneralError("");
                 if (passwordError) validatePassword(text);
               }}
               onBlur={() => validatePassword(password)}
@@ -398,6 +418,25 @@ const styles = StyleSheet.create({
   },
   formSection: {
     marginBottom: 8,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FCA5A5",
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: AppColors.error,
+    fontWeight: "500",
+    lineHeight: 18,
   },
   forgotLink: {
     alignSelf: "flex-end",

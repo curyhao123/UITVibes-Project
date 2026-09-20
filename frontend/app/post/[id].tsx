@@ -88,15 +88,20 @@ export default function PostDetailScreen() {
 
   const loadPost = async () => {
     setIsLoading(true);
-    const data = await getPostById(id as string);
-    if (data) {
-      setPost(data);
-      setIsFollowingAuthor(!!data.user.isFollowing);
-      setLocalReposted(data.isReposted ?? false);
-      setLocalRepostCount(data.repostCount ?? 0);
-      setIsBookmarked(data.isBookmarked ?? false);
+    try {
+      const data = await getPostById(id as string);
+      if (data) {
+        setPost(data);
+        setIsFollowingAuthor(!!data.user.isFollowing);
+        setLocalReposted(data.isReposted ?? false);
+        setLocalRepostCount(data.repostCount ?? 0);
+        setIsBookmarked(data.isBookmarked ?? false);
+      }
+    } catch (e) {
+      console.warn("[PostDetail] Failed to load post:", e);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleLike = async () => {

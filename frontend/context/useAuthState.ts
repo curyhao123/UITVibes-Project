@@ -69,7 +69,7 @@ export const useAuthState = () => {
             ? error.message
             : 'Login failed. Please check your credentials and try again.';
         setAuthError(message);
-        return null;
+        throw error instanceof Error ? error : new Error(message);
       } finally {
         setIsLoading(false);
       }

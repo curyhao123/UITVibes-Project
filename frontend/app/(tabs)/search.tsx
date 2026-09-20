@@ -70,7 +70,9 @@ export default function SearchScreen() {
     setIsLoadingRecent(true);
     try {
       const searches = await getRecentSearches();
-      setRecentSearches(searches);
+      setRecentSearches(searches || []);
+    } catch {
+      setRecentSearches([]);
     } finally {
       setIsLoadingRecent(false);
     }
@@ -80,7 +82,9 @@ export default function SearchScreen() {
     setIsLoadingPosts(true);
     try {
       const allPosts = await getPosts();
-      setPosts(allPosts);
+      setPosts(allPosts || []);
+    } catch {
+      setPosts([]);
     } finally {
       setIsLoadingPosts(false);
     }
@@ -90,7 +94,7 @@ export default function SearchScreen() {
     setIsLoadingHashtags(true);
     try {
       const data = await getTrendingHashtags(0, 10);
-      setTrendingHashtags(mapHashtagOptions(data));
+      setTrendingHashtags(mapHashtagOptions(data || []));
     } catch {
       setTrendingHashtags([]);
     } finally {
@@ -99,11 +103,15 @@ export default function SearchScreen() {
   }, []);
 
   const loadInitialData = useCallback(async () => {
-    await Promise.all([
-      loadPostsFeed(),
-      loadTrendingHashtags(),
-      loadRecentSearches(),
-    ]);
+    try {
+      await Promise.all([
+        loadPostsFeed(),
+        loadTrendingHashtags(),
+        loadRecentSearches(),
+      ]);
+    } catch (e) {
+      console.warn("[Search] loadInitialData error:", e);
+    }
   }, [loadPostsFeed, loadTrendingHashtags, loadRecentSearches]);
 
   useEffect(() => {
@@ -119,11 +127,13 @@ export default function SearchScreen() {
         try {
           if (trimmed) {
             const results = await searchUsers(trimmed);
-            setUsers(results);
+            setUsers(results || []);
           } else {
             setUsers([]);
             await loadRecentSearches();
           }
+        } catch {
+          setUsers([]);
         } finally {
           setIsSearching(false);
         }
@@ -150,7 +160,9 @@ export default function SearchScreen() {
         setIsLoadingHashtags(true);
         try {
           const results = await searchHashtags(hashtagQuery);
-          setHashtagResults(mapHashtagOptions(results));
+          setHashtagResults(mapHashtagOptions(results || []));
+        } catch {
+          setHashtagResults([]);
         } finally {
           setIsLoadingHashtags(false);
         }
@@ -163,7 +175,7 @@ export default function SearchScreen() {
       try {
         const allPosts = await getPosts();
         const lower = trimmed.toLowerCase();
-        const filtered = allPosts.filter((post) => {
+        const filtered = (allPosts || []).filter((post) => {
           const caption = post.caption?.toLowerCase() ?? "";
           const tags = (post.tags || []).some((t) =>
             t.toLowerCase().includes(lower),
@@ -171,6 +183,8 @@ export default function SearchScreen() {
           return caption.includes(lower) || tags;
         });
         setPosts(filtered);
+      } catch {
+        setPosts([]);
       } finally {
         setIsLoadingPosts(false);
       }
