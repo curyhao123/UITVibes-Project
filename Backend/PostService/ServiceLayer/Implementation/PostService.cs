@@ -35,8 +35,6 @@ public class PostService : IPostService
         _postLikedPublisher = postLikedPublisher;
         _userProfileRpcClient = userProfileRpcClient;
         _repostService = repostService;
-        _userProfileRpcClient = userProfileRpcClient;
-        _postLikedPublisher = postLikedPublisher;
         _postMentionedPublisher = postMentionedPublisher;
     }
 
@@ -51,7 +49,9 @@ public class PostService : IPostService
             Visibility = (PostVisibility)request.Visibility,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            PostType = PostType.Original
+            PostType = PostType.Original,
+            ModerationStatus = ModerationStatus.Pending,
+            ModerationRequestedAt = DateTime.UtcNow,
         };
 
         _context.Posts.Add(post);

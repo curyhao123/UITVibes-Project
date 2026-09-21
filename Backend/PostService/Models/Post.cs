@@ -46,13 +46,19 @@ public class Post
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    /// Moderation
+    public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+    public DateTime? ModeratedAt { get; set; }
+    public string? ModerationReason { get; set; }          // lý do hiển thị cho tác giả
+    public DateTime? ModerationRequestedAt { get; set; }   // lần gần nhất publish post.created (cho sweeper)
+
     // Navigation properties
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Like> Likes { get; set; } = new List<Like>();
     public ICollection<PostHashtag> Hashtags { get; set; } = new List<PostHashtag>();
     public ICollection<PostMention> Mentions { get; set; } = new List<PostMention>();
 
-    public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();  
+    public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();
 }
 
 
