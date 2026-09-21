@@ -27,5 +27,5 @@ namespace NotificationService.Models
         public void Deactivate() => IsActive = false;
     }
 
-    
+
 }
