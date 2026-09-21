@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 using RabbitMQ.Client;

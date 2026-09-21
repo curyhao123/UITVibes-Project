@@ -1,4 +1,5 @@
 using MessageService.DTOs;
+using MessageService.Enums;
 using MessageService.Models;
 using MessageService.ServiceLayer.Interface;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using NotificationService.Enums;
 
 namespace NotificationService.Models
 {
@@ -37,7 +38,4 @@ namespace NotificationService.Models
             Status = RetryCount >= 3 ? OutboxStatus.DeadLettered : OutboxStatus.Pending;
         }
     }
-
-    public enum OutboxStatus { Pending, Sent, DeadLettered }
-    public enum DeliveryChannel { InApp, Push, Email }
 }

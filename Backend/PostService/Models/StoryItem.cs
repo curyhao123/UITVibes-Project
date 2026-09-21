@@ -1,4 +1,6 @@
-﻿namespace PostService.Models
+﻿using PostService.Enums;
+
+namespace PostService.Models
 {
     public class StoryItem
     {

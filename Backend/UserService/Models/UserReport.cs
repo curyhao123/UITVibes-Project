@@ -1,3 +1,7 @@
+
+
+using UserService.Enums;
+
 namespace UserService.Models
 {
     public class UserReport
@@ -26,11 +30,5 @@ namespace UserService.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ResolvedAt { get; set; }
     }
-
-    public enum ReportStatus
-    {
-        Pending = 0,    // Chờ xử lý
-        Resolved = 1,   // Đã ghi nhận
-        Dismissed = 2   // Bỏ qua
-    }
+    
 }

@@ -1,4 +1,6 @@
-﻿namespace MessageService.Models
+﻿using MessageService.Enums;
+
+namespace MessageService.Models
 {
     public class ConversationMember
     {
@@ -17,8 +19,3 @@
     }
 }
 
-public enum MemberRole
-{
-    Member = 0,
-    Admin = 1
-}

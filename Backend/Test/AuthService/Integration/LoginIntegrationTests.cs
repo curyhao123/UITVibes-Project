@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using AuthService.DTOs;
+using AuthService.Enums;
 using AuthService.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

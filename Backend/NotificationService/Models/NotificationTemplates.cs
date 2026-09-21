@@ -1,4 +1,6 @@
-﻿namespace NotificationService.Models
+﻿using NotificationService.Enums;
+
+namespace NotificationService.Models
 {
     public static class NotificationTemplates
     {

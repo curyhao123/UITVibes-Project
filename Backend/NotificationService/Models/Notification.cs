@@ -1,4 +1,6 @@
-﻿namespace NotificationService.Models
+﻿using NotificationService.Enums;
+
+namespace NotificationService.Models
 {
     public class Notification
     {
@@ -25,13 +27,3 @@
     }
 }
 
-public enum NotificationType
-{
-    NewMessage,
-    MessageRead,
-    PostLiked,
-    PostCommented,
-    NewFollower,
-    Mentioned,
-    Tagged
-}

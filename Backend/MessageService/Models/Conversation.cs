@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using MessageService.Enums;
 
 namespace MessageService.Models
 {
@@ -20,8 +21,4 @@ namespace MessageService.Models
     }
 }
 
-public enum ConversationType
-{
-    Private = 0,
-    Group = 1
-}
+

@@ -1,4 +1,5 @@
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Models;
 
 namespace PostService.ServiceLayer.Interface;

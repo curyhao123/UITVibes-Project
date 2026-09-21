@@ -1,3 +1,4 @@
+using UserService.Enums;
 using UserService.Models;
 
 namespace UserService.DTOs

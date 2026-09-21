@@ -1,4 +1,6 @@
-﻿namespace NotificationService.DTOs
+﻿using NotificationService.Enums;
+
+namespace NotificationService.DTOs
 {
     // Input từ Consumer (RabbitMQ event)
     public record NotificationInput(

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 

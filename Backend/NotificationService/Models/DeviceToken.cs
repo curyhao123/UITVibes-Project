@@ -1,4 +1,6 @@
-﻿namespace NotificationService.Models
+﻿using NotificationService.Enums;
+
+namespace NotificationService.Models
 {
     public class DeviceToken
     {
@@ -25,5 +27,5 @@
         public void Deactivate() => IsActive = false;
     }
 
-    public enum DevicePlatform { Android, iOS }
+    
 }

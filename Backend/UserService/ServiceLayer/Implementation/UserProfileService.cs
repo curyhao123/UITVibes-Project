@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using UserService.DTOs;
+using UserService.Enums;
 using UserService.Messaging.Interface;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;

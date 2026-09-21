@@ -4,6 +4,7 @@ using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 using System.Text.RegularExpressions;
+using PostService.Enums;
 
 namespace PostService.ServiceLayer.Implementation;
 
@@ -550,7 +551,7 @@ public class PostService : IPostService
             .AsQueryable();
         if (status.HasValue)
         {
-            query = query.Where(r => r.Status == (Models.ReportStatus)status.Value);
+            query = query.Where(r => r.Status == status.Value);
         }
 
         var reportEntities = await query
@@ -605,7 +606,7 @@ public class PostService : IPostService
             throw new KeyNotFoundException("Post not found");
 
         var existingReport = await _context.PostReports
-            .FirstOrDefaultAsync(r => r.PostId == request.PostId && r.ReporterId == userId && r.Status == Models.ReportStatus.Pending);
+            .FirstOrDefaultAsync(r => r.PostId == request.PostId && r.ReporterId == userId && r.Status == ReportStatus.Pending);
         if (existingReport != null)
             throw new InvalidOperationException("You have already reported this post and it's still pending review");
 

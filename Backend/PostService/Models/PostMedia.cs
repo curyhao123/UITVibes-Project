@@ -1,3 +1,5 @@
+using PostService.Enums;
+
 namespace PostService.Models;
 
 public class PostMedia
@@ -28,9 +30,3 @@ public class PostMedia
     public Post Post { get; set; } = null!;
 }
 
-public enum MediaType
-{
-    Image = 0,
-    Video = 1,
-    Gif = 2
-}
