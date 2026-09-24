@@ -52,12 +52,15 @@ public class PostDbContext : DbContext
             entity.Property(e => e.Location).HasMaxLength(200);
             entity.Property(e => e.Visibility).HasConversion<int>();
             entity.Property(e => e.PostType).HasConversion<int>();
+            entity.Property(p => p.ModerationReason).HasMaxLength(500);
 
             // Index để query "các bài repost của user X"
             entity.HasIndex(e => new { e.UserId, e.PostType });
 
             // Index để đếm repost của bài gốc
             entity.HasIndex(e => e.OriginalPostId);
+
+            entity.HasIndex(p => new { p.ModerationStatus, p.CreatedAt });
 
             // Self-referencing for shared posts
             entity.HasOne(e => e.OriginalPost)

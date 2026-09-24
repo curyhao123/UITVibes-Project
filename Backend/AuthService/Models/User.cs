@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using Role = AuthService.Enums.Role;
 
 namespace AuthService.Models
 {
@@ -25,8 +26,3 @@ namespace AuthService.Models
     }
 }
 
-public enum Role
-{
-    User = 0,
-    Admin = 1
-}

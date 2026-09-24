@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using NotificationService.Enums;
 using NotificationService.Models;
 using NotificationService.ServiceLayer.Interface;
 

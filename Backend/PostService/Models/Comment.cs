@@ -33,4 +33,5 @@ public class Comment
     public Post Post { get; set; } = null!;
     public ICollection<Comment> Replies { get; set; } = new List<Comment>();
     public ICollection<CommentLike> Likes { get; set; } = new List<CommentLike>();
+    public ModerationResult? ModerationResult { get; set; } = null;
 }

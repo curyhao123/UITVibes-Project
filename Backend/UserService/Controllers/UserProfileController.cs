@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using UserService.DTOs;
+using UserService.Enums;
 using UserService.Models;
 using UserService.ServiceLayer.Interface;
 

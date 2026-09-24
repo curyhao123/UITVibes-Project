@@ -1,4 +1,5 @@
 using UserService.DTOs;
+using UserService.Enums;
 using UserService.Models;
 
 namespace UserService.ServiceLayer.Interface;

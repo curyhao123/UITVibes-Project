@@ -89,12 +89,11 @@ namespace PostService.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("LikesCount")
                         .HasColumnType("integer");
@@ -302,6 +301,19 @@ namespace PostService.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTime?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModerationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ModerationRequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ModerationStatus")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("OriginalPostId")
                         .HasColumnType("uuid");
 
@@ -335,6 +347,8 @@ namespace PostService.Migrations
                     b.HasIndex("OriginalPostId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("ModerationStatus", "CreatedAt");
 
                     b.HasIndex("UserId", "CreatedAt");
 

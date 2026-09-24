@@ -1,3 +1,5 @@
+using PostService.Enums;
+
 namespace PostService.Models
 {
     public class PostReport
@@ -26,12 +28,5 @@ namespace PostService.Models
         // Thời gian
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ResolvedAt { get; set; }
-    }
-
-    public enum ReportStatus
-    {
-        Pending = 0,    // Chờ xử lý
-        Resolved = 1,   // Đã xử lý (ẩn bài)
-        Dismissed = 2   // Bỏ qua
     }
 }

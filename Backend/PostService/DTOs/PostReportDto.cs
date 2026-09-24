@@ -1,3 +1,4 @@
+using PostService.Enums;
 using PostService.Models;
 
 namespace PostService.DTOs

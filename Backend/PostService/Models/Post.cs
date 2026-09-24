@@ -1,4 +1,6 @@
-﻿namespace PostService.Models;
+﻿using PostService.Enums;
+
+namespace PostService.Models;
 
 public class Post
 {
@@ -44,25 +46,20 @@ public class Post
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    /// Moderation
+    public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+    public DateTime? ModeratedAt { get; set; }
+    public string? ModerationReason { get; set; }
+
     // Navigation properties
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Like> Likes { get; set; } = new List<Like>();
     public ICollection<PostHashtag> Hashtags { get; set; } = new List<PostHashtag>();
     public ICollection<PostMention> Mentions { get; set; } = new List<PostMention>();
 
-    public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();  // ← thêm mới
+    public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();
+
+    public ModerationResult? ModerationResult { get; set; } = null;
 }
 
-public enum PostVisibility
-{
-    Public = 0,      // Everyone can see
-    Followers = 1,   // Only followers
-    Private = 2,      // Only mentioned users
-    Hidden = 3      // Hidden from everyone (used for soft delete or content violation)
-}
 
-public enum PostType
-{
-    Original = 0,
-    Repost = 1    // repost vào feed, giữ nguyên bài gốc
-}

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
@@ -51,7 +52,7 @@ public class CommentService : ICommentService
         }
 
         // Check if post exists
-        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted && (p.UserId == userId || p.ModerationStatus == ModerationStatus.Approved));
 
         if (post == null)
             throw new KeyNotFoundException("Post not found");
@@ -183,7 +184,7 @@ public class CommentService : ICommentService
     public async Task<List<CommentDto>> GetPostCommentsAsync(Guid postId, Guid? currentUserId, int skip = 0, int take = 50)
     {
         // Check if post exists
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted);
+        var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted && (p.UserId == currentUserId || p.ModerationStatus == ModerationStatus.Approved));
 
         if (!postExists)
             throw new KeyNotFoundException("Post not found");

@@ -2,6 +2,7 @@
 using NotificationService.DTOs;
 using NotificationService.Models;
 using System.Text.Json;
+using NotificationService.Enums;
 
 namespace NotificationService.ServiceLayer.Implementation
 {

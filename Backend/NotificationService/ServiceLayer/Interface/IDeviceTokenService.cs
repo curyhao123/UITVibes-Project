@@ -1,4 +1,5 @@
-﻿using NotificationService.Models;
+﻿using NotificationService.Enums;
+using NotificationService.Models;
 
 namespace NotificationService.ServiceLayer.Interface
 {

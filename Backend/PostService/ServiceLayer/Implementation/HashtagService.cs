@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 
@@ -94,7 +95,7 @@ public class HashtagService : IHashtagService
 
         // ✅ Include BEFORE any Select/projection
         var posts = await _context.Posts
-            .Where(p => postIds.Contains(p.Id) && !p.IsDeleted && p.Visibility == PostVisibility.Public)
+            .Where(p => postIds.Contains(p.Id) && !p.IsDeleted && p.Visibility == PostVisibility.Public && (p.UserId == currentUserId || p.ModerationStatus == ModerationStatus.Approved))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
