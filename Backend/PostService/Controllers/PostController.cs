@@ -280,9 +280,16 @@ public class PostController : ControllerBase
     {
         if (take > 100) take = 100;
 
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        Guid? currentUserId = null;
+        if (!string.IsNullOrEmpty(userIdHeader) && Guid.TryParse(userIdHeader, out var userId))
+        {
+            currentUserId = userId;
+        }
+
         try
         {
-            var likes = await _postService.GetPostLikesAsync(postId, skip, take);
+            var likes = await _postService.GetPostLikesAsync(postId, currentUserId, skip, take);
             return Ok(likes);
         }
         catch (KeyNotFoundException ex)

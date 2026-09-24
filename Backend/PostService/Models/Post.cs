@@ -49,8 +49,7 @@ public class Post
     /// Moderation
     public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
     public DateTime? ModeratedAt { get; set; }
-    public string? ModerationReason { get; set; }          // lý do hiển thị cho tác giả
-    public DateTime? ModerationRequestedAt { get; set; }   // lần gần nhất publish post.created (cho sweeper)
+    public string? ModerationReason { get; set; }
 
     // Navigation properties
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
@@ -59,6 +58,8 @@ public class Post
     public ICollection<PostMention> Mentions { get; set; } = new List<PostMention>();
 
     public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();
+
+    public ModerationResult? ModerationResult { get; set; } = null;
 }
 
 

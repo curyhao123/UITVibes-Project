@@ -51,7 +51,6 @@ public class PostService : IPostService
             UpdatedAt = DateTime.UtcNow,
             PostType = PostType.Original,
             ModerationStatus = ModerationStatus.Pending,
-            ModerationRequestedAt = DateTime.UtcNow,
         };
 
         _context.Posts.Add(post);
@@ -103,7 +102,7 @@ public class PostService : IPostService
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
             .Include(p => p.OriginalPost).ThenInclude(op => op!.Media)
-            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted && (p.UserId == currentUserId || p.ModerationStatus == ModerationStatus.Approved));
 
         if (post == null)
             throw new KeyNotFoundException("Post not found");
@@ -114,7 +113,7 @@ public class PostService : IPostService
     public async Task<List<PostDto>> GetUserPostsAsync(Guid userId, Guid? currentUserId = null, int skip = 0, int take = 20)
     {
         var posts = await _context.Posts
-            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original && p.Visibility != PostVisibility.Hidden)
+            .Where(p => p.UserId == userId && !p.IsDeleted && p.PostType == PostType.Original && p.Visibility != PostVisibility.Hidden && (p.UserId == currentUserId || p.ModerationStatus == ModerationStatus.Approved))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -144,7 +143,8 @@ public class PostService : IPostService
             .Where(p => !p.IsDeleted
                      && p.PostType == PostType.Original
                      && p.Visibility != PostVisibility.Hidden
-                     && followingIds.Contains(p.UserId))
+                     && followingIds.Contains(p.UserId)
+                     && (p.UserId == userId || p.ModerationStatus == ModerationStatus.Approved))
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Mentions)
@@ -405,7 +405,7 @@ public class PostService : IPostService
             dto.IsRepostedByCurrentUser = await _repostService.HasRepostedAsync(post.Id, currentUserId.Value);
         }
 
-        if (post.OriginalPost != null)
+        if (post.OriginalPost != null && (post.OriginalPost.UserId == currentUserId || post.OriginalPost.ModerationStatus == ModerationStatus.Approved))
         {
             dto.OriginalPost = await MapToDto(post.OriginalPost, currentUserId);
         }
@@ -415,7 +415,7 @@ public class PostService : IPostService
     public async Task<LikeResponse> LikePostAsync(Guid postId, Guid userId)
     {
         // Check if post exists
-        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+        var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted && (p.UserId == userId || p.ModerationStatus == ModerationStatus.Approved));
 
         if (post == null)
             throw new KeyNotFoundException("Post not found");
@@ -502,10 +502,10 @@ public class PostService : IPostService
         _logger.LogInformation("User {UserId} unliked post {PostId}", userId, postId);
     }
 
-    public async Task<List<LikeDto>> GetPostLikesAsync(Guid postId, int skip = 0, int take = 50)
+    public async Task<List<LikeDto>> GetPostLikesAsync(Guid postId, Guid? currentUserId = null, int skip = 0, int take = 50)
     {
         // Check if post exists
-        var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted);
+        var postExists = await _context.Posts.AnyAsync(p => p.Id == postId && !p.IsDeleted && (p.UserId == currentUserId || p.ModerationStatus == ModerationStatus.Approved));
 
         if (!postExists)
             throw new KeyNotFoundException("Post not found");

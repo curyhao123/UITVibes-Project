@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace PostService.ServiceLayer.Implementation
 
         public async Task<BookmarkDto> CreateBookmarkAsync(CreateBookmarkRequest request)
         {
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == request.PostId && !p.IsDeleted);
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == request.PostId && !p.IsDeleted && (p.UserId == request.UserId || p.ModerationStatus == ModerationStatus.Approved));
             if (post == null)
             {
                 _logger.LogWarning("Post with ID {PostId} not found for bookmarking", request.PostId);
@@ -96,7 +97,7 @@ namespace PostService.ServiceLayer.Implementation
             .Include(p => p.Media)
             .Include(p => p.Hashtags).ThenInclude(ph => ph.Hashtag)
             .Include(p => p.Likes)
-            .FirstOrDefaultAsync(p => p.Id == bookmark.PostId);
+            .FirstOrDefaultAsync(p => p.Id == bookmark.PostId && !p.IsDeleted && (p.UserId == bookmark.UserId || p.ModerationStatus == ModerationStatus.Approved));
 
             if (post == null)
             {

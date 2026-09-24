@@ -23,7 +23,7 @@ namespace PostService.ServiceLayer.Implementation
         {
             // 1. Kiểm tra bài gốc có tồn tại không
             var originalPost = await _context.Posts
-                .FirstOrDefaultAsync(p => p.Id == originalPostId && !p.IsDeleted);
+                .FirstOrDefaultAsync(p => p.Id == originalPostId && !p.IsDeleted && (p.UserId == userId || p.ModerationStatus == ModerationStatus.Approved));
 
             if (originalPost == null)
                 throw new KeyNotFoundException("Post not found");
@@ -142,7 +142,7 @@ namespace PostService.ServiceLayer.Implementation
 
             foreach (var repost in reposts)
             {
-                if (repost.OriginalPost == null || repost.OriginalPost.IsDeleted)
+                if (repost.OriginalPost == null || repost.OriginalPost.IsDeleted || (repost.OriginalPost.UserId != currentUserId && repost.OriginalPost.ModerationStatus != ModerationStatus.Approved))
                     continue;
 
                 var dto = MapRepostToDto(repost, currentUserId);

@@ -62,7 +62,8 @@ public class PostCountRpcConsumer : BackgroundService
                         p => p.UserId == request.UserId
                              && !p.IsDeleted
                              && p.PostType == PostType.Original
-                             && p.Visibility != PostVisibility.Hidden,
+                             && p.Visibility != PostVisibility.Hidden
+                             && p.ModerationStatus == ModerationStatus.Approved,
                         stoppingToken);
 
                     response = new PostCountRpcResponse
