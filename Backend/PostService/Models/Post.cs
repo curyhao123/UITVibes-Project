@@ -1,4 +1,4 @@
-﻿using PostService.Enums;
+using PostService.Enums;
 
 namespace PostService.Models;
 
@@ -49,7 +49,6 @@ public class Post
     /// Moderation
     public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
     public DateTime? ModeratedAt { get; set; }
-    public string? ModerationReason { get; set; }
 
     // Navigation properties
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
@@ -59,7 +58,6 @@ public class Post
 
     public ICollection<PostReport> Reports { get; set; } = new List<PostReport>();
 
-    public ModerationResult? ModerationResult { get; set; } = null;
 }
 
 

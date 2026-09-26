@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PostService.Configurations;
 using PostService.Messaging;
 using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
 using PostService.ServiceLayer.Interface;
+using PostService.Workers;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +38,33 @@ builder.Services.AddScoped<ICommentMentionedPublisher, CommentMentionedPublisher
 builder.Services.AddScoped<IHighlightService, HighlightService>();
 builder.Services.AddScoped<IReelService, ReelService>();
 builder.Services.AddHostedService<PostCountRpcConsumer>();
+builder.Services.AddHostedService<PostModerationWorker>();
+builder.Services.AddOptions<ModerationOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IModerationResponseParser, ModerationResponseParser>();
+builder.Services.AddSingleton<IModerationPromptBuilder, ModerationPromptBuilder>();
+builder.Services.AddScoped<IModerationDecisionEvaluator, ModerationDecisionEvaluator>();
+builder.Services.AddScoped<ILlmModerationService, LlmModerationService>();
+
+// DeepSeek API config
+builder.Services.AddOptions<DeepSeekOptions>()
+    .Bind(builder.Configuration.GetSection(DeepSeekOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Named HttpClient cho DeepSeek — base address + timeout được set ở đây;
+// AddStandardResilienceHandler bổ sung retry + circuit breaker tự động cho lỗi transient.
+builder.Services.AddHttpClient(LlmModerationService.HttpClientName, (sp, client) =>
+    {
+        var opts = sp.GetRequiredService<IOptions<DeepSeekOptions>>().Value;
+        client.BaseAddress = new Uri(opts.BaseUrl);
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {opts.ApiKey}");
+        client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+    })
+    .AddStandardResilienceHandler();
 
 // Configure JSON to handle enums as numbers (not strings)
 builder.Services.AddControllers()

@@ -21,11 +21,33 @@ public class ModerationDecisionResult
     /// "low_confidence", "llm_reject", "llm_approve". Never sent to the client.
     public required string InternalReasonCode { get; init; }
 
-    public static ModerationDecisionResult NeedsReview(string internalReasonCode, string? authorReason = null) => new()
-    {
-        Status = ModerationStatus.NeedsReview,
-        Source = ModerationSource.Llm,
-        Reason = authorReason,
-        InternalReasonCode = internalReasonCode
-    };
+    /// Raw LLM decision: "approve" | "reject" | "review".
+    public string? LlmDecision { get; init; }
+
+    /// Severity evaluated by LLM (0-3).
+    public int? Severity { get; init; }
+
+    /// Confidence evaluated by LLM (0.0-1.0).
+    public double? Confidence { get; init; }
+
+    /// Violation categories identified by LLM.
+    public IReadOnlyList<string>? Categories { get; init; }
+
+    public static ModerationDecisionResult NeedsReview(
+        string internalReasonCode,
+        string? authorReason = null,
+        string? llmDecision = null,
+        int? severity = null,
+        double? confidence = null,
+        IReadOnlyList<string>? categories = null) => new()
+        {
+            Status = ModerationStatus.NeedsReview,
+            Source = ModerationSource.Llm,
+            Reason = authorReason,
+            InternalReasonCode = internalReasonCode,
+            LlmDecision = llmDecision,
+            Severity = severity,
+            Confidence = confidence,
+            Categories = categories
+        };
 }

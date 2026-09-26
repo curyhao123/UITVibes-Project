@@ -35,6 +35,9 @@ public class PostDbContext : DbContext
     public DbSet<ReelCommentLike> ReelCommentLikes { get; set; }
     public DbSet<ReelShare> ReelShares { get; set; }
 
+    public DbSet<ModerationResult> ModerationResults { get; set; }
+
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -52,7 +55,6 @@ public class PostDbContext : DbContext
             entity.Property(e => e.Location).HasMaxLength(200);
             entity.Property(e => e.Visibility).HasConversion<int>();
             entity.Property(e => e.PostType).HasConversion<int>();
-            entity.Property(p => p.ModerationReason).HasMaxLength(500);
 
             // Index để query "các bài repost của user X"
             entity.HasIndex(e => new { e.UserId, e.PostType });
@@ -386,6 +388,26 @@ public class PostDbContext : DbContext
                 .WithMany(r => r.Shares)
                 .HasForeignKey(e => e.ReelId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+        // ===== MODERATION RESULT CONFIGURATION =====
+        modelBuilder.Entity<ModerationResult>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.TargetType).HasConversion<int>();
+            entity.Property(e => e.Status).HasConversion<int>();
+            entity.Property(e => e.Source).HasConversion<int>();
+
+            entity.Property(e => e.LlmDecision).HasMaxLength(20);
+            entity.Property(e => e.Categories).HasMaxLength(200);
+            entity.Property(e => e.AuthorReason).HasMaxLength(300);
+            entity.Property(e => e.InternalReasonCode).IsRequired().HasMaxLength(100);
+
+            // Mỗi content chỉ có đúng 1 bản ghi moderation — thay thế FK integrity bị mất
+            entity.HasIndex(e => new { e.TargetId, e.TargetType }).IsUnique();
+
+            // Index cho worker: query "các bản ghi Pending của loại X chưa xử lý"
+            entity.HasIndex(e => new { e.TargetType, e.Status, e.UpdatedAt });
         });
     }
 }
