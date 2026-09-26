@@ -29,6 +29,7 @@ var smtpPassword = builder.AddParameter("smtp-password", secret: true);
 var smtpSenderEmail = builder.AddParameter("smtp-senderemail");
 var smtpSenderName = builder.AddParameter("smtp-sendername");
 var firebaseCredentialPath = builder.AddParameter("firebase-credentialpath", secret: true);
+var deepSeekApiKey = builder.AddParameter("deepseek-apikey", secret: true);
 
 
 
@@ -75,6 +76,7 @@ var postService = builder.AddProject<Projects.PostService>("postservice")
     .WithEnvironment("Cloudinary__CloudName", cloudinaryCloudName)
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
     .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
+    .WithEnvironment("DeepSeek__ApiKey", deepSeekApiKey)
     .WithHttpHealthCheck("/health");
 
 

@@ -31,7 +31,13 @@ public class ModerationDecisionEvaluator : IModerationDecisionEvaluator
         if (!TryValidate(output, out var decision, out var categories, out var severity, out var confidence))
         {
             // Fail-safe: anything malformed goes to a human, never auto-approved or auto-rejected.
-            return ModerationDecisionResult.NeedsReview("invalid_llm_response");
+            return ModerationDecisionResult.NeedsReview(
+                "invalid_llm_response",
+                authorReason: null,
+                llmDecision: output.Decision,
+                severity: output.Severity,
+                confidence: output.Confidence,
+                categories: output.Categories);
         }
 
         var alwaysReviewCategory = categories.FirstOrDefault(c => _options.AlwaysReviewCategories.Contains(c));
@@ -39,7 +45,11 @@ public class ModerationDecisionEvaluator : IModerationDecisionEvaluator
         {
             return ModerationDecisionResult.NeedsReview(
                 $"always_review_category:{alwaysReviewCategory}",
-                authorReason: NormalizeAuthorReason(output.Reason));
+                authorReason: NormalizeAuthorReason(output.Reason),
+                llmDecision: decision,
+                severity: severity,
+                confidence: confidence,
+                categories: categories);
         }
 
         if (decision == ApproveDecision
@@ -51,7 +61,11 @@ public class ModerationDecisionEvaluator : IModerationDecisionEvaluator
                 Status = ModerationStatus.Approved,
                 Source = ModerationSource.Llm,
                 Reason = null, // approvals are not explained to the author
-                InternalReasonCode = "llm_approve"
+                InternalReasonCode = "llm_approve",
+                LlmDecision = decision,
+                Severity = severity,
+                Confidence = confidence,
+                Categories = categories
             };
         }
 
@@ -64,7 +78,11 @@ public class ModerationDecisionEvaluator : IModerationDecisionEvaluator
                 Status = ModerationStatus.Rejected,
                 Source = ModerationSource.Llm,
                 Reason = NormalizeAuthorReason(output.Reason),
-                InternalReasonCode = "llm_reject"
+                InternalReasonCode = "llm_reject",
+                LlmDecision = decision,
+                Severity = severity,
+                Confidence = confidence,
+                Categories = categories
             };
         }
 
@@ -73,7 +91,11 @@ public class ModerationDecisionEvaluator : IModerationDecisionEvaluator
         // rather than being resolved by guessing which threshold "almost" applied.
         return ModerationDecisionResult.NeedsReview(
             $"llm_uncertain:{decision}",
-            authorReason: NormalizeAuthorReason(output.Reason));
+            authorReason: NormalizeAuthorReason(output.Reason),
+            llmDecision: decision,
+            severity: severity,
+            confidence: confidence,
+            categories: categories);
     }
 
     private bool TryValidate(

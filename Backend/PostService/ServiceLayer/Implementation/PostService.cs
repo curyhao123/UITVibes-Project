@@ -52,8 +52,20 @@ public class PostService : IPostService
             PostType = PostType.Original,
             ModerationStatus = ModerationStatus.Pending,
         };
-
+        var pendingModeration = new ModerationResult
+        {
+            Id = Guid.NewGuid(),
+            TargetId = post.Id,
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt,
+            TargetType = ModerationTargetType.Post,
+            Status = ModerationStatus.Pending,
+            Source = ModerationSource.Rule,
+            InternalReasonCode = "pending_worker",
+            AttemptCount = 0
+        };
         _context.Posts.Add(post);
+        _context.ModerationResults.Add(pendingModeration);
 
         // ✅ Add media to post
         if (request.Media != null && request.Media.Any())

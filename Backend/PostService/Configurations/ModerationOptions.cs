@@ -33,4 +33,13 @@ public class ModerationOptions
     /// because they need a human in the loop (e.g. self-harm should never be silently deleted).
     /// Values must match PostService.DTOs.Moderation.ModerationCategories.
     public List<string> AlwaysReviewCategories { get; set; } = ["self_harm"];
+
+    /// Polling interval for background worker in seconds.
+    public int PollIntervalSeconds { get; set; } = 3;
+
+    /// Maximum number of pending records to fetch in one batch.
+    public int BatchSize { get; set; } = 10;
+
+    /// Maximum moderation attempts before marking as Fallback/NeedsReview.
+    public int MaxAttempts { get; set; } = 3;
 }
