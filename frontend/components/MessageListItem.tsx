@@ -2,17 +2,24 @@
  * MessageListItem — Swipeable message conversation item.
  *
  * Features:
+ * - Avatar on the left with live online status indicator
+ * - Conversation name & last message clearly laid out to the right of the avatar
+ * - High-contrast, easy-to-read typography for last message
+ * - Emphasized separator border between items
  * - Swipe left: Delete conversation
  * - Swipe right: Archive conversation (or mute)
  * - Unread indicator with badge
- * - Online status indicator
  * - Smooth animations with haptic feedback
  */
 
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { Conversation, User } from '../data/mockData';
@@ -20,14 +27,6 @@ import { triggerHaptic } from '../hooks/useMicroInteractions';
 import { formatDistanceToNow } from '../utils/time';
 import { Avatar } from './Avatar';
 import { SwipeableRow } from './SwipeableRow';
-
-// ─── Swipeable Touchable ─────────────────────────────────────────────────────
-
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
 
 interface MessageListItemProps {
   conversation: Conversation;
@@ -48,8 +47,6 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
   onArchiveConversation,
   onMuteConversation,
 }) => {
-  const router = useRouter();
-
   const getOtherMember = useCallback(
     (conv: Conversation): User | undefined => {
       return conv.members.find((m) => m.id !== currentUserId);
@@ -61,7 +58,6 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
   const hasUnread = conversation.unreadCount > 0;
   const isGroup = conversation.isGroup;
   const displayName = conversation.name || other?.displayName || 'Chat';
-  const avatarUri = other?.avatar || conversation.avatar;
   const isOnline = other ? isUserOnline(other.id) : false;
 
   const isCurrentUser = (senderId: string): boolean => {
@@ -120,69 +116,75 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
         onPress={handlePress}
         style={[styles.convItem, hasUnread && styles.convItemUnread]}
       >
-        {isGroup ? (
-          <View style={styles.groupAvatar}>
-            <Feather name="users" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
-        ) : (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              user={
-                other ??
-                ({
-                  id: '',
-                  username: '',
-                  displayName: '',
-                  avatar: '',
-                  bio: '',
-                  followers: 0,
-                  following: 0,
-                  posts: 0,
-                  isVerified: false,
-                } as User)
-              }
-              size="medium"
-              showOnlineIndicator={true}
-              isOnline={isOnline}
-            />
-          </View>
-        )}
-        <View style={styles.convContent}>
-          <View style={styles.convTop}>
-            <Text
-              style={[styles.convName, hasUnread && styles.convNameBold]}
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            <Text style={styles.convTime}>
-              {conversation.lastMessage?.createdAt &&
-                formatDistanceToNow(new Date(conversation.lastMessage.createdAt))}
-            </Text>
-          </View>
-          <View style={styles.convBottom}>
-            <Text
-              style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
-              numberOfLines={1}
-            >
-              {isCurrentUser(conversation.lastMessage?.senderId ?? '')
-                ? 'You: '
-                : ''}
-              {(() => {
-                if (conversation.lastMessage?.image) return '📷 Photo';
-                if (conversation.lastMessage?.messageType === 'image') return '📷 Photo';
-                return conversation.lastMessage?.text || 'No messages yet';
-              })()}
-            </Text>
-            {hasUnread && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>
-                  {conversation.unreadCount > 99
-                    ? '99+'
-                    : conversation.unreadCount}
-                </Text>
-              </View>
-            )}
+        <View style={styles.convItemInner}>
+          {/* Avatar on the left */}
+          {isGroup ? (
+            <View style={styles.groupAvatar}>
+              <Feather name="users" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+            </View>
+          ) : (
+            <View style={styles.avatarContainer}>
+              <Avatar
+                user={
+                  other ??
+                  ({
+                    id: '',
+                    username: '',
+                    displayName: '',
+                    avatar: '',
+                    bio: '',
+                    followers: 0,
+                    following: 0,
+                    posts: 0,
+                    isVerified: false,
+                  } as User)
+                }
+                size="medium"
+                showOnlineIndicator={true}
+                isOnline={isOnline}
+              />
+            </View>
+          )}
+
+          {/* Conversation info strictly to the right of the avatar */}
+          <View style={styles.convContent}>
+            <View style={styles.convTop}>
+              <Text
+                style={[styles.convName, hasUnread && styles.convNameBold]}
+                numberOfLines={1}
+              >
+                {displayName}
+              </Text>
+              <Text style={styles.convTime}>
+                {conversation.lastMessage?.createdAt &&
+                  formatDistanceToNow(new Date(conversation.lastMessage.createdAt))}
+              </Text>
+            </View>
+
+            <View style={styles.convBottom}>
+              <Text
+                style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
+                numberOfLines={1}
+              >
+                {isCurrentUser(conversation.lastMessage?.senderId ?? '')
+                  ? 'You: '
+                  : ''}
+                {(() => {
+                  if (conversation.lastMessage?.image) return '📷 Photo';
+                  if (conversation.lastMessage?.messageType === 'image') return '📷 Photo';
+                  return conversation.lastMessage?.text || 'No messages yet';
+                })()}
+              </Text>
+              {hasUnread && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>
+                    {conversation.unreadCount > 99
+                      ? '99+'
+                      : conversation.unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </SwipeableTouchable>
@@ -213,6 +215,9 @@ const SwipeableTouchable: React.FC<SwipeableTouchableProps> = ({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
   }));
 
   return (
@@ -232,20 +237,25 @@ const SwipeableTouchable: React.FC<SwipeableTouchableProps> = ({
 
 const styles = StyleSheet.create({
   convItem: {
+    backgroundColor: AppColors.surface,
+    borderBottomWidth: 1.5,
+    borderBottomColor: AppColors.border,
+  },
+  convItemUnread: {
+    backgroundColor: `${AppColors.primary}0C`,
+  },
+  convItemInner: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: layoutPadding,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
-    backgroundColor: AppColors.surface,
-  },
-  convItemUnread: {
-    backgroundColor: `${AppColors.primary}08`,
+    paddingVertical: 14,
+    width: '100%',
   },
   avatarContainer: {
     width: 52,
     height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   groupAvatar: {
     width: 52,
@@ -254,29 +264,37 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: AppColors.border,
   },
   convContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
+    justifyContent: 'center',
   },
   convTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   convName: {
     ...Typography.bodyMedium,
     flex: 1,
     color: AppColors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   convNameBold: {
     fontWeight: '700',
+    color: AppColors.text,
   },
   convTime: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
-    marginLeft: 6,
+    fontSize: 12,
+    color: AppColors.textMuted,
+    marginLeft: 8,
   },
   convBottom: {
     flexDirection: 'row',
@@ -284,10 +302,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   convLastMessage: {
-    ...Typography.caption,
-    fontSize: 13,
-    color: AppColors.iconMuted,
+    ...Typography.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: AppColors.textSecondary,
     flex: 1,
+    letterSpacing: -0.1,
   },
   convLastMessageBold: {
     fontWeight: '600',
@@ -304,7 +324,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   unreadText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
   },

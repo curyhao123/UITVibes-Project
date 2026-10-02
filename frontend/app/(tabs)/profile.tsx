@@ -134,8 +134,6 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StaticPremiumHeader
         title={currentUser.displayName}
-        showAvatar
-        avatarUser={currentUser}
         onNotificationPress={() => router.push('/notifications' as any)}
         rightAction={
           <TouchableOpacity

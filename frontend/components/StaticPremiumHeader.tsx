@@ -109,7 +109,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
               activeOpacity={0.8}
             >
               {avatarUser ? (
-                <Avatar user={avatarUser} size="small" />
+                <Avatar user={avatarUser} size="medium" />
               ) : (
                 <View style={styles.avatarPlaceholder} />
               )}

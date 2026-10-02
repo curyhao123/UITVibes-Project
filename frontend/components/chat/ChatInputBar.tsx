@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { PushButton } from '../PushButton';
 
 export interface ChatInputBarProps {
   isChatBlocked: boolean;
@@ -117,18 +118,21 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </TouchableOpacity>
         )}
         {canSend && (
-          <TouchableOpacity
-            onPress={onSend}
-            style={styles.sendBtn}
-            disabled={isLoadingMessages || isUploadingImage}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            {isUploadingImage ? (
-              <ActivityIndicator size="small" color={AppColors.primary} />
-            ) : (
-              <Feather name="send" size={22} color={AppColors.primary} strokeWidth={2} />
-            )}
-          </TouchableOpacity>
+          <View style={styles.sendBtnWrap}>
+            <PushButton
+              onPress={onSend}
+              disabled={isLoadingMessages || isUploadingImage}
+              loading={isUploadingImage}
+              shadowColor="#1D4ED8"
+              frontColor={AppColors.primary}
+              frontTextColor="#FFFFFF"
+              liftPx={3}
+              borderRadius={18}
+              contentStyle={styles.sendBtnContent}
+            >
+              <Feather name="send" size={17} color="#FFFFFF" strokeWidth={2.2} />
+            </PushButton>
+          </View>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -200,9 +204,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 11,
   },
-  sendBtn: {
-    padding: 4,
-    marginBottom: 4,
+  sendBtnWrap: {
+    marginBottom: 2,
+  },
+  sendBtnContent: {
+    width: 36,
+    height: 36,
+    minHeight: 36,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messageInput: {
     ...Typography.body,

@@ -219,13 +219,13 @@ const styles = StyleSheet.create({
   timeDividerPill: {
     backgroundColor: AppColors.surfaceElevated,
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
   },
   timeDividerText: {
     ...Typography.caption,
     color: AppColors.textMuted,
-    fontSize: 11,
+    fontSize: 14,
   },
   messageRow: {
     flexDirection: 'row',
@@ -242,8 +242,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   msgAvatarContainer: {
-    marginRight: 6,
+    marginRight: 10,
     width: 28,
+    height: 30,
     alignItems: 'center',
   },
   msgAvatarPlaceholder: {
@@ -264,17 +265,19 @@ const styles = StyleSheet.create({
   },
   senderName: {
     ...Typography.caption,
-    color: AppColors.textMuted,
-    marginBottom: 2,
-    marginLeft: 4,
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+    marginLeft: 7,
   },
   messageContentStack: {
     gap: 6,
   },
   bubble: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 12,
   },
   bubbleMine: {
     backgroundColor: AppColors.primary,
@@ -292,6 +295,8 @@ const styles = StyleSheet.create({
   },
   bubbleTheirs: {
     backgroundColor: AppColors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: AppColors.border,
   },
   bubbleImageOnly: {
     backgroundColor: 'transparent',
@@ -332,7 +337,7 @@ const styles = StyleSheet.create({
   },
   msgTime: {
     ...Typography.caption,
-    fontSize: 10,
+    fontSize: 14,
     color: AppColors.textMuted,
   },
 });

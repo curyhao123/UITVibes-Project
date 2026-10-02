@@ -9,6 +9,7 @@ import {
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../Avatar';
+import { PushButton } from '../PushButton';
 
 export interface ChatHeaderProps {
   title: string;
@@ -35,9 +36,19 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
   return (
     <View style={styles.chatHeader}>
-      <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-        <Feather name="arrow-left" size={22} color={AppColors.text} strokeWidth={2} />
-      </TouchableOpacity>
+      <View style={styles.backBtnWrap}>
+        <PushButton
+          onPress={onBack}
+          shadowColor={AppColors.border}
+          frontColor={AppColors.surfaceElevated}
+          frontTextColor={AppColors.text}
+          liftPx={3}
+          borderRadius={12}
+          contentStyle={styles.backBtnContent}
+        >
+          <Feather name="arrow-left" size={22} color={AppColors.text} strokeWidth={2.2} />
+        </PushButton>
+      </View>
       <TouchableOpacity
         style={styles.chatHeaderUser}
         onPress={onUserPress}
@@ -46,13 +57,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         {otherUser ? (
           <Avatar
             user={otherUser}
-            size="small"
+            size="medium"
             showOnlineIndicator={true}
             isOnline={isOnline}
           />
         ) : (
           <View style={styles.chatAvatarGroup}>
-            <Feather name="users" size={18} color="white" />
+            <Feather name="users" size={20} color="#FFFFFF" />
           </View>
         )}
         <View style={styles.headerTextWrap}>
@@ -70,10 +81,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         style={styles.headerAction}
         onPress={onActionPress}
         activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Feather
           name={isGroup && isAdmin ? 'settings' : 'info'}
-          size={22}
+          size={24}
           color={AppColors.text}
           strokeWidth={2}
         />
@@ -87,45 +99,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: layoutPadding,
-    paddingVertical: 12,
-    backgroundColor: AppColors.background,
+    paddingVertical: 14,
+    minHeight: 70,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.border,
     gap: 12,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: AppColors.surfaceElevated,
+  backBtnWrap: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backBtnContent: {
+    width: 40,
+    height: 40,
+    minHeight: 40,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chatHeaderUser: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   headerTextWrap: {
     flex: 1,
+    justifyContent: 'center',
   },
   chatAvatarGroup: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   chatName: {
-    ...Typography.bodySemibold,
-    fontWeight: '600',
+    ...Typography.screenTitle,
+    fontSize: 17,
+    fontWeight: '700',
     color: AppColors.text,
+    letterSpacing: -0.3,
   },
   chatSubtitle: {
     ...Typography.caption,
+    fontSize: 13,
     color: AppColors.textMuted,
+    marginTop: 2,
   },
   headerAction: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
