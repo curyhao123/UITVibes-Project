@@ -218,9 +218,9 @@ export default function CreateScreen() {
   };
 
   const handlePost = async () => {
-    if (selectedMedia.length === 0) {
+    if (createType === 'reels' && selectedMedia.length === 0) {
       setToastType('error');
-      setToastMessage('Please select a photo or video before sharing.');
+      setToastMessage('Please select a video before sharing a reel.');
       setToastVisible(true);
       return;
     }
@@ -271,7 +271,10 @@ export default function CreateScreen() {
   };
 
   const typeLabel = createType === 'reels' ? 'Reels' : 'Post';
-  const shareReady = selectedMedia.length > 0 && !!caption.trim() && !isPosting;
+  const shareReady =
+    createType === 'reels'
+      ? selectedMedia.length > 0 && !!caption.trim() && !isPosting
+      : !!caption.trim() && !isPosting;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -387,16 +390,18 @@ export default function CreateScreen() {
                   />
                 </View>
                 <Text style={styles.mediaPrimaryLabel}>
-                  {createType === 'reels' ? 'Select video' : 'Select images'}
+                  {createType === 'reels' ? 'Select video' : 'Add photos (optional)'}
                 </Text>
                 <Text style={styles.mediaInstruction}>
-                  Take a photo, record, or choose from your gallery
+                  {createType === 'reels'
+                    ? 'Take a video, record, or choose from your gallery'
+                    : 'Attach photos from your gallery, or share text only'}
                 </Text>
                 {createType === 'reels' && (
                   <Text style={styles.mediaHint}>Vertical 9:16 works best for Reels</Text>
                 )}
                 {createType === 'post' && (
-                  <Text style={styles.mediaHint}>Select up to 10 photos</Text>
+                  <Text style={styles.mediaHint}>Select up to 10 photos (optional)</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -548,7 +553,7 @@ export default function CreateScreen() {
             placeholder={
               createType === 'reels'
                 ? 'Write a caption for your reel…'
-                : 'Write a caption…'
+                : "What's on your mind? Share your thoughts…"
             }
             multiline
             maxLength={CAPTION_MAX}

@@ -20,20 +20,18 @@ import { blockUser } from '../services/blockService';
 import { removeBookmark, repostPost, undoRepost } from '../services/postService';
 import { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 import { Avatar } from './Avatar';
-import { ImageCarousel } from './ImageCarousel';
 import { MentionText } from './MentionText';
 import { PostActionsSheet } from './PostActionsSheet';
 import { ReportPostSheet } from './ReportPostSheet';
 import { SwipeableRow } from './SwipeableRow';
-import { TextPostCard } from './TextPostCard';
 
 const ACTION_ICON = 24;
 
-interface PostCardProps {
+interface TextPostCardProps {
   post: Post;
 }
 
-const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, images }) => {
+export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
   const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost } = useApp();
   const router = useRouter();
 
@@ -52,7 +50,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
   const currentUserId = currentUser?.id ?? '';
   const isOwner = currentUserId === post.userId;
 
-  // ── Double-tap to like ────────────────────────────────────────────────
+  // ── Double-tap to like / Single-tap to open post detail ───────────────
   const handleDoubleTap = useCallback(async () => {
     if (!localLiked) {
       setLocalLiked(true);
@@ -96,18 +94,13 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
         setLocalBookmarked(true);
       }
     } catch (error) {
-      console.error("[PostCard] Failed to toggle bookmark:", error);
+      console.error('[TextPostCard] Failed to toggle bookmark:', error);
     }
   };
 
   const handleRepost = async () => {
-    // Prevent reposting own post
     if (isOwner) {
-      Alert.alert(
-        'Cannot Repost',
-        "You can't repost your own post.",
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Cannot Repost', "You can't repost your own post.", [{ text: 'OK' }]);
       return;
     }
 
@@ -124,7 +117,6 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
         setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
       }
     } catch {
-      // Revert optimistic update on error
       setLocalReposted(wasReposted);
       setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
     }
@@ -242,7 +234,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
         label: 'Delete',
         onPress: handleSwipeDelete,
       }}
-      testID={`swipeable-post-${post.id}`}
+      testID={`swipeable-text-post-${post.id}`}
     >
       <View style={styles.container}>
         {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
@@ -275,92 +267,81 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
           </View>
         </View>
 
-        {/* Image + Actions wrapper — enables absolute positioning */}
-        <View style={styles.imageContainer}>
-          {/* Image Area — double tap likes, single tap opens post detail */}
-          <GestureDetector gesture={tapGesture}>
-            <View>
-              {/* Instagram-style carousel: swipe, dots, carousel icon */}
-              <View style={styles.carouselWrapper}>
-                <ImageCarousel
-                  images={images}
-                  height={300}
-                  onPress={handleOpenPost}
-                />
-              </View>
-
-              {/* Heart overlay — positioned on the carousel */}
-              <View style={styles.heartOverlay}>
-                <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
-              </View>
+        {/* Text Content Area (No Picture) */}
+        <GestureDetector gesture={tapGesture}>
+          <View style={styles.bodyContainer}>
+            <View style={styles.captionContainer}>
+              <MentionText
+                text={post.caption}
+                numberOfLines={10}
+                style={styles.captionText}
+              />
             </View>
-          </GestureDetector>
 
-          {/* Action buttons — horizontal row below image */}
-          <View style={styles.actionsRow}>
+            {/* Heart overlay — animated on double tap */}
+            <View style={styles.heartOverlay} pointerEvents="none">
+              <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
+            </View>
+          </View>
+        </GestureDetector>
+
+        {/* Action buttons — horizontal row below text content */}
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            onPress={handleLike}
+            onLongPress={handleLikeLongPress}
+            delayLongPress={400}
+            style={styles.actionGroup}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
+            <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
+          </TouchableOpacity>
+
+          <Animated.View style={commentAnimatedStyle}>
             <TouchableOpacity
-              onPress={handleLike}
-              onLongPress={handleLikeLongPress}
-              delayLongPress={400}
+              onPress={handleCommentWithAnimation}
               style={styles.actionGroup}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
-              <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
+              <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
+              <Text style={styles.actionText}>
+                {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
+              </Text>
             </TouchableOpacity>
+          </Animated.View>
 
-            <Animated.View style={commentAnimatedStyle}>
-              <TouchableOpacity
-                onPress={handleCommentWithAnimation}
-                style={styles.actionGroup}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
-                <Text style={styles.actionText}>
-                  {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
+          <TouchableOpacity
+            onPress={handleRepost}
+            style={styles.actionGroup}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Feather
+              name="refresh-cw"
+              size={ACTION_ICON}
+              color={localReposted ? AppColors.primary : AppColors.iconMuted}
+              strokeWidth={2}
+            />
+            <Text style={styles.actionText}>
+              {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
+            </Text>
+          </TouchableOpacity>
 
+          <Animated.View style={bookmarkAnimatedStyle}>
             <TouchableOpacity
-              onPress={handleRepost}
-              style={styles.actionGroup}
+              onPress={handleBookmarkWithAnimation}
+              style={styles.bookmarkGroup}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <Feather
-                name="refresh-cw"
+                name="bookmark"
                 size={ACTION_ICON}
-                color={localReposted ? AppColors.primary : AppColors.iconMuted}
+                color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
+                fill={localBookmarked ? AppColors.primary : 'transparent'}
                 strokeWidth={2}
               />
-              <Text style={styles.actionText}>
-                {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
-              </Text>
             </TouchableOpacity>
-
-            <Animated.View style={bookmarkAnimatedStyle}>
-              <TouchableOpacity
-                onPress={handleBookmarkWithAnimation}
-                style={styles.bookmarkGroup}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Feather
-                  name="bookmark"
-                  size={ACTION_ICON}
-                  color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
-                  fill={localBookmarked ? AppColors.primary : 'transparent'}
-                  strokeWidth={2}
-                />
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </View>
-
-        <View style={styles.captionContainer}>
-          <MentionText
-            text={post.caption}
-            numberOfLines={5}
-          />
+          </Animated.View>
         </View>
 
         {(post.commentsCount ?? 0) > 0 && (
@@ -393,18 +374,6 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
       </View>
     </SwipeableRow>
   );
-};
-
-export const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const images = post.images && post.images.length > 0
-    ? post.images
-    : post.image ? [post.image] : [];
-
-  if (images.length === 0) {
-    return <TextPostCard post={post} />;
-  }
-
-  return <MediaPostCard post={post} images={images} />;
 };
 
 const styles = StyleSheet.create({
@@ -480,35 +449,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // ── Image area ──────────────────────────────────────────────────────
-  imageContainer: {
+  // ── Body / Caption Area ───────────────────────────────────────────────
+  bodyContainer: {
     position: 'relative',
-    width: '100%',
+    minHeight: 80,
+    justifyContent: 'center',
   },
-  carouselWrapper: {
-    width: '100%',
-    height: 332, // carousel height (300) + dots area (32)
+  captionContainer: {
+    paddingHorizontal: layoutPadding,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
-  postImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+  captionText: {
+    ...Typography.body,
+    fontSize: 16,
+    lineHeight: 24,
+    color: AppColors.text,
+    letterSpacing: -0.2,
   },
   heartOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 300,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // ── Actions ───────────────────────────────────────────────────────────
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: layoutPadding,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: AppColors.borderLight,
     gap: 20,
   },
   actionGroup: {
@@ -527,19 +502,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: AppColors.iconMuted,
-  },
-  captionContainer: {
-    paddingHorizontal: layoutPadding,
-    paddingTop: 14,
-    paddingBottom: 8,
-  },
-  caption: {
-    ...Typography.caption,
-    color: AppColors.text,
-  },
-  captionUsername: {
-    ...Typography.captionSemibold,
-    color: AppColors.text,
   },
   viewComments: {
     paddingHorizontal: layoutPadding,
