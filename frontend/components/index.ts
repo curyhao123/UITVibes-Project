@@ -2,6 +2,7 @@ export { Avatar } from './Avatar';
 export { Button } from './Button';
 export { OnlineIndicator } from './OnlineIndicator';
 export { PostCard } from './PostCard';
+export { TextPostCard } from './TextPostCard';
 export { StoryBar } from './StoryBar';
 export { CommentItem } from './CommentItem';
 export { PostGrid, UserListItem } from './Lists';
@@ -11,6 +12,8 @@ export { default as EditProfileModal } from './EditProfileModal';
 export { PrivacySection } from './privacy/PrivacySection';
 export { HighlightCard } from './privacy/HighlightCard';
 export { CommentContextMenu } from './CommentContextMenu';
+export { MessageContextMenu } from './MessageContextMenu';
+export { EditMessageModal } from './EditMessageModal';
 export { ConfirmationModal } from './ConfirmationModal';
 export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { ReportUserSheet } from './profile/ReportUserSheet';
@@ -59,3 +62,4 @@ export {
 // Premium Header components
 export { PremiumHeader, ScrollableHeader, useScrollHeader } from './PremiumHeader';
 export { StaticPremiumHeader, CompactHeader } from './StaticPremiumHeader';
+export * from './chat';
