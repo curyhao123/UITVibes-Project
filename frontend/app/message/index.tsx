@@ -9,135 +9,29 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar } from "../../components/Avatar";
+import {
+  CreateGroupSheet,
+  MessageListItem,
+  NewMessageSheet,
+  OnlineFriendsList,
+  StaticPremiumHeader,
+} from "../../components";
 import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
-import { OnlineFriendsList } from "../../components/OnlineFriendsList";
-import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
-import { SwipeableRow } from "../../components/SwipeableRow";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
 import { Conversation, User } from "../../data/mockData";
 import * as api from "../../services/api";
 import { deleteConversation } from "../../services/messageService";
-import { formatDistanceToNow } from "../../utils/time";
-
-// ─── Conversation Item Component (extracted to use hooks properly) ───────────
-
-interface ConversationItemProps {
-  item: Conversation;
-  currentUserId: string | undefined;
-  isUserOnline: (userId: string) => boolean;
-  isCurrentUser: (userId: string) => boolean;
-  onPress: (conv: Conversation) => void;
-  onDelete: (convId: string) => void;
-}
-
-const ConversationItem: React.FC<ConversationItemProps> = ({
-  item,
-  currentUserId,
-  isUserOnline,
-  isCurrentUser,
-  onPress,
-  onDelete,
-}) => {
-  const other = item.members.find((m) => m.id !== currentUserId);
-  const hasUnread = item.unreadCount > 0;
-  const isGroup = item.isGroup;
-  const displayName = item.name || other?.displayName || "Chat";
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Conversation',
-      `Delete conversation with ${displayName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDelete(item.id),
-        },
-      ]
-    );
-  };
-
-  return (
-    <SwipeableRow
-      rightAction={{
-        icon: 'trash-2',
-        color: '#FFFFFF',
-        backgroundColor: AppColors.error,
-        label: 'Delete',
-        onPress: handleDelete,
-      }}
-    >
-      <TouchableOpacity
-        style={[styles.convItem, hasUnread && styles.convItemUnread]}
-        onPress={() => onPress(item)}
-        activeOpacity={0.7}
-      >
-        {isGroup ? (
-          <View style={styles.groupAvatar}>
-            <Feather name="users" size={22} color={AppColors.iconMuted} strokeWidth={2} />
-          </View>
-        ) : (
-          <View style={styles.avatarContainer}>
-            <Avatar
-              user={other ?? ({ id: '', username: '', displayName: '', avatar: '', bio: '', followers: 0, following: 0, posts: 0, isVerified: false } as User)}
-              size="medium"
-              showOnlineIndicator={true}
-              isOnline={isUserOnline(other?.id ?? '')}
-            />
-          </View>
-        )}
-        <View style={styles.convContent}>
-          <View style={styles.convTop}>
-            <Text
-              style={[styles.convName, hasUnread && styles.convNameBold]}
-              numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            <Text style={styles.convTime}>
-              {item.lastMessage?.createdAt &&
-                formatDistanceToNow(new Date(item.lastMessage.createdAt))}
-            </Text>
-          </View>
-          <View style={styles.convBottom}>
-            <Text
-              style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
-              numberOfLines={1}
-            >
-              {isCurrentUser(item.lastMessage?.senderId ?? "")
-                ? "You: "
-                : ""}
-              {(() => {
-                if (item.lastMessage?.image) return "📷 Photo";
-                if (item.lastMessage?.messageType === "image") return "📷 Photo";
-                return item.lastMessage?.text || "No messages yet";
-              })()}
-            </Text>
-            {hasUnread && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>
-                  {item.unreadCount > 99 ? "99+" : item.unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    </SwipeableRow>
-  );
-};
 
 export default function MessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const sheetContentBottomPadding = TAB_BAR_BOTTOM_OFFSET + Math.max(insets.bottom, 0) + 20;
+
   const {
     currentUser,
     conversations,
@@ -159,6 +53,7 @@ export default function MessageScreen() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
@@ -170,10 +65,10 @@ export default function MessageScreen() {
 
   // Load conversation list on mount
   useEffect(() => {
-    refreshConversations().catch((err) =>
+    refreshConversations().catch(() =>
       Alert.alert("Error", "Failed to load conversations. Pull to retry.")
     );
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced user search when typing in New Message sheet
   useEffect(() => {
@@ -206,47 +101,30 @@ export default function MessageScreen() {
 
   // ── Start conversation from New Message sheet ─────────────────────────────────
   const handleSelectUser = async (user: User) => {
-    // 1. Set loading — disable the item immediately
     setStartingConvUserId(user.id);
     setShowNewMsg(false);
 
     try {
-      // 2. Call API to create/get private conversation
       const conv = await startConversation(user.id);
-
       if (!conv) {
-        // startConversation returned null — this should not happen if we throw on error
         console.warn("[MessageScreen] startConversation returned null unexpectedly");
-        Alert.alert("Error", "Không thể tạo cuộc trò chuyện lúc này.");
+        Alert.alert("Error", "Unable to create conversation at this time.");
         return;
       }
 
-      // 3. Navigate to chat screen (parent tab bar hidden automatically)
       router.push(`/message/chat/${conv.id}`);
-
-      // 4. Clear search state
       setNewMsgSearch("");
       setSearchResults([]);
     } catch (err: any) {
-      // 3b. Handle error — show alert
       console.error("[MessageScreen] startConversation FAILED:", err?.response?.data ?? err?.message ?? err);
       Alert.alert(
-        "Lỗi",
-        err?.response?.data?.message ?? err?.message ?? "Không thể tạo cuộc trò chuyện lúc này."
+        "Error",
+        err?.response?.data?.message ?? err?.message ?? "Unable to create conversation at this time."
       );
     } finally {
       setStartingConvUserId(null);
     }
   };
-  
-  const handleFriendPress = useCallback(
-  async (friend: { userId: string; displayName: string }) => {
-    await handleSelectUser(
-      friend as unknown as User  // cast vì handleSelectUser nhận User type
-    );
-  },
-  []
-);
 
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true;
@@ -260,7 +138,6 @@ export default function MessageScreen() {
     );
   });
 
-  // ── Initial conversation fetch on mount (fallback / double-fetch for reliability) ──
   const loadGroupFriends = useCallback(async () => {
     if (!currentUser?.id) return;
     setIsLoadingGroupFriends(true);
@@ -283,18 +160,25 @@ export default function MessageScreen() {
     );
   });
 
-  useEffect(() => {
-    refreshConversations().catch((err) => {
-      console.error("[MessageScreen] Initial conversation fetch failed:", err);
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleConversationPress = useCallback(
     async (conv: Conversation) => {
       await markConversationAsRead(conv.id);
       router.push(`/message/chat/${conv.id}`);
     },
     [markConversationAsRead, router]
+  );
+
+  const handleDeleteConversation = useCallback(
+    async (convId: string) => {
+      try {
+        await deleteConversation(convId);
+        await refreshConversations();
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+        Alert.alert("Error", "Failed to delete conversation");
+      }
+    },
+    [refreshConversations]
   );
 
   // ─── Group Chat ────────────────────────────────────────────────────────────
@@ -330,65 +214,28 @@ export default function MessageScreen() {
     }
   }, [createGroup, groupName, router, selectedMembers, refreshConversations, setActiveConversation]);
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-  const getOtherMember = useCallback(
-    (conv: Conversation): User | undefined => {
-      return conv.members.find((m) => m.id !== currentUser?.id);
-    },
-    [currentUser?.id]
-  );
-
-  const isCurrentUser = useCallback(
-    (senderId: string): boolean => {
-      return senderId === currentUser?.id;
-    },
-    [currentUser?.id]
-  );
-
-  // ─── Render: Conversation Item ─────────────────────────────────────────────
-  const renderConversationItem = ({
-    item,
-  }: {
-    item: Conversation;
-  }): React.JSX.Element => {
-    return (
-      <ConversationItem
-        item={item}
-        currentUserId={currentUser?.id}
-        isUserOnline={isUserOnline}
-        isCurrentUser={isCurrentUser}
-        onPress={handleConversationPress}
-        onDelete={async (convId) => {
-          try {
-            await deleteConversation(convId);
-            await refreshConversations();
-          } catch (error) {
-            console.error('Failed to delete conversation:', error);
-            Alert.alert('Error', 'Failed to delete conversation');
-          }
-        }}
-      />
+  const handleToggleMember = useCallback((user: User) => {
+    setSelectedMembers((prev) =>
+      prev.some((m) => m.id === user.id)
+        ? prev.filter((m) => m.id !== user.id)
+        : [...prev, user]
     );
-  };
+  }, []);
 
-  // ─── Render: Message Bubble ────────────────────────────────────────────────
   const renderLoadingItem = () => (
-    <View style={styles.convItem}>
-      <View style={[styles.avatar, styles.skeleton]} />
-      <View style={styles.convContent}>
+    <View style={styles.skeletonItem}>
+      <View style={[styles.avatarSkeleton, styles.skeleton]} />
+      <View style={styles.skeletonContent}>
         <View style={[styles.skeletonLine, { width: "50%", height: 14, marginBottom: 6 }]} />
         <View style={[styles.skeletonLine, { width: "75%", height: 12 }]} />
       </View>
     </View>
   );
 
-  // ─── Inbox View ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StaticPremiumHeader
         title="Messages"
-        showAvatar
-        avatarUser={currentUser}
         largeTitle
         rightAction={
           <View style={styles.headerActionsRow}>
@@ -401,7 +248,7 @@ export default function MessageScreen() {
                 setShowNewMsg(true);
               }}
             >
-              <Feather name="edit-2" size={20} color={AppColors.text} strokeWidth={2} />
+              <Feather name="edit-2" size={25} color={AppColors.text} strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -415,7 +262,7 @@ export default function MessageScreen() {
                 setShowCreateGroup(true);
               }}
             >
-              <Feather name="users" size={20} color={AppColors.text} strokeWidth={2} />
+              <Feather name="users" size={25} color={AppColors.text} strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -423,29 +270,27 @@ export default function MessageScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={() => router.back()}
             >
-              <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
+              <Feather name="arrow-right" size={25} color={AppColors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         }
       />
 
       {/* Search Bar */}
-      <View>
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search messages"
-            placeholderTextColor={AppColors.iconMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
-            </TouchableOpacity>
-          )}
-        </View>
+      <View style={styles.searchContainer}>
+        <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search messages"
+          placeholderTextColor={AppColors.iconMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Error banner */}
@@ -463,7 +308,7 @@ export default function MessageScreen() {
 
       {/* Online Friends Strip */}
       <OnlineFriendsList
-        onFriendPress={(friend) =>
+        onFriendPress={(friend: { userId: string; displayName: string; avatarUrl?: string | null }) =>
           handleSelectUser({
             id: friend.userId,
             username: friend.displayName,
@@ -478,11 +323,19 @@ export default function MessageScreen() {
           } as User)
         }
       />
-      
+
       {/* Conversation List */}
       <FlatList
         data={filteredConversations}
-        renderItem={renderConversationItem}
+        renderItem={({ item }) => (
+          <MessageListItem
+            conversation={item}
+            currentUserId={currentUser?.id ?? ""}
+            isUserOnline={isUserOnline}
+            onConversationPress={handleConversationPress}
+            onDeleteConversation={handleDeleteConversation}
+          />
+        )}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.convList}
@@ -540,242 +393,52 @@ export default function MessageScreen() {
         }
       />
 
-      {/* ─── New Message Sheet ─────────────────────────────────────────────── */}
-      {showNewMsg && (
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity
-            style={styles.sheetBackdrop}
-            activeOpacity={1}
-            onPress={() => {
-              setShowNewMsg(false);
-              setNewMsgSearch("");
-              setSearchResults([]);
-            }}
-          />
-          <View style={styles.newMsgSheet}>
-            <View style={styles.newMsgSheetHeader}>
-              <Text style={styles.newMsgSheetTitle}>New Message</Text>
-              <TouchableOpacity onPress={() => setShowNewMsg(false)}>
-                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
+      {/* New Message Sheet */}
+      <NewMessageSheet
+        visible={showNewMsg}
+        searchQuery={newMsgSearch}
+        onChangeSearch={setNewMsgSearch}
+        searchResults={searchResults}
+        suggestedUsers={suggestedUsers}
+        isSearching={isSearching}
+        startingUserId={startingConvUserId}
+        bottomPadding={sheetContentBottomPadding}
+        isUserOnline={isUserOnline}
+        onSelectUser={handleSelectUser}
+        onClose={() => {
+          setShowNewMsg(false);
+          setNewMsgSearch("");
+          setSearchResults([]);
+        }}
+      />
 
-            <View style={styles.newMsgSearchContainer}>
-              <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
-              <TextInput
-                style={styles.newMsgSearchInput}
-                placeholder="Search people..."
-                placeholderTextColor={AppColors.iconMuted}
-                value={newMsgSearch}
-                onChangeText={setNewMsgSearch}
-                autoFocus
-              />
-            </View>
-
-            <FlatList
-              data={
-                newMsgSearch.trim().length > 0
-                  ? searchResults
-                  : suggestedUsers
-              }
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
-                const isStarting = startingConvUserId === item.id;
-                return (
-                  <TouchableOpacity
-                    style={[styles.newMsgUserItem, isStarting && styles.newMsgUserItemDisabled]}
-                    activeOpacity={isStarting ? 1 : 0.7}
-                    onPress={() => {
-                      if (isStarting) return;
-                      handleSelectUser(item);
-                    }}
-                    disabled={isStarting}
-                  >
-                    <View style={styles.newMsgAvatarContainer}>
-                      <Avatar
-                        user={item}
-                        size="small"
-                        showOnlineIndicator={true}
-                        isOnline={isUserOnline(item.id)}
-                      />
-                    </View>
-                    <View style={styles.newMsgUserInfo}>
-                      {isStarting ? (
-                        <ActivityIndicator size="small" color={AppColors.primary} />
-                      ) : (
-                        <>
-                          <Text style={styles.newMsgUserName}>{item.username || item.displayName}</Text>
-                          <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>
-                        </>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                isSearching ? (
-                  <View style={styles.newMsgEmpty}>
-                    <ActivityIndicator size="small" color={AppColors.primary} />
-                  </View>
-                ) : (
-                  <Text style={styles.newMsgEmpty}>
-                    {newMsgSearch.trim().length > 0
-                      ? "No users found"
-                      : "No suggested users"}
-                  </Text>
-                )
-              }
-              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
-        </View>
-      )}
-
-      {/* ─── Create Group Sheet ─────────────────────────────────────────────── */}
-      {showCreateGroup && (
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity
-            style={styles.sheetBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowCreateGroup(false)}
-          />
-          <View style={styles.newMsgSheet}>
-            <View style={styles.newMsgSheetHeader}>
-              <Text style={styles.newMsgSheetTitle}>Create Group</Text>
-              <TouchableOpacity onPress={() => setShowCreateGroup(false)}>
-                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.groupNameContainer}>
-              <TextInput
-                style={styles.groupNameInput}
-                placeholder="Group name..."
-                placeholderTextColor={AppColors.iconMuted}
-                value={groupName}
-                onChangeText={setGroupName}
-                maxLength={100}
-              />
-            </View>
-
-            <Text style={styles.sectionLabel}>Select at least 2 friends</Text>
-
-            <View style={styles.newMsgSearchContainer}>
-              <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
-              <TextInput
-                style={styles.newMsgSearchInput}
-                placeholder="Search friends..."
-                placeholderTextColor={AppColors.iconMuted}
-                value={groupFriendSearch}
-                onChangeText={setGroupFriendSearch}
-              />
-            </View>
-
-            <FlatList
-              data={groupFriendResults}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
-                const selected = selectedMembers.some((m) => m.id === item.id);
-                return (
-                  <TouchableOpacity
-                    style={styles.newMsgUserItem}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectedMembers((prev) =>
-                        selected
-                          ? prev.filter((m) => m.id !== item.id)
-                          : [...prev, item]
-                      );
-                    }}
-                  >
-                    <View style={styles.newMsgAvatarContainer}>
-                      <Avatar
-                        user={item}
-                        size="medium"
-                        showOnlineIndicator={true}
-                        isOnline={isUserOnline(item.id)}
-                      />
-                    </View>
-                    <View style={styles.newMsgUserInfo}>
-                      <Text style={styles.newMsgUserName}>{item.username}</Text>
-                      <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        selected && styles.checkboxSelected,
-                      ]}
-                    >
-                      {selected && (
-                        <Feather name="check" size={14} color="white" strokeWidth={3} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                isLoadingGroupFriends ? (
-                  <View style={styles.newMsgEmpty}>
-                    <ActivityIndicator size="small" color={AppColors.primary} />
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.newMsgUserItem}
-                    onPress={loadGroupFriends}
-                  >
-                    <View style={styles.newMsgAvatar}>
-                      <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
-                    </View>
-                    <Text style={styles.newMsgUserInfo}>
-                      {groupFriendSearch.trim()
-                        ? "No friends found"
-                        : "No friends available"}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              }
-              contentContainerStyle={{ paddingBottom: sheetContentBottomPadding }}
-              showsVerticalScrollIndicator={false}
-            />
-
-            <TouchableOpacity
-              style={[
-                styles.createGroupBtn,
-                { marginBottom: sheetContentBottomPadding },
-                (!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup) &&
-                  styles.createGroupBtnDisabled,
-              ]}
-              onPress={handleCreateGroup}
-              disabled={!groupName.trim() || selectedMembers.length < 2 || isCreatingGroup}
-            >
-              {isCreatingGroup ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text style={styles.createGroupBtnText}>
-                  Create Group ({selectedMembers.length} selected)
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      {/* Create Group Sheet */}
+      <CreateGroupSheet
+        visible={showCreateGroup}
+        groupName={groupName}
+        onChangeGroupName={setGroupName}
+        friendSearch={groupFriendSearch}
+        onChangeFriendSearch={setGroupFriendSearch}
+        friends={groupFriendResults}
+        selectedMembers={selectedMembers}
+        onToggleMember={handleToggleMember}
+        isLoadingFriends={isLoadingGroupFriends}
+        isCreatingGroup={isCreatingGroup}
+        bottomPadding={sheetContentBottomPadding}
+        isUserOnline={isUserOnline}
+        onRefreshFriends={loadGroupFriends}
+        onSubmit={handleCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+      />
     </SafeAreaView>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-// Sub-components
-// ════════════════════════════════════════════════════════════════════════════════
-
-// ─── Group Settings Modal ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
   },
-
-  // ─── Header ──────────────────────────────────────────────────────────────
   headerActionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -784,112 +447,44 @@ const styles = StyleSheet.create({
   headerAction: {
     padding: 4,
   },
-
-  // ─── Search ─────────────────────────────────────────────────────────────
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: AppColors.borderLight,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginHorizontal: layoutPadding,
-    marginTop: 12,
+    marginTop: 15,
   },
   searchInput: {
     ...Typography.caption,
     flex: 1,
     marginLeft: 8,
     color: AppColors.text,
+    fontSize: 14,
+    fontWeight: '600',
   },
-
-  // ─── Conversation List ────────────────────────────────────────────────────
   convList: {
     paddingBottom: 100,
   },
-  convItem: {
+  skeletonItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: layoutPadding,
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.borderLight,
   },
-  convItemUnread: {
-    backgroundColor: `${AppColors.primary}08`,
-  },
-  avatar: {
+  avatarSkeleton: {
     width: 52,
     height: 52,
     borderRadius: 26,
   },
-  avatarContainer: {
-    width: 52,
-    height: 52,
-  },
-  groupAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: AppColors.borderLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  convContent: {
+  skeletonContent: {
     flex: 1,
     marginLeft: 12,
   },
-  convTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 3,
-  },
-  convName: {
-    ...Typography.bodyMedium,
-    flex: 1,
-    color: AppColors.text,
-  },
-  convNameBold: {
-    fontWeight: "700",
-  },
-  convTime: {
-    ...Typography.meta,
-    color: AppColors.iconMuted,
-    marginLeft: 6,
-  },
-  convBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  convLastMessage: {
-    ...Typography.caption,
-    fontSize: 13,
-    color: AppColors.iconMuted,
-    flex: 1,
-  },
-  convLastMessageBold: {
-    fontWeight: "600",
-    color: AppColors.text,
-  },
-  unreadBadge: {
-    backgroundColor: AppColors.primary,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-    marginLeft: 8,
-  },
-  unreadText: {
-    color: "white",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
-  // ─── Skeleton Loading ───────────────────────────────────────────────────
   skeleton: {
     backgroundColor: AppColors.borderLight,
   },
@@ -897,48 +492,6 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.borderLight,
     borderRadius: 4,
   },
-
-  // ─── Empty States ───────────────────────────────────────────────────────
-  centerState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyChatTitle: {
-    ...Typography.sectionTitle,
-    color: AppColors.text,
-  },
-  emptyChatSubtitle: {
-    ...Typography.caption,
-    color: AppColors.iconMuted,
-    textAlign: "center",
-    paddingHorizontal: 40,
-  },
-  loadingText: {
-    ...Typography.caption,
-    color: AppColors.iconMuted,
-    marginTop: 8,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 80,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    ...Typography.sectionTitle,
-    marginTop: 16,
-    color: AppColors.text,
-  },
-  emptySubtitle: {
-    ...Typography.caption,
-    color: AppColors.iconMuted,
-    textAlign: "center",
-    marginTop: 8,
-  },
-
-  // ─── Error Banner ────────────────────────────────────────────────────────
   errorBanner: {
     backgroundColor: "#dc3545",
     paddingVertical: 10,
@@ -958,8 +511,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textDecorationLine: "underline",
   },
-
-  // ─── Empty Inbox ────────────────────────────────────────────────────────
   emptyInbox: {
     alignItems: "center",
     paddingTop: 100,
@@ -997,404 +548,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-
-  // ─── Sheet / Overlay ─────────────────────────────────────────────────────
-  sheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-  },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-
-  // ─── New Message Sheet ─────────────────────────────────────────────────
-  newMsgSheet: {
-    backgroundColor: AppColors.surfaceElevated,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    maxHeight: "70%",
-    paddingBottom: 34,
-  },
-  newMsgSheetHeader: {
-    flexDirection: "row",
+  emptyState: {
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    paddingTop: 80,
+    paddingHorizontal: 40,
   },
-  newMsgSheetTitle: {
-    ...Typography.bodySemibold,
-    fontSize: 16,
+  emptyTitle: {
+    ...Typography.sectionTitle,
+    marginTop: 16,
     color: AppColors.text,
   },
-  newMsgSearchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: AppColors.borderLight,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginHorizontal: 16,
-    marginTop: 12,
-    gap: 8,
-  },
-  newMsgSearchInput: {
-    ...Typography.body,
-    flex: 1,
-    color: AppColors.text,
-    padding: 0,
-  },
-  newMsgUserItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  newMsgUserItemDisabled: {
-    opacity: 0.5,
-  },
-  newMsgAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: AppColors.borderLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  newMsgAvatarContainer: {
-    width: 44,
-    height: 44,
-  },
-  newMsgUserInfo: {
-    flex: 1,
-  },
-  newMsgUserName: {
-    ...Typography.bodySemibold,
-    fontSize: 15,
-    color: AppColors.text,
-  },
-  newMsgUserDisplay: {
+  emptySubtitle: {
     ...Typography.caption,
     color: AppColors.iconMuted,
-    marginTop: 2,
-  },
-  newMsgEmpty: {
-    ...Typography.body,
-    color: AppColors.iconMuted,
     textAlign: "center",
-    paddingVertical: 32,
-  },
-
-  // ─── Group Creation ────────────────────────────────────────────────────
-  sectionLabel: {
-    ...Typography.captionSemibold,
-    fontSize: 12,
-    color: AppColors.iconMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  groupNameContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  groupNameInput: {
-    ...Typography.body,
-    color: AppColors.text,
-    backgroundColor: AppColors.borderLight,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: AppColors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxSelected: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
-  },
-  createGroupBtn: {
-    backgroundColor: AppColors.primary,
-    marginHorizontal: 16,
     marginTop: 8,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  createGroupBtnDisabled: {
-    opacity: 0.5,
-  },
-  createGroupBtnText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-
-  // ─── Chat Header ───────────────────────────────────────────────────────
-  chatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: layoutPadding,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
-    gap: 4,
-  },
-  backBtn: {
-    padding: 6,
-  },
-  chatHeaderUser: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginLeft: 4,
-  },
-  chatAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  chatAvatarGroup: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chatName: {
-    ...Typography.bodySemibold,
-    fontSize: 16,
-    color: AppColors.text,
-  },
-  chatSubtitle: {
-    ...Typography.meta,
-    color: AppColors.iconMuted,
-  },
-
-  // ─── Messages ──────────────────────────────────────────────────────────
-  messagesList: {
-    paddingHorizontal: layoutPadding,
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  messageRow: {
-    flexDirection: "row",
-    marginBottom: 6,
-    alignItems: "flex-end",
-  },
-  messageRowMine: {
-    justifyContent: "flex-end",
-  },
-  msgAvatarContainer: {
-    width: 32,
-    marginRight: 6,
-  },
-  msgAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  msgAvatarPlaceholder: {
-    width: 28,
-    height: 28,
-  },
-  bubbleContainer: {
-    maxWidth: "75%",
-  },
-  bubbleContainerMine: {
-    alignItems: "flex-end",
-  },
-  bubbleContainerTheirs: {
-    alignItems: "flex-start",
-  },
-  senderName: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: AppColors.primary,
-    marginBottom: 3,
-    marginLeft: 4,
-  },
-  bubble: {
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  bubbleMine: {
-    backgroundColor: AppColors.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleTheirs: {
-    backgroundColor: AppColors.borderLight,
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    ...Typography.body,
-    lineHeight: 20,
-    color: AppColors.text,
-  },
-  messageTextMine: {
-    color: "white",
-  },
-  messageImage: {
-    width: 200,
-    height: 150,
-    borderRadius: 12,
-  },
-  msgMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 3,
-    gap: 4,
-  },
-  msgMetaMine: {
-    justifyContent: "flex-end",
-  },
-  msgTime: {
-    ...Typography.meta,
-    fontSize: 11,
-    color: AppColors.iconMuted,
-  },
-  editedTag: {
-    fontSize: 10,
-    color: AppColors.iconMuted,
-    fontStyle: "italic",
-  },
-
-  // ─── Typing ────────────────────────────────────────────────────────────
-  typingContainer: {
-    paddingHorizontal: layoutPadding,
-    paddingBottom: 4,
-  },
-  typingText: {
-    ...Typography.meta,
-    color: AppColors.iconMuted,
-    fontStyle: "italic",
-  },
-
-  // ─── Input ─────────────────────────────────────────────────────────────
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: layoutPadding,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
-    gap: 8,
-  },
-  attachBtn: {
-    padding: 4,
-  },
-  messageInput: {
-    ...Typography.body,
-    flex: 1,
-    color: AppColors.text,
-    backgroundColor: AppColors.borderLight,
-    borderRadius: 20,
-    paddingHorizontal: layoutPadding,
-    paddingVertical: 9,
-    maxHeight: 120,
-  },
-  sendBtn: {
-    padding: 4,
-  },
-
-  // ─── Group Settings Modal ──────────────────────────────────────────────
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  settingsSheet: {
-    backgroundColor: AppColors.surfaceElevated,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    maxHeight: "70%",
-  },
-  settingsSheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  settingsSheetTitle: {
-    ...Typography.bodySemibold,
-    fontSize: 16,
-    color: AppColors.text,
-    flex: 1,
-  },
-  settingsContent: {
-    paddingBottom: 34,
-  },
-  memberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  memberInfo: {
-    flex: 1,
-  },
-  memberName: {
-    ...Typography.bodyMedium,
-    color: AppColors.text,
-  },
-  memberSelf: {
-    color: AppColors.iconMuted,
-    fontWeight: "400",
-  },
-  memberAdmin: {
-    color: AppColors.primary,
-    fontWeight: "400",
-  },
-  removeMemberBtn: {
-    padding: 8,
-  },
-  settingsActions: {
-    marginTop: 16,
-    paddingHorizontal: 18,
-    gap: 4,
-  },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.borderLight,
-  },
-  actionText: {
-    ...Typography.body,
-    flex: 1,
-    color: AppColors.text,
-  },
-  leaveGroupText: {
-    ...Typography.body,
-    flex: 1,
-    color: "#e74c3c",
   },
 });

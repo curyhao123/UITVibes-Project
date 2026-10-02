@@ -523,8 +523,6 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StaticPremiumHeader
         title="Search"
-        showAvatar
-        avatarUser={currentUser}
         largeTitle
       />
 

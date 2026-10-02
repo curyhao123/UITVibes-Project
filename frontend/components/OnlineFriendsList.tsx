@@ -102,7 +102,7 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, onPress }) => {
           <Avatar
             user={user}
             size="story"
-            showBorder={true}
+            showBorder={false}
             isViewed={false}
             showOnlineIndicator={false}
           />
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: "#1f2937",
     letterSpacing: 0.1,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: "600",
     color: "#16a34a",
     letterSpacing: 0.2,
@@ -312,10 +312,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   itemName: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
     color: "#374151",
-    marginTop: 5,
+    marginTop: 8,
     textAlign: "center",
     width: ITEM_WIDTH,
     letterSpacing: 0.02,
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#d1d5db",
     fontStyle: "italic",
   },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#f3f4f6",
   },
   busyText: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#9ca3af",
     textAlign: "center",
     fontStyle: "italic",
