@@ -8,7 +8,8 @@ import {
   TextStyle,
   Animated,
 } from 'react-native';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -31,6 +32,7 @@ export function Button({
   style,
   textStyle,
 }: ButtonProps) {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -51,12 +53,47 @@ export function Button({
     }).start();
   };
 
+  const getVariantStyle = () => {
+    switch (variant) {
+      case 'primary':
+        return { backgroundColor: colors.primary };
+      case 'secondary':
+        return {
+          backgroundColor: colors.surface,
+          borderWidth: 1.5,
+          borderColor: colors.border,
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderColor: colors.primary,
+        };
+      case 'ghost':
+      default:
+        return { backgroundColor: 'transparent' };
+    }
+  };
+
+  const getVariantTextStyle = () => {
+    switch (variant) {
+      case 'primary':
+        return { color: '#FFFFFF' };
+      case 'secondary':
+        return { color: colors.text };
+      case 'outline':
+      case 'ghost':
+      default:
+        return { color: colors.primary };
+    }
+  };
+
   return (
     <Animated.View style={{ flex: 1, width: '100%', transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
         style={[
           styles.base,
-          styles[variant],
+          getVariantStyle(),
           styles[`${size}Size`],
           isDisabled && styles.disabled,
           style,
@@ -69,48 +106,32 @@ export function Button({
       >
         {loading ? (
           <ActivityIndicator
-            color={variant === 'primary' ? '#fff' : AppColors.primary}
-          size="small"
-        />
-      ) : (
-        <Text
-          style={[
-            styles.text,
-            styles[`${variant}Text`],
-            styles[`${size}Text`],
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
-    </TouchableOpacity>
+            color={variant === 'primary' ? '#fff' : colors.primary}
+            size="small"
+          />
+        ) : (
+          <Text
+            style={[
+              styles.text,
+              getVariantTextStyle(),
+              styles[`${size}Text`],
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        )}
+      </TouchableOpacity>
     </Animated.View>
   );
 }
+
 const styles = StyleSheet.create({
   base: {
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-  },
-  // Variants
-  primary: {
-    backgroundColor: AppColors.primary,
-  },
-  secondary: {
-    backgroundColor: AppColors.surface,
-    borderWidth: 1.5,
-    borderColor: AppColors.border,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: AppColors.primary,
   },
   // Sizes
   smSize: { height: 40, paddingHorizontal: 16 },
@@ -125,10 +146,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  primaryText: { color: '#fff' },
-  secondaryText: { color: AppColors.text },
-  ghostText: { color: AppColors.primary },
-  outlineText: { color: AppColors.primary },
   // Text sizes
   smText: { fontSize: 14 },
   mdText: { fontSize: 16 },

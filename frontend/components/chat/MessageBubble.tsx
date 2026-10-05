@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { formatDistanceToNow } from '../../utils/time';
 import { Avatar } from '../Avatar';
 
@@ -75,6 +76,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   onPress,
   onLongPress,
 }) => {
+  const { colors } = useTheme();
   const showTimeDivider = shouldShowTimeDivider(item, previousMessage);
   const nextHasTimeDivider = nextMessage
     ? shouldShowTimeDivider(nextMessage, item)
@@ -108,8 +110,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     <View>
       {showTimeDivider && (
         <View style={styles.timeDivider}>
-          <View style={styles.timeDividerPill}>
-            <Text style={styles.timeDividerText}>
+          <View style={[styles.timeDividerPill, { backgroundColor: colors.surfaceElevated }]}>
+            <Text style={[styles.timeDividerText, { color: colors.textMuted }]}>
               {formatMessageSectionTime(item.createdAt)}
             </Text>
           </View>
@@ -148,7 +150,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           ]}
         >
           {!isMine && showAvatar && (
-            <Text style={styles.senderName}>
+            <Text style={[styles.senderName, { color: colors.text }]}>
               {sender?.displayName || sender?.username || 'User'}
             </Text>
           )}
@@ -171,11 +173,13 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                 <View
                   style={[
                     styles.bubble,
-                    isMine ? styles.bubbleMine : styles.bubbleTheirs,
+                    isMine
+                      ? styles.bubbleMine
+                      : [styles.bubbleTheirs, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }],
                     bubbleGroupStyle,
                   ]}
                 >
-                  <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
+                  <Text style={[styles.messageText, { color: colors.text }, isMine && styles.messageTextMine]}>
                     {item.text}
                   </Text>
                 </View>
@@ -185,18 +189,20 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
             <View
               style={[
                 styles.bubble,
-                isMine ? styles.bubbleMine : styles.bubbleTheirs,
+                isMine
+                  ? styles.bubbleMine
+                  : [styles.bubbleTheirs, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }],
                 bubbleGroupStyle,
               ]}
             >
-              <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
+              <Text style={[styles.messageText, { color: colors.text }, isMine && styles.messageTextMine]}>
                 {item.text}
               </Text>
             </View>
           ) : null}
           {isSelected && (
             <View style={[styles.msgMeta, isMine && styles.msgMetaMine]}>
-              <Text style={styles.msgTime}>
+              <Text style={[styles.msgTime, { color: colors.textMuted }]}>
                 {item.editedAt ? 'Edited - ' : ''}
                 {formatDistanceToNow(new Date(item.createdAt))}
               </Text>

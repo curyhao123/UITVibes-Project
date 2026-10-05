@@ -1,5 +1,5 @@
 /**
- * ModernTabBar — Instagram/Threads/Arc-inspired floating bottom tab bar.
+ * ModernTabBar — Instagram/Threads/Arc-inspired floating bottom tab bar with dynamic dark mode.
  *
  * Features:
  * - Floating capsule design with glassmorphism
@@ -7,6 +7,7 @@
  * - Micro-interactions: active icon bounce, press scale
  * - Per-press haptic feedback
  * - Equal spacing with centered layout
+ * - Dark mode & Light mode dynamic styling
  */
 
 import { Feather } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -49,8 +50,6 @@ const BOTTOM_INSET = 4;
 
 export const TAB_BAR_BOTTOM_OFFSET = BAR_HEIGHT + BOTTOM_INSET + FLOAT_BOTTOM;
 export const TAB_BAR_HEIGHT = BAR_HEIGHT;
-
-const CREATE_INDEX = 2;
 
 // ── Dimensions ──────────────────────────────────────────────────────────────
 
@@ -93,10 +92,9 @@ interface ActivePillProps {
 }
 
 function ActivePill({ positions, currentIndex }: ActivePillProps) {
-  // Use a separate shared value for the animated position
+  const { isDark } = useTheme();
   const animatedX = useSharedValue(0);
 
-  // Update animatedX when positions or currentIndex changes
   React.useEffect(() => {
     const updatePosition = () => {
       const posArray = positions.value;
@@ -123,7 +121,16 @@ function ActivePill({ positions, currentIndex }: ActivePillProps) {
         animatedStyle,
       ]}
     >
-      <View style={styles.pillFill} />
+      <View
+        style={[
+          styles.pillFill,
+          {
+            backgroundColor: isDark
+              ? 'rgba(255, 255, 255, 0.12)'
+              : 'rgba(255, 255, 255, 0.92)',
+          },
+        ]}
+      />
     </Animated.View>
   );
 }
@@ -143,11 +150,11 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
   isCreate = false,
   size = ICON_SIZE,
 }) => {
+  const { colors } = useTheme();
   const scale = useSharedValue(1);
 
   React.useEffect(() => {
     if (isActive && !isCreate) {
-      // Bounce effect when tab becomes active
       scale.value = withSequence(
         withSpring(1.2, ACTIVE_BOUNCE),
         withSpring(1, { damping: 15, stiffness: 200 }),
@@ -166,7 +173,7 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
       <Feather
         name={iconName as any}
         size={isCreate ? CREATE_ICON_SIZE : size}
-        color={isActive ? AppColors.primary : AppColors.iconMuted}
+        color={isActive ? colors.primary : colors.iconMuted}
         strokeWidth={isActive ? 2.2 : 2}
       />
     </Animated.View>
@@ -186,6 +193,7 @@ function TabButton({
   isActive: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(isActive ? 1 : 0.8);
 
@@ -227,7 +235,15 @@ function TabButton({
     >
       <Animated.View style={animatedStyle}>
         {isCreate ? (
-          <View style={styles.createIconWrap}>
+          <View
+            style={[
+              styles.createIconWrap,
+              {
+                backgroundColor: colors.primary,
+                shadowColor: colors.primaryDark,
+              },
+            ]}
+          >
             <Feather
               name={iconName as any}
               size={CREATE_ICON_SIZE}
@@ -253,6 +269,7 @@ export function ModernTabBar({
   navigation,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
 
   const TAB_ROUTE_NAMES = ['home', 'search', 'create', 'reels', 'profile'];
   const isTabNavigator =
@@ -295,17 +312,38 @@ export function ModernTabBar({
       ]}
     >
       <View
-        style={[styles.capsule, { width: CAPSULE_WIDTH }]}
+        style={[
+          styles.capsule,
+          { width: CAPSULE_WIDTH },
+        ]}
         onLayout={onCapsuleLayout}
       >
         <BlurView
           intensity={70}
-          tint="light"
+          tint={isDark ? 'dark' : 'light'}
           style={StyleSheet.absoluteFill}
         />
 
-        <View style={styles.capsuleTint} />
-        <View style={styles.capsuleBorder} />
+        <View
+          style={[
+            styles.capsuleTint,
+            {
+              backgroundColor: isDark
+                ? 'rgba(26, 29, 35, 0.82)'
+                : 'rgba(255, 255, 255, 0.72)',
+            },
+          ]}
+        />
+        <View
+          style={[
+            styles.capsuleBorder,
+            {
+              borderColor: isDark
+                ? 'rgba(255, 255, 255, 0.12)'
+                : 'rgba(255, 255, 255, 0.6)',
+            },
+          ]}
+        />
 
         <ActivePill positions={positions} currentIndex={state.index} />
 
@@ -357,14 +395,12 @@ const styles = StyleSheet.create({
 
   capsuleTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
   },
 
   capsuleBorder: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: CAPSULE_RADIUS,
     borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
 
   pillWrapper: {
@@ -405,13 +441,11 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: AppColors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: -10,
     ...Platform.select({
       ios: {
-        shadowColor: AppColors.primaryDark,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.36,
         shadowRadius: 8,

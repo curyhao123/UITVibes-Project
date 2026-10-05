@@ -12,6 +12,7 @@ import { Toast } from '../../components/Toast';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Post, User } from '../../data/mockData';
 import { getUserById, getUserPosts, toggleFollow } from '../../services/api';
 import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/blockService';
@@ -21,6 +22,7 @@ import { getCurrentUserId } from '../../services/session';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
+  const { colors, isDark } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,8 +166,8 @@ export default function UserProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: colors.background }]} edges={['top']}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
   }
@@ -174,12 +176,12 @@ export default function UserProfileScreen() {
     const isBlocked = !!(blockStatus?.blockedByMe || blockStatus?.blockedMe);
     if (isBlocked) {
       return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
           <CompactHeader title="Profile" showBack onBack={() => router.back()} />
           <View style={styles.blockedContainer}>
-            <Feather name="slash" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
-            <Text style={styles.blockedTitle}>Profile unavailable</Text>
-            <Text style={styles.blockedText}>
+            <Feather name="slash" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+            <Text style={[styles.blockedTitle, { color: colors.text }]}>Profile unavailable</Text>
+            <Text style={[styles.blockedText, { color: colors.textMuted }]}>
               You cannot view this profile.
             </Text>
           </View>
@@ -188,11 +190,11 @@ export default function UserProfileScreen() {
     }
 
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <CompactHeader title="Profile" showBack onBack={() => router.back()} />
         <View style={styles.notFoundContainer}>
-          <Feather name="user-x" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
-          <Text style={styles.notFoundText}>User not found</Text>
+          <Feather name="user-x" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+          <Text style={[styles.notFoundText, { color: colors.iconMuted }]}>User not found</Text>
         </View>
       </SafeAreaView>
     );
@@ -202,14 +204,14 @@ export default function UserProfileScreen() {
 
   return (
     <>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
         <CompactHeader
           title={user.username}
           showBack
           onBack={() => router.back()}
           rightAction={
             <TouchableOpacity
-              style={styles.moreBtn}
+              style={[styles.moreBtn, { backgroundColor: colors.surfaceElevated }]}
               activeOpacity={0.7}
               onPress={() => {
                 if (isOwnProfile) {
@@ -223,7 +225,7 @@ export default function UserProfileScreen() {
               <Feather
                 name={isOwnProfile ? 'settings' : 'more-horizontal'}
                 size={22}
-                color={AppColors.text}
+                color={colors.text}
                 strokeWidth={2}
               />
             </TouchableOpacity>
@@ -237,31 +239,31 @@ export default function UserProfileScreen() {
                 style={styles.statItem}
                 onPress={() => router.push(`/followers/${user.id}` as any)}
               >
-                <Text style={styles.statNumber}>{formatCount(user.posts)}</Text>
-                <Text style={styles.statLabel}>Posts</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(user.posts)}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Posts</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.statItem}
                 onPress={() => router.push(`/followers/${user.id}` as any)}
               >
-                <Text style={styles.statNumber}>{formatCount(user.followers)}</Text>
-                <Text style={styles.statLabel}>Followers</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(user.followers)}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Followers</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.statItem}
                 onPress={() => router.push(`/followers/${user.id}?tab=following` as any)}
               >
-                <Text style={styles.statNumber}>{formatCount(user.following)}</Text>
-                <Text style={styles.statLabel}>Following</Text>
+                <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(user.following)}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Following</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.bioContainer}>
-            <Text style={styles.displayName}>{user.displayName}</Text>
-            <Text style={styles.bio}>{user.bio}</Text>
+            <Text style={[styles.displayName, { color: colors.text }]}>{user.displayName}</Text>
+            <Text style={[styles.bio, { color: colors.textSecondary }]}>{user.bio}</Text>
             {user.website && (
-              <Text style={styles.website}>{user.website}</Text>
+              <Text style={[styles.website, { color: colors.primary }]}>{user.website}</Text>
             )}
           </View>
 
@@ -269,22 +271,39 @@ export default function UserProfileScreen() {
             {user.id !== getCurrentUserId() && (
               <>
                 <TouchableOpacity
-                  style={[styles.followButton, user.isFollowing && styles.followingButton]}
+                  style={[
+                    styles.followButton,
+                    { backgroundColor: user.isFollowing ? colors.surfaceElevated : colors.primary },
+                    user.isFollowing && { borderWidth: 1, borderColor: colors.border },
+                  ]}
                   onPress={handleFollowToggle}
                 >
-                  <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      { color: user.isFollowing ? colors.text : '#FFFFFF' },
+                    ]}
+                  >
                     {user.isFollowing ? 'Following' : 'Follow'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.messageButton, isStartingConversation && styles.messageButtonDisabled]}
+                  style={[
+                    styles.messageButton,
+                    {
+                      backgroundColor: colors.surfaceElevated,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    },
+                    isStartingConversation && styles.messageButtonDisabled,
+                  ]}
                   onPress={handleMessage}
                   disabled={isStartingConversation}
                 >
                   {isStartingConversation ? (
-                    <ActivityIndicator size="small" color={AppColors.text} />
+                    <ActivityIndicator size="small" color={colors.text} />
                   ) : (
-                    <Text style={styles.messageButtonText}>Message</Text>
+                    <Text style={[styles.messageButtonText, { color: colors.text }]}>Message</Text>
                   )}
                 </TouchableOpacity>
               </>
@@ -296,26 +315,32 @@ export default function UserProfileScreen() {
             isCurrentUser={false}
           />
 
-          <View style={styles.tabsContainer}>
+          <View style={[styles.tabsContainer, { borderTopColor: colors.border }]}>
             <TouchableOpacity
-              style={[styles.tab, profileTab === 'posts' && styles.activeTab]}
+              style={[
+                styles.tab,
+                profileTab === 'posts' && { borderTopWidth: 2, borderTopColor: colors.primary },
+              ]}
               onPress={() => setProfileTab('posts')}
             >
-              <Feather name="grid" size={24} color={profileTab === 'posts' ? AppColors.primary : AppColors.textMuted} />
+              <Feather name="grid" size={24} color={profileTab === 'posts' ? colors.primary : colors.iconMuted} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, profileTab === 'reposts' && styles.activeTab]}
+              style={[
+                styles.tab,
+                profileTab === 'reposts' && { borderTopWidth: 2, borderTopColor: colors.primary },
+              ]}
               onPress={() => setProfileTab('reposts')}
             >
-              <Feather name="refresh-cw" size={24} color={profileTab === 'reposts' ? AppColors.primary : AppColors.textMuted} />
+              <Feather name="refresh-cw" size={24} color={profileTab === 'reposts' ? colors.primary : colors.iconMuted} />
             </TouchableOpacity>
           </View>
 
           {profileTab === 'posts' ? (
             posts.length === 0 ? (
               <View style={styles.emptyStories}>
-                <Feather name="grid" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
-                <Text style={styles.emptyStoriesText}>No posts yet</Text>
+                <Feather name="grid" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+                <Text style={[styles.emptyStoriesText, { color: colors.iconMuted }]}>No posts yet</Text>
               </View>
             ) : (
               <PostGrid posts={posts} />
@@ -323,12 +348,12 @@ export default function UserProfileScreen() {
           ) : (
             isLoadingReposts ? (
               <View style={styles.emptyStories}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : reposts.length === 0 ? (
               <View style={styles.emptyStories}>
-                <Feather name="refresh-cw" size={48} color={AppColors.textMuted} strokeWidth={1.5} />
-                <Text style={styles.emptyStoriesText}>No reposts yet</Text>
+                <Feather name="refresh-cw" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+                <Text style={[styles.emptyStoriesText, { color: colors.iconMuted }]}>No reposts yet</Text>
               </View>
             ) : (
               <PostGrid posts={reposts} />

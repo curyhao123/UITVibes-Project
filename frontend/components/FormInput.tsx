@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface FormInputProps extends TextInputProps {
   label?: string;
@@ -18,22 +19,33 @@ interface FormInputProps extends TextInputProps {
 }
 
 export function FormInput({ label, error, hint, rightIcon, style, ...props }: FormInputProps) {
+  const { colors, isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-  const hasError = !!error;
+  const hasError = Boolean(error);
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.text }]}>{label}</Text>}
       <View
         style={[
           styles.inputWrapper,
-          isFocused && styles.inputFocused,
-          hasError && styles.inputError,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+          isFocused && {
+            borderColor: colors.primary,
+            backgroundColor: isDark ? `${colors.primary}18` : '#FDF8F6',
+          },
+          hasError && {
+            borderColor: colors.error,
+            backgroundColor: isDark ? `${colors.error}18` : '#FDF6F6',
+          },
         ]}
       >
         <TextInput
-          style={[styles.input, style]}
-          placeholderTextColor={AppColors.textMuted}
+          style={[styles.input, { color: colors.text }, style]}
+          placeholderTextColor={colors.textMuted}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           {...props}
@@ -44,16 +56,16 @@ export function FormInput({ label, error, hint, rightIcon, style, ...props }: Fo
             onPress={() => props.onChangeText?.('')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="x-circle" size={18} color={AppColors.iconMuted} />
+            <Feather name="x-circle" size={18} color={colors.iconMuted} />
           </TouchableOpacity>
         )}
       </View>
       {hasError && (
-        <Text style={styles.errorText}>
-          <Feather name="alert-circle" size={13} color={AppColors.error} /> {error}
+        <Text style={[styles.errorText, { color: colors.error }]}>
+          <Feather name="alert-circle" size={13} color={colors.error} /> {error}
         </Text>
       )}
-      {hint && !hasError && <Text style={styles.hintText}>{hint}</Text>}
+      {hint && !hasError && <Text style={[styles.hintText, { color: colors.textMuted }]}>{hint}</Text>}
     </View>
   );
 }
@@ -65,45 +77,31 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.text,
     marginBottom: 6,
     letterSpacing: -0.1,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     minHeight: 50,
   },
-  inputFocused: {
-    borderColor: AppColors.primary,
-    backgroundColor: '#FDF8F6',
-  },
-  inputError: {
-    borderColor: AppColors.error,
-    backgroundColor: '#FDF6F6',
-  },
   input: {
     flex: 1,
     fontSize: 16,
-    color: AppColors.text,
     paddingVertical: 0,
     letterSpacing: -0.15,
   },
   errorText: {
     marginTop: 5,
     fontSize: 13,
-    color: AppColors.error,
     letterSpacing: -0.1,
   },
   hintText: {
     marginTop: 5,
     fontSize: 13,
-    color: AppColors.textMuted,
     letterSpacing: -0.1,
   },
 });

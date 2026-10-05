@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { Avatar } from '../Avatar';
 import { PushButton } from '../PushButton';
 
@@ -34,19 +35,21 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onUserPress,
   onActionPress,
 }) => {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.chatHeader}>
+    <View style={[styles.chatHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
       <View style={styles.backBtnWrap}>
         <PushButton
           onPress={onBack}
-          shadowColor={AppColors.border}
-          frontColor={AppColors.surfaceElevated}
-          frontTextColor={AppColors.text}
+          shadowColor={colors.border}
+          frontColor={colors.surfaceElevated}
+          frontTextColor={colors.text}
           liftPx={3}
           borderRadius={12}
           contentStyle={styles.backBtnContent}
         >
-          <Feather name="arrow-left" size={22} color={AppColors.text} strokeWidth={2.2} />
+          <Feather name="arrow-left" size={22} color={colors.text} strokeWidth={2.2} />
         </PushButton>
       </View>
       <TouchableOpacity
@@ -67,11 +70,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </View>
         )}
         <View style={styles.headerTextWrap}>
-          <Text style={styles.chatName} numberOfLines={1}>
+          <Text style={[styles.chatName, { color: colors.text }]} numberOfLines={1}>
             {title}
           </Text>
           {isGroup && (
-            <Text style={styles.chatSubtitle}>
+            <Text style={[styles.chatSubtitle, { color: colors.textMuted }]}>
               {memberCount} members
             </Text>
           )}
@@ -86,7 +89,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         <Feather
           name={isGroup && isAdmin ? 'settings' : 'info'}
           size={24}
-          color={AppColors.text}
+          color={colors.text}
           strokeWidth={2}
         />
       </TouchableOpacity>

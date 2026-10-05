@@ -15,6 +15,7 @@ interface MentionInputProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
+  placeholderTextColor?: string;
   onSubmit?: () => void;
   multiline?: boolean;
   style?: object;
@@ -26,6 +27,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   value,
   onChangeText,
   placeholder = 'Add a comment...',
+  placeholderTextColor,
   onSubmit,
   multiline = false,
   style,
@@ -225,7 +227,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         ref={inputRef}
         style={[styles.input, inputStyle]}
         placeholder={placeholder}
-        placeholderTextColor={AppColors.iconMuted}
+        placeholderTextColor={placeholderTextColor ?? AppColors.iconMuted}
         value={value}
         onChangeText={handleTextChange}
         onSubmitEditing={onSubmit}

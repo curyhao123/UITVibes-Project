@@ -15,8 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../context/AppContext';
-import { AppColors, layoutPadding } from '../constants/theme';
+import { layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 import defaultAvatar from '../assets/images/default-avatar.png';
 import { ConfirmationModal } from './ConfirmationModal';
 
@@ -42,6 +43,7 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
+  const { colors, isDark } = useTheme();
   const { currentUser, updateProfile, updateAvatar, deleteAvatar } = useApp();
 
   const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);
@@ -160,30 +162,30 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
       onRequestClose={handleClose}
       onShow={open}
     >
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
+      <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { backgroundColor: colors.surfaceElevated, borderBottomColor: colors.border }]}>
           <View style={styles.modalTitleLayer} pointerEvents="none">
-            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
           </View>
           <View style={styles.modalHeaderRow}>
             <TouchableOpacity onPress={handleClose} disabled={isSaving}>
-              <Text style={[styles.modalCancel, isSaving && styles.textMuted]}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: colors.text }, isSaving && styles.textMuted]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} disabled={isSaving}>
               {isSaving ? (
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Text style={styles.modalSave}>Save</Text>
+                <Text style={[styles.modalSave, { color: colors.primary }]}>Save</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
 
         <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled">
-          <View style={styles.modalAvatarSection}>
+          <View style={[styles.modalAvatarSection, { borderBottomColor: colors.borderLight }]}>
             <View style={styles.avatarWrapper}>
               {avatarDraftRemoved ? (
-                <RNImage source={defaultAvatar} style={styles.avatarPreview} />
+                <RNImage source={defaultAvatar} style={[styles.avatarPreview, { backgroundColor: colors.border }]} />
               ) : avatarDraftUri || baseAvatarInModal ? (
                 <RNImage
                   source={
@@ -191,10 +193,10 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
                       ? { uri: avatarDraftUri }
                       : { uri: baseAvatarInModal }
                   }
-                  style={styles.avatarPreview}
+                  style={[styles.avatarPreview, { backgroundColor: colors.border }]}
                 />
               ) : (
-                <RNImage source={defaultAvatar} style={styles.avatarPreview} />
+                <RNImage source={defaultAvatar} style={[styles.avatarPreview, { backgroundColor: colors.border }]} />
               )}
               {isSaving && (
                 <View style={styles.avatarOverlay}>
@@ -204,7 +206,7 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
             </View>
             <View style={styles.photoActions}>
               <TouchableOpacity onPress={handleChangePhoto} disabled={isSaving}>
-                <Text style={[styles.changePhotoText, isSaving && styles.textMuted]}>
+                <Text style={[styles.changePhotoText, { color: colors.primary }, isSaving && styles.textMuted]}>
                   {hasAvatarInEditor ? 'Change Photo' : 'Add Photo'}
                 </Text>
               </TouchableOpacity>
@@ -214,35 +216,36 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
                   disabled={isSaving}
                   style={styles.removePhotoBtn}
                 >
-                  <Feather name="trash-2" size={16} color={AppColors.error} strokeWidth={2} />
-                  <Text style={styles.removePhotoText}>Remove</Text>
+                  <Feather name="trash-2" size={16} color={colors.error} strokeWidth={2} />
+                  <Text style={[styles.removePhotoText, { color: colors.error }]}>Remove</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Full Name</Text>
+          <View style={[styles.formGroup, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.formLabel, { color: colors.iconMuted }]}>Full Name</Text>
             <TextInput
-              style={styles.formInput}
+              style={[styles.formInput, { color: colors.text }]}
               value={editFullName}
               onChangeText={setEditFullName}
               placeholder="Your full name"
-              placeholderTextColor={AppColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               maxLength={100}
               editable={!isSaving}
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Gender</Text>
+          <View style={[styles.formGroup, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.formLabel, { color: colors.iconMuted }]}>Gender</Text>
             <View style={styles.genderPickerRow}>
               {GENDER_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[
                     styles.genderOption,
-                    editGender === opt.value && styles.genderOptionSelected,
+                    { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+                    editGender === opt.value && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
                   onPress={() => setEditGender(opt.value)}
                   disabled={isSaving}
@@ -250,7 +253,8 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
                   <Text
                     style={[
                       styles.genderOptionText,
-                      editGender === opt.value && styles.genderOptionTextSelected,
+                      { color: colors.text },
+                      editGender === opt.value && { color: '#fff', fontWeight: '600' },
                     ]}
                   >
                     {opt.label}
@@ -260,14 +264,14 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
             </View>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Bio</Text>
+          <View style={[styles.formGroup, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.formLabel, { color: colors.iconMuted }]}>Bio</Text>
             <TextInput
-              style={[styles.formInput, styles.formInputMultiline]}
+              style={[styles.formInput, styles.formInputMultiline, { color: colors.text }]}
               value={editBio}
               onChangeText={setEditBio}
               placeholder="Tell us about yourself"
-              placeholderTextColor={AppColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={4}
               maxLength={200}
@@ -275,14 +279,14 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
             />
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Website</Text>
+          <View style={[styles.formGroup, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.formLabel, { color: colors.iconMuted }]}>Website</Text>
             <TextInput
-              style={styles.formInput}
+              style={[styles.formInput, { color: colors.text }]}
               value={editWebsite}
               onChangeText={setEditWebsite}
               placeholder="yourwebsite.com"
-              placeholderTextColor={AppColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               keyboardType="url"
               autoCapitalize="none"
               maxLength={100}
@@ -310,7 +314,6 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: AppColors.background,
   },
   modalHeader: {
     position: 'relative',
@@ -319,8 +322,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
   },
   modalTitleLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -337,17 +338,14 @@ const styles = StyleSheet.create({
   modalCancel: {
     ...Typography.body,
     fontSize: 16,
-    color: AppColors.text,
   },
   modalTitle: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
     textAlign: 'center',
   },
   modalSave: {
     ...Typography.bodySemibold,
     fontSize: 16,
-    color: AppColors.primary,
   },
   modalForm: {
     flex: 1,
@@ -358,7 +356,6 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: layoutPadding,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
     marginBottom: 8,
   },
   avatarWrapper: {
@@ -372,7 +369,6 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: AppColors.border,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -387,7 +383,6 @@ const styles = StyleSheet.create({
   },
   changePhotoText: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
   },
   textMuted: {
     opacity: 0.5,
@@ -399,26 +394,22 @@ const styles = StyleSheet.create({
   },
   removePhotoText: {
     ...Typography.caption,
-    color: AppColors.error,
   },
   formGroup: {
     paddingHorizontal: layoutPadding,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
   },
   formLabel: {
     ...Typography.meta,
     fontSize: 11,
     fontWeight: '700',
-    color: AppColors.iconMuted,
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   formInput: {
     ...Typography.body,
-    color: AppColors.text,
     padding: 0,
   },
   formInputMultiline: {
@@ -436,19 +427,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
   },
   genderOptionSelected: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
   },
   genderOptionText: {
     ...Typography.caption,
-    color: AppColors.text,
   },
   genderOptionTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
   },
 });

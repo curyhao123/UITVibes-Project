@@ -15,9 +15,11 @@ import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { getPostLikes } from "../../services/postService";
 import { BE_LikeDto } from "../../services/backendTypes";
 import { AppColors } from "../../constants/theme";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function PostLikesScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const [likes, setLikes] = useState<BE_LikeDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,10 +84,10 @@ export default function PostLikesScreen() {
         size="medium"
       />
       <View style={styles.info}>
-        <Text style={styles.displayName} numberOfLines={1}>
+        <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
           {item.displayName}
         </Text>
-        <Text style={styles.timeAgo}>{formatTimeAgo(item.createdAt)}</Text>
+        <Text style={[styles.timeAgo, { color: colors.iconMuted }]}>{formatTimeAgo(item.createdAt)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -93,17 +95,17 @@ export default function PostLikesScreen() {
   const renderHeader = () => <CompactHeader title="Likes" showBack onBack={() => router.back()} />;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={AppColors.primary} />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : likes.length === 0 ? (
         <View style={styles.center}>
-          <Feather name="heart" size={48} color={AppColors.iconMuted} />
-          <Text style={styles.emptyText}>No likes yet</Text>
+          <Feather name="heart" size={48} color={colors.iconMuted} />
+          <Text style={[styles.emptyText, { color: colors.iconMuted }]}>No likes yet</Text>
         </View>
       ) : (
         <FlatList

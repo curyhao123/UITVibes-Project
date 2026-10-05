@@ -9,8 +9,9 @@ import {
   Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -43,6 +44,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onCancel,
   onConfirm,
 }) => {
+  const { colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -77,7 +79,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     }
   }, [visible]);
 
-  const actionColor = variant === 'danger' ? AppColors.error : AppColors.primary;
+  const actionColor = variant === 'danger' ? colors.error : colors.primary;
   const resolvedIconColor = iconColor ?? actionColor;
   const resolvedIconBackgroundColor =
     iconBackgroundColor ?? `${resolvedIconColor}18`;
@@ -93,7 +95,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       }}
     >
       <Animated.View style={[styles.backdrop, { opacity: opacityAnim }]}>
-        <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={[styles.card, { backgroundColor: colors.surfaceElevated, transform: [{ scale: scaleAnim }] }]}>
           <View
             style={[
               styles.iconWrap,
@@ -103,17 +105,17 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <Feather name={icon} size={24} color={resolvedIconColor} />
           </View>
 
-          <Text style={styles.title}>{title}</Text>
-          {message ? <Text style={styles.message}>{message}</Text> : null}
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          {message ? <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text> : null}
 
           <View style={styles.actions}>
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={[styles.secondaryButton, { backgroundColor: colors.background, borderColor: colors.border }]}
               onPress={onCancel}
               disabled={busy}
               activeOpacity={0.7}
             >
-              <Text style={styles.secondaryButtonText}>{cancelLabel}</Text>
+              <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>{cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.confirmButton, { backgroundColor: actionColor }]}
@@ -143,7 +145,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   card: {
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 24,
     width: '100%',
@@ -165,13 +166,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.screenTitle,
-    color: AppColors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
     ...Typography.body,
-    color: AppColors.textMuted,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 22,
@@ -188,13 +187,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.background,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
   },
   secondaryButtonText: {
     ...Typography.bodySemibold,
-    color: AppColors.textSecondary,
   },
   confirmButton: {
     flex: 1,

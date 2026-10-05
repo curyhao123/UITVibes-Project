@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SettingsSectionProps {
   title: string;
@@ -15,16 +16,30 @@ interface SettingsSectionProps {
  * - Provides clear visual grouping via rounded corners and shadow
  * - Creates breathing room between sections
  * - Reduces visual noise compared to endless horizontal dividers
- * - Mirrors the card-based approach used in Instagram/Threads/TikTok settings
+ * - Adapts dynamically to light and dark theme mode
  */
 export const SettingsSection = memo(function SettingsSection({
   title,
   children,
 }: SettingsSectionProps) {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>{children}</View>
+      <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{title}</Text>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surfaceElevated,
+            borderColor: colors.border,
+            borderWidth: isDark ? 1 : 0,
+            shadowColor: isDark ? '#000000' : '#2D3748',
+          },
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 });
@@ -35,19 +50,16 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...Typography.meta,
-    color: AppColors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 8,
     marginHorizontal: layoutPadding,
   },
   card: {
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.lg,
     marginHorizontal: layoutPadding,
     overflow: 'hidden',
     // Subtle shadow — premium card depth without being heavy
-    shadowColor: '#2D3748',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,

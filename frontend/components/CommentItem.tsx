@@ -7,11 +7,11 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { SPRING_BOUNCE, SPRING_GENTLE } from '../animations/spring';
-import { AppColors } from '../constants/theme';
 import { Comment } from '../data/mockData';
 import { Avatar } from './Avatar';
 import { CommentContextMenu } from './CommentContextMenu';
 import { MentionText } from './MentionText';
+import { useTheme } from '../context/ThemeContext';
 
 interface CommentItemProps {
   comment: Comment;
@@ -32,6 +32,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onDelete,
   currentUserId,
 }) => {
+  const { colors } = useTheme();
   const isOwner = currentUserId != null && comment.user.id === currentUserId;
 
   const [isLiked, setIsLiked] = useState(comment.isLiked ?? false);
@@ -133,46 +134,47 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       >
         <View style={[styles.container, isReply && styles.replyContainer]}>
           {/* Left accent bar for replies */}
-          {isReply && <View style={styles.replyBar} />}
+          {isReply && <View style={[styles.replyBar, { backgroundColor: colors.border }]} />}
 
           <Avatar user={comment.user} size="small" />
 
           <View style={styles.body}>
             {/* @displayName */}
-            <Text style={styles.name} numberOfLines={1}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
               @{(comment.user.displayName || comment.user.username)}
             </Text>
 
             {/* Comment text with @mention highlighting */}
             <MentionText
               text={comment.text}
+              style={{ color: colors.text }}
             />
 
             {/* Comment image */}
             {comment.image && (
               <Image
                 source={{ uri: comment.image }}
-                style={styles.commentImage}
+                style={[styles.commentImage, { backgroundColor: colors.borderLight }]}
                 resizeMode="cover"
               />
             )}
 
             {/* Meta row: time · likes · reply */}
             <View style={styles.meta}>
-              <Text style={styles.time}>{formatTimeAgo(comment.createdAt)}</Text>
+              <Text style={[styles.time, { color: colors.textMuted }]}>{formatTimeAgo(comment.createdAt)}</Text>
 
               {likeCount > 0 && (
                 <>
-                  <Text style={styles.dot}>·</Text>
-                  <Text style={styles.metaText}>{likeCount} likes</Text>
+                  <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
+                  <Text style={[styles.metaText, { color: colors.textMuted }]}>{likeCount} likes</Text>
                 </>
               )}
 
               {onReply && (
                 <>
-                  <Text style={styles.dot}>·</Text>
+                  <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
                   <TouchableOpacity onPress={() => onReply(comment)}>
-                    <Text style={styles.reply}>Reply</Text>
+                    <Text style={[styles.reply, { color: colors.textMuted }]}>Reply</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -209,8 +211,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               <Feather
                 name="heart"
                 size={14}
-                color={isLiked ? AppColors.primary : AppColors.textMuted}
-                fill={isLiked ? AppColors.primary : 'transparent'}
+                color={isLiked ? colors.primary : colors.textMuted}
+                fill={isLiked ? colors.primary : 'transparent'}
               />
             </Animated.View>
           </TouchableOpacity>
@@ -242,7 +244,6 @@ const styles = StyleSheet.create({
   },
   replyBar: {
     width: 2,
-    backgroundColor: AppColors.border,
     marginRight: 10,
     borderRadius: 1,
     alignSelf: 'stretch',
@@ -254,15 +255,8 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: '600',
     fontSize: 13,
-    color: AppColors.text,
     marginBottom: 2,
     flexShrink: 1,
-  },
-  text: {
-    fontSize: 14,
-    lineHeight: 19,
-    color: AppColors.text,
-    marginBottom: 4,
   },
   commentImage: {
     width: 200,
@@ -270,7 +264,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 6,
     marginBottom: 6,
-    backgroundColor: AppColors.borderLight,
   },
   meta: {
     flexDirection: 'row',
@@ -278,21 +271,17 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 12,
-    color: AppColors.textMuted,
   },
   dot: {
     fontSize: 12,
-    color: AppColors.textMuted,
     marginHorizontal: 5,
   },
   metaText: {
     fontSize: 12,
-    color: AppColors.textMuted,
   },
   reply: {
     fontSize: 12,
     fontWeight: '600',
-    color: AppColors.textMuted,
     textTransform: 'lowercase',
   },
   replies: {

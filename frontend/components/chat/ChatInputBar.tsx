@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AppColors, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { PushButton } from '../PushButton';
 
 export interface ChatInputBarProps {
@@ -44,18 +45,24 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onRemoveImage,
   onSend,
 }) => {
+  const { colors } = useTheme();
+
   if (isChatBlocked) {
     return (
       <View
         style={[
           styles.blockedInputNotice,
-          { paddingBottom: Math.max(insetsBottom, 10) },
+          {
+            paddingBottom: Math.max(insetsBottom, 10),
+            backgroundColor: colors.surfaceElevated,
+            borderTopColor: colors.border,
+          },
         ]}
       >
-        <Feather name="slash" size={18} color={AppColors.textMuted} strokeWidth={2} />
+        <Feather name="slash" size={18} color={colors.textMuted} strokeWidth={2} />
         <View style={styles.blockedInputTextWrap}>
-          <Text style={styles.blockedInputTitle}>{blockedNoticeTitle}</Text>
-          <Text style={styles.blockedInputMessage}>{blockedNoticeMessage}</Text>
+          <Text style={[styles.blockedInputTitle, { color: colors.text }]}>{blockedNoticeTitle}</Text>
+          <Text style={[styles.blockedInputMessage, { color: colors.textMuted }]}>{blockedNoticeMessage}</Text>
         </View>
       </View>
     );
@@ -71,7 +78,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     >
       {/* Image preview strip */}
       {selectedImage && (
-        <View style={styles.imagePreviewStrip}>
+        <View style={[styles.imagePreviewStrip, { backgroundColor: colors.surfaceElevated }]}>
           <View style={styles.imagePreviewContainer}>
             <Image source={{ uri: selectedImage }} style={styles.imagePreviewThumb} resizeMode="cover" />
             <TouchableOpacity
@@ -87,13 +94,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       <View
         style={[
           styles.inputContainer,
-          { paddingBottom: Math.max(insetsBottom, 10) },
+          {
+            paddingBottom: Math.max(insetsBottom, 10),
+            backgroundColor: colors.surfaceElevated,
+            borderTopColor: colors.border,
+          },
         ]}
       >
         <TextInput
-          style={styles.messageInput}
+          style={[styles.messageInput, { color: colors.text, backgroundColor: colors.borderLight }]}
           placeholder="Message..."
-          placeholderTextColor={AppColors.iconMuted}
+          placeholderTextColor={colors.iconMuted}
           value={messageText}
           onChangeText={onChangeText}
           multiline
@@ -107,12 +118,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {isUploadingImage ? (
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Feather
                 name="camera"
                 size={20}
-                color={AppColors.iconMuted}
+                color={colors.iconMuted}
               />
             )}
           </TouchableOpacity>
@@ -124,7 +135,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               disabled={isLoadingMessages || isUploadingImage}
               loading={isUploadingImage}
               shadowColor="#1D4ED8"
-              frontColor={AppColors.primary}
+              frontColor={colors.primary}
               frontTextColor="#FFFFFF"
               liftPx={3}
               borderRadius={18}

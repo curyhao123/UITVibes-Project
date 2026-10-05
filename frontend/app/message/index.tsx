@@ -23,12 +23,14 @@ import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
+import { useTheme } from "../../context/ThemeContext";
 import { Conversation, User } from "../../data/mockData";
 import * as api from "../../services/api";
 import { deleteConversation } from "../../services/messageService";
 
 export default function MessageScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const sheetContentBottomPadding = TAB_BAR_BOTTOM_OFFSET + Math.max(insets.bottom, 0) + 20;
 
@@ -223,17 +225,17 @@ export default function MessageScreen() {
   }, []);
 
   const renderLoadingItem = () => (
-    <View style={styles.skeletonItem}>
-      <View style={[styles.avatarSkeleton, styles.skeleton]} />
+    <View style={[styles.skeletonItem, { borderBottomColor: colors.borderLight }]}>
+      <View style={[styles.avatarSkeleton, { backgroundColor: colors.borderLight }]} />
       <View style={styles.skeletonContent}>
-        <View style={[styles.skeletonLine, { width: "50%", height: 14, marginBottom: 6 }]} />
-        <View style={[styles.skeletonLine, { width: "75%", height: 12 }]} />
+        <View style={[styles.skeletonLine, { width: "50%", height: 14, marginBottom: 6, backgroundColor: colors.borderLight }]} />
+        <View style={[styles.skeletonLine, { width: "75%", height: 12, backgroundColor: colors.borderLight }]} />
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <StaticPremiumHeader
         title="Messages"
         largeTitle
@@ -248,7 +250,7 @@ export default function MessageScreen() {
                 setShowNewMsg(true);
               }}
             >
-              <Feather name="edit-2" size={25} color={AppColors.text} strokeWidth={2} />
+              <Feather name="edit-2" size={25} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -262,7 +264,7 @@ export default function MessageScreen() {
                 setShowCreateGroup(true);
               }}
             >
-              <Feather name="users" size={25} color={AppColors.text} strokeWidth={2} />
+              <Feather name="users" size={25} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
@@ -270,25 +272,25 @@ export default function MessageScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={() => router.back()}
             >
-              <Feather name="arrow-right" size={25} color={AppColors.text} strokeWidth={2} />
+              <Feather name="arrow-right" size={25} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         }
       />
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Feather name="search" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+      <View style={[styles.searchContainer, { backgroundColor: colors.borderLight }]}>
+        <Feather name="search" size={18} color={colors.iconMuted} strokeWidth={2} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search messages"
-          placeholderTextColor={AppColors.iconMuted}
+          placeholderTextColor={colors.iconMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Feather name="x" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+            <Feather name="x" size={18} color={colors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
         )}
       </View>
@@ -362,11 +364,11 @@ export default function MessageScreen() {
         ListEmptyComponent={
           conversations.length === 0 && !isLoadingConversations ? (
             <View style={styles.emptyInbox}>
-              <View style={styles.emptyInboxIcon}>
-                <Feather name="send" size={36} color={AppColors.iconMuted} strokeWidth={1.5} />
+              <View style={[styles.emptyInboxIcon, { backgroundColor: isDark ? `${colors.primary}25` : `${AppColors.primary}12` }]}>
+                <Feather name="send" size={36} color={colors.primary} strokeWidth={1.5} />
               </View>
-              <Text style={styles.emptyInboxTitle}>Messages</Text>
-              <Text style={styles.emptyInboxSubtitle}>
+              <Text style={[styles.emptyInboxTitle, { color: colors.text }]}>Messages</Text>
+              <Text style={[styles.emptyInboxSubtitle, { color: colors.textMuted }]}>
                 No messages yet.
                 {"\n"}Start a conversation with your friends.
               </Text>
@@ -383,9 +385,9 @@ export default function MessageScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Feather name="search" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
-              <Text style={styles.emptyTitle}>No results</Text>
-              <Text style={styles.emptySubtitle}>
+              <Feather name="search" size={40} color={colors.iconMuted} strokeWidth={1.5} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No results</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 Try searching for someone by name or username
               </Text>
             </View>
