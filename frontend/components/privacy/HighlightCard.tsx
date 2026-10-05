@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 export type HighlightVariant = 'trust' | 'warning' | 'control' | 'security';
 
@@ -14,68 +15,6 @@ interface HighlightCardProps {
   children?: ReactNode;
 }
 
-const variantConfig: Record<
-  HighlightVariant,
-  {
-    icon: keyof typeof Feather.glyphMap;
-    bgColor: string;
-    iconColor: string;
-    iconBgColor: string;
-    accentColor: string;
-    titleColor: string;
-  }
-> = {
-  trust: {
-    icon: 'shield',
-    bgColor: `${AppColors.primary}0A`,
-    iconColor: AppColors.primary,
-    iconBgColor: `${AppColors.primary}15`,
-    accentColor: AppColors.primary,
-    titleColor: AppColors.text,
-  },
-  warning: {
-    icon: 'alert-triangle',
-    bgColor: `${AppColors.error}0A`,
-    iconColor: AppColors.error,
-    iconBgColor: `${AppColors.error}15`,
-    accentColor: AppColors.error,
-    titleColor: AppColors.text,
-  },
-  control: {
-    icon: 'eye',
-    bgColor: `${AppColors.primary}0A`,
-    iconColor: AppColors.primary,
-    iconBgColor: `${AppColors.primary}15`,
-    accentColor: AppColors.primary,
-    titleColor: AppColors.text,
-  },
-  security: {
-    icon: 'lock',
-    bgColor: `${AppColors.success}0A`,
-    iconColor: AppColors.success,
-    iconBgColor: `${AppColors.success}15`,
-    accentColor: AppColors.success,
-    titleColor: AppColors.text,
-  },
-};
-
-/**
- * Reusable trust/privacy highlight card.
- *
- * Variants:
- * - trust:   terracotta tint — reassuring trust signals
- * - control: terracotta tint — user control highlights
- * - security: green tint  — security-positive statements
- * - warning: red tint     — important warnings
- *
- * Design rationale:
- * - Icon in a soft-tinted circle for visual punch
- * - Short, punchy title + optional description
- * - Rounded corners, no heavy border
- * - Subtle platform shadow/elevation
- * - Horizontally scrollable when placed in a row
- * - Used for trust badges, privacy highlights, and security callouts
- */
 export const HighlightCard = memo(function HighlightCard({
   variant = 'trust',
   icon,
@@ -83,11 +22,58 @@ export const HighlightCard = memo(function HighlightCard({
   description,
   children,
 }: HighlightCardProps) {
+  const { colors, isDark } = useTheme();
+
+  const variantConfig: Record<
+    HighlightVariant,
+    {
+      icon: keyof typeof Feather.glyphMap;
+      bgColor: string;
+      iconColor: string;
+      iconBgColor: string;
+      accentColor: string;
+      titleColor: string;
+    }
+  > = {
+    trust: {
+      icon: 'shield',
+      bgColor: isDark ? 'rgba(124, 58, 237, 0.12)' : `${colors.primary}0A`,
+      iconColor: colors.primary,
+      iconBgColor: isDark ? 'rgba(124, 58, 237, 0.22)' : `${colors.primary}15`,
+      accentColor: colors.primary,
+      titleColor: colors.text,
+    },
+    warning: {
+      icon: 'alert-triangle',
+      bgColor: isDark ? 'rgba(239, 68, 68, 0.12)' : `${colors.error || AppColors.error}0A`,
+      iconColor: colors.error || AppColors.error,
+      iconBgColor: isDark ? 'rgba(239, 68, 68, 0.22)' : `${colors.error || AppColors.error}15`,
+      accentColor: colors.error || AppColors.error,
+      titleColor: colors.text,
+    },
+    control: {
+      icon: 'eye',
+      bgColor: isDark ? 'rgba(124, 58, 237, 0.12)' : `${colors.primary}0A`,
+      iconColor: colors.primary,
+      iconBgColor: isDark ? 'rgba(124, 58, 237, 0.22)' : `${colors.primary}15`,
+      accentColor: colors.primary,
+      titleColor: colors.text,
+    },
+    security: {
+      icon: 'lock',
+      bgColor: isDark ? 'rgba(16, 185, 129, 0.12)' : `${colors.success || AppColors.success}0A`,
+      iconColor: colors.success || AppColors.success,
+      iconBgColor: isDark ? 'rgba(16, 185, 129, 0.22)' : `${colors.success || AppColors.success}15`,
+      accentColor: colors.success || AppColors.success,
+      titleColor: colors.text,
+    },
+  };
+
   const config = variantConfig[variant];
   const displayIcon = icon ?? config.icon;
 
   return (
-    <View style={[styles.container, { backgroundColor: config.bgColor }]}>
+    <View style={[styles.container, { backgroundColor: config.bgColor, borderWidth: isDark ? 1 : 0, borderColor: colors.border }]}>
       <View
         style={[styles.iconWrap, { backgroundColor: config.iconBgColor }]}
       >
@@ -108,7 +94,7 @@ export const HighlightCard = memo(function HighlightCard({
           </Text>
         </View>
         {description ? (
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
         ) : null}
         {children}
       </View>

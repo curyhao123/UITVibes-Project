@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { User } from '../../data/mockData';
 import { Avatar } from '../Avatar';
 
@@ -49,6 +50,8 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
   onSubmit,
   onClose,
 }) => {
+  const { colors } = useTheme();
+
   if (!visible) return null;
 
   const canSubmit = groupName.trim().length > 0 && selectedMembers.length >= 2 && !isCreatingGroup;
@@ -60,33 +63,33 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
         activeOpacity={1}
         onPress={onClose}
       />
-      <View style={styles.sheet}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Create Group</Text>
+      <View style={[styles.sheet, { backgroundColor: colors.surfaceElevated }]}>
+        <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.sheetTitle, { color: colors.text }]}>Create Group</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+            <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.groupNameContainer}>
           <TextInput
-            style={styles.groupNameInput}
+            style={[styles.groupNameInput, { color: colors.text, backgroundColor: colors.borderLight }]}
             placeholder="Group name..."
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={groupName}
             onChangeText={onChangeGroupName}
             maxLength={100}
           />
         </View>
 
-        <Text style={styles.sectionLabel}>Select at least 2 friends</Text>
+        <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Select at least 2 friends</Text>
 
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+        <View style={[styles.searchContainer, { backgroundColor: colors.borderLight }]}>
+          <Feather name="search" size={16} color={colors.iconMuted} strokeWidth={2} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search friends..."
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={friendSearch}
             onChangeText={onChangeFriendSearch}
           />
@@ -113,10 +116,10 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
                   />
                 </View>
                 <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{item.username}</Text>
-                  <Text style={styles.userDisplay}>{item.displayName}</Text>
+                  <Text style={[styles.userName, { color: colors.text }]}>{item.username}</Text>
+                  <Text style={[styles.userDisplay, { color: colors.textMuted }]}>{item.displayName}</Text>
                 </View>
-                <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                <View style={[styles.checkbox, { borderColor: colors.border }, selected && styles.checkboxSelected]}>
                   {selected && <Feather name="check" size={14} color="white" strokeWidth={3} />}
                 </View>
               </TouchableOpacity>
@@ -125,14 +128,14 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
           ListEmptyComponent={
             isLoadingFriends ? (
               <View style={styles.emptyWrap}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : (
               <TouchableOpacity style={styles.userItem} onPress={onRefreshFriends}>
-                <View style={styles.refreshIconWrap}>
-                  <Feather name="refresh-cw" size={18} color={AppColors.iconMuted} />
+                <View style={[styles.refreshIconWrap, { backgroundColor: colors.borderLight }]}>
+                  <Feather name="refresh-cw" size={18} color={colors.iconMuted} />
                 </View>
-                <Text style={styles.userInfoText}>
+                <Text style={[styles.userInfoText, { color: colors.textMuted }]}>
                   {friendSearch.trim() ? 'No friends found' : 'No friends available'}
                 </Text>
               </TouchableOpacity>

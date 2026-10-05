@@ -11,6 +11,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 if (
   Platform.OS === 'android' &&
@@ -44,22 +45,12 @@ const layoutAnimationConfig = {
   },
 };
 
-/**
- * Animated accordion section for Privacy Policy content.
- *
- * Design rationale:
- * - Bullet list layout for scannable, digestible content
- * - Smooth expand/collapse via LayoutAnimation (UI thread, zero JS cost)
- * - Title bold + chevron right — users scan and tap what interests them
- * - Top/bottom rounded corners only on first/last item for card grouping
- * - Divider separates title from content for clean visual hierarchy
- * - Reuses feather icons from the design system
- */
 export const PrivacySection = memo(function PrivacySection({
   item,
   isFirst,
   isLast,
 }: PrivacySectionProps) {
+  const { colors } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const handlePress = useCallback(() => {
@@ -71,8 +62,9 @@ export const PrivacySection = memo(function PrivacySection({
     <View
       style={[
         styles.container,
-        isFirst && styles.containerFirst,
-        isLast && styles.containerLast,
+        { backgroundColor: colors.surface },
+        isFirst && [styles.containerFirst, { borderTopColor: colors.border }],
+        isLast && [styles.containerLast, { borderBottomColor: colors.border }],
       ]}
     >
       <TouchableOpacity
@@ -80,25 +72,25 @@ export const PrivacySection = memo(function PrivacySection({
         activeOpacity={0.7}
         onPress={handlePress}
       >
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
         <Feather
           name={isOpen ? 'chevron-up' : 'chevron-down'}
           size={18}
-          color={AppColors.iconMuted}
+          color={colors.iconMuted}
           strokeWidth={2.5}
         />
       </TouchableOpacity>
 
       {isOpen && (
         <View style={styles.contentWrap}>
-          <View style={styles.contentDivider} />
-          {item.content && <Text style={styles.content}>{item.content}</Text>}
+          <View style={[styles.contentDivider, { backgroundColor: colors.border }]} />
+          {item.content && <Text style={[styles.content, { color: colors.textSecondary }]}>{item.content}</Text>}
           {item.bullets && item.bullets.length > 0 && (
             <View style={styles.bulletsWrap}>
               {item.bullets.map((bullet, index) => (
                 <View key={index} style={styles.bulletRow}>
-                  <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>{bullet}</Text>
+                  <View style={[styles.bulletDot, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.bulletText, { color: colors.textSecondary }]}>{bullet}</Text>
                 </View>
               ))}
             </View>

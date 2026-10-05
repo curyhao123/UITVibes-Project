@@ -24,51 +24,56 @@ import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
+import { useTheme } from "../../context/ThemeContext";
 import { Comment, Post } from "../../data/mockData";
 import { deleteComment, getPostById, removeBookmark, repostPost, toggleBookmark, toggleCommentLike, undoRepost, updateComment } from "../../services/postService";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
-const PostDetailSkeleton = () => (
-  <SafeAreaView style={styles.container}>
-    <Stack.Screen options={{ headerShown: false }} />
-    {/* Header skeleton */}
-    <View style={skelStyles.header}>
-      <SkeletonShimmer width={36} height={36} borderRadius={10} />
-      <SkeletonShimmer width={100} height={14} style={{ marginLeft: 10 }} />
-      <View style={{ flex: 1 }} />
-      <SkeletonShimmer width={36} height={36} borderRadius={10} />
-    </View>
-    {/* Image skeleton */}
-    <SkeletonShimmer width="100%" height={320} borderRadius={0} />
-    {/* Actions skeleton */}
-    <View style={skelStyles.actionsRow}>
-      <SkeletonShimmer width={28} height={28} borderRadius={14} />
-      <SkeletonShimmer
-        width={28}
-        height={28}
-        borderRadius={14}
-        style={{ marginLeft: 16 }}
-      />
-      <SkeletonShimmer
-        width={28}
-        height={28}
-        borderRadius={14}
-        style={{ marginLeft: 16 }}
-      />
-    </View>
-    {/* Likes skeleton */}
-    <SkeletonShimmer width={80} height={14} style={{ margin: 12 }} />
-    {/* Caption skeleton */}
-    <View style={skelStyles.captionArea}>
-      <SkeletonShimmer width="60%" height={13} />
-      <SkeletonShimmer width="40%" height={13} style={{ marginTop: 6 }} />
-    </View>
-  </SafeAreaView>
-);
+const PostDetailSkeleton = () => {
+  const { colors } = useTheme();
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      {/* Header skeleton */}
+      <View style={[skelStyles.header, { backgroundColor: colors.surfaceElevated, borderBottomColor: colors.border }]}>
+        <SkeletonShimmer width={36} height={36} borderRadius={10} />
+        <SkeletonShimmer width={100} height={14} style={{ marginLeft: 10 }} />
+        <View style={{ flex: 1 }} />
+        <SkeletonShimmer width={36} height={36} borderRadius={10} />
+      </View>
+      {/* Image skeleton */}
+      <SkeletonShimmer width="100%" height={320} borderRadius={0} />
+      {/* Actions skeleton */}
+      <View style={skelStyles.actionsRow}>
+        <SkeletonShimmer width={28} height={28} borderRadius={14} />
+        <SkeletonShimmer
+          width={28}
+          height={28}
+          borderRadius={14}
+          style={{ marginLeft: 16 }}
+        />
+        <SkeletonShimmer
+          width={28}
+          height={28}
+          borderRadius={14}
+          style={{ marginLeft: 16 }}
+        />
+      </View>
+      {/* Likes skeleton */}
+      <SkeletonShimmer width={80} height={14} style={{ margin: 12 }} />
+      {/* Caption skeleton */}
+      <View style={skelStyles.captionArea}>
+        <SkeletonShimmer width="60%" height={13} />
+        <SkeletonShimmer width="40%" height={13} style={{ marginTop: 6 }} />
+      </View>
+    </SafeAreaView>
+  );
+};
 
 // ─── Main screen ────────────────────────────────────────────────────────────
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams();
+  const { colors, isDark } = useTheme();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -393,30 +398,42 @@ export default function PostDetailScreen() {
         >
           <Avatar user={post.user} size="small" showBorder />
           <View style={styles.userInfo}>
-            <Text style={styles.username}>
+            <Text style={[styles.username, { color: colors.text }]}>
               {post.user.fullName || post.user.displayName}
             </Text>
-            <Text style={styles.userHandle}>@{post.user.displayName || post.user.username}</Text>
+            <Text style={[styles.userHandle, { color: colors.textSecondary }]}>@{post.user.displayName || post.user.username}</Text>
             <View style={styles.metaRow}>
               {(() => {
-                const visibilityMeta = getVisibilityMeta(post.visibility);
-                return (
-                  <>
-                    <Feather name={visibilityMeta.icon} size={12} color={AppColors.textSecondary} />
-                    <Text style={styles.visibilityText}>{visibilityMeta.label}</Text>
-                  </>
-                );
+                 const visibilityMeta = getVisibilityMeta(post.visibility);
+                 return (
+                   <>
+                     <Feather name={visibilityMeta.icon} size={12} color={colors.textSecondary} />
+                     <Text style={[styles.visibilityText, { color: colors.textSecondary }]}>{visibilityMeta.label}</Text>
+                   </>
+                 );
               })()}
-              <Text style={styles.metaSeparator}>•</Text>
-              <Text style={styles.timestamp}>{formatDate(post.createdAt)}</Text>
+              <Text style={[styles.metaSeparator, { color: colors.textSecondary }]}>•</Text>
+              <Text style={[styles.timestamp, { color: colors.textSecondary }]}>{formatDate(post.createdAt)}</Text>
             </View>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.followBtn, isFollowingAuthor && styles.followBtnFollowing]}
+          style={[
+            styles.followBtn,
+            {
+              backgroundColor: isFollowingAuthor ? colors.surfaceElevated : colors.primary,
+              borderWidth: isFollowingAuthor ? 1 : 0,
+              borderColor: colors.border,
+            },
+          ]}
           onPress={handleFollowToggle}
         >
-          <Text style={[styles.followBtnText, isFollowingAuthor && styles.followBtnTextFollowing]}>
+          <Text
+            style={[
+              styles.followBtnText,
+              { color: isFollowingAuthor ? colors.text : "#FFFFFF" },
+            ]}
+          >
             {isFollowingAuthor ? "Following" : "Follow"}
           </Text>
         </TouchableOpacity>
@@ -444,16 +461,16 @@ export default function PostDetailScreen() {
           <Feather
             name="heart"
             size={24}
-            color={post.isLiked ? AppColors.primary : AppColors.iconMuted}
-            fill={post.isLiked ? AppColors.primary : 'transparent'}
+            color={post.isLiked ? colors.primary : colors.iconMuted}
+            fill={post.isLiked ? colors.primary : 'transparent'}
             strokeWidth={2}
           />
-          <Text style={styles.actionText}>{formatLikes(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
+          <Text style={[styles.actionText, { color: colors.iconMuted }]}>{formatLikes(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Feather name="message-circle" size={24} color={AppColors.iconMuted} strokeWidth={2} />
-          <Text style={styles.actionText}>
+          <Feather name="message-circle" size={24} color={colors.iconMuted} strokeWidth={2} />
+          <Text style={[styles.actionText, { color: colors.iconMuted }]}>
             {post.comments?.length || post.commentsCount || 0} {(post.comments?.length || post.commentsCount || 0) === 1 ? 'Comment' : 'Comments'}
           </Text>
         </TouchableOpacity>
@@ -466,23 +483,23 @@ export default function PostDetailScreen() {
           <Feather
             name="refresh-cw"
             size={24}
-            color={localReposted ? AppColors.primary : AppColors.iconMuted}
+            color={localReposted ? colors.primary : colors.iconMuted}
             strokeWidth={2}
           />
-          <Text style={styles.actionText}>
+          <Text style={[styles.actionText, { color: colors.iconMuted }]}>
             {localRepostCount} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.bookmarkGroup} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={handleBookmarkToggle}>
-          <Feather name="bookmark" size={24} color={isBookmarked ? AppColors.primary : AppColors.iconMuted} fill={isBookmarked ? AppColors.primary : 'transparent'} strokeWidth={2} />
+          <Feather name="bookmark" size={24} color={isBookmarked ? colors.primary : colors.iconMuted} fill={isBookmarked ? colors.primary : 'transparent'} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
       {/* Caption */}
-      <View style={styles.captionContainer}>
-        <Text style={styles.caption}>
-          <Text style={styles.captionUsername}>
+      <View style={[styles.captionContainer, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.caption, { color: colors.text }]}>
+          <Text style={[styles.captionUsername, { color: colors.text }]}>
             {post.user.fullName || post.user.displayName}
           </Text>{" "}
           {post.caption}
@@ -491,7 +508,7 @@ export default function PostDetailScreen() {
 
       {/* Comments Header */}
       {post.comments.length > 0 && (
-        <Text style={styles.commentsHeader}>
+        <Text style={[styles.commentsHeader, { color: colors.textSecondary }]}>
           Comments ({post.comments.length})
         </Text>
       )}
@@ -501,7 +518,7 @@ export default function PostDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.kavContainer}
           behavior={Platform.OS === "ios" ? "padding" : undefined}

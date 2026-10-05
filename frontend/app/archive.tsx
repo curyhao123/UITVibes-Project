@@ -23,23 +23,28 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PostCard } from "../components/PostCard";
 import { AppColors, layoutPadding } from "../constants/theme";
+import { useTheme } from "../context/ThemeContext";
 import { Post } from "../data/mockData";
 import { getBookmarkedPosts } from "../services/postService";
 
-const EmptyState = () => (
-  <View style={styles.emptyContainer}>
-    <View style={styles.emptyIconCircle}>
-      <Feather name="bookmark" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
+const EmptyState = () => {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.emptyContainer}>
+      <View style={[styles.emptyIconCircle, { backgroundColor: colors.surfaceElevated }]}>
+        <Feather name="bookmark" size={40} color={colors.iconMuted} strokeWidth={1.5} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No saved posts</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.iconMuted }]}>
+        Save posts to view them here
+      </Text>
     </View>
-    <Text style={styles.emptyTitle}>No saved posts</Text>
-    <Text style={styles.emptySubtitle}>
-      Save posts to view them here
-    </Text>
-  </View>
-);
+  );
+};
 
 export default function ArchiveScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -82,7 +87,7 @@ export default function ArchiveScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -90,22 +95,22 @@ export default function ArchiveScreen() {
       />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather name="arrow-left" size={24} color={AppColors.text} strokeWidth={2} />
+          <Feather name="arrow-left" size={24} color={colors.text} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Saved</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : posts.length === 0 ? (
         <FlatList
@@ -117,7 +122,7 @@ export default function ArchiveScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={AppColors.primary}
+              tintColor={colors.primary}
             />
           }
         />
@@ -131,7 +136,7 @@ export default function ArchiveScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={AppColors.primary}
+              tintColor={colors.primary}
             />
           }
           showsVerticalScrollIndicator={false}

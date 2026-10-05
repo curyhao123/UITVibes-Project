@@ -31,8 +31,9 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import {
   REPORT_REASONS,
   ReportReason,
@@ -58,6 +59,7 @@ export function ReportUserSheet({
   onClose,
   onReportSuccess,
 }: ReportUserSheetProps) {
+  const { colors, isDark } = useTheme();
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,6 +172,7 @@ export function ReportUserSheet({
           style={[
             styles.sheet,
             {
+              backgroundColor: isDark ? colors.surface : (Platform.OS === 'ios' ? 'rgba(255,255,255,0.96)' : colors.surfaceElevated),
               opacity: sheetOpacity,
               transform: [{ translateY: sheetTranslateY }],
               maxHeight: SHEET_MAX_HEIGHT,
@@ -177,42 +180,58 @@ export function ReportUserSheet({
           ]}
         >
           {/* Swipe handle */}
-          <View style={styles.swipeHandle} />
+          <View style={[styles.swipeHandle, { backgroundColor: colors.border }]} />
 
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
             <TouchableOpacity style={styles.closeBtn} onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Feather name="x" size={20} color={AppColors.textMuted} strokeWidth={2.5} />
+              <Feather name="x" size={20} color={colors.textMuted} strokeWidth={2.5} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Report User</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Report User</Text>
             <View style={styles.closeBtn} />
           </View>
 
           {/* Subtitle */}
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Why are you reporting{' '}
-            <Text style={styles.nameHighlight}>{reportedDisplayName}</Text>?
+            <Text style={[styles.nameHighlight, { color: colors.text }]}>{reportedDisplayName}</Text>?
           </Text>
 
           {/* Reasons list */}
-          <View style={styles.reasonsContainer}>
+          <View style={[styles.reasonsContainer, { backgroundColor: colors.surfaceElevated }]}>
             {REPORT_REASONS.map((reason) => {
               const isSelected = selectedReason === reason;
               return (
                 <TouchableOpacity
                   key={reason}
-                  style={[styles.reasonRow, isSelected && styles.reasonRowSelected]}
+                  style={[
+                    styles.reasonRow,
+                    { borderBottomColor: colors.borderLight },
+                    isSelected && { backgroundColor: `${colors.primary}12` },
+                  ]}
                   activeOpacity={0.6}
                   onPress={() => setSelectedReason(reason)}
                 >
                   <View style={styles.reasonLeft}>
-                    <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
+                    <Text
+                      style={[
+                        styles.reasonLabel,
+                        { color: colors.text },
+                        isSelected && { color: colors.primary, fontWeight: '600' },
+                      ]}
+                    >
                       {reason}
                     </Text>
                   </View>
-                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                  <View
+                    style={[
+                      styles.radio,
+                      { borderColor: colors.border },
+                      isSelected && { borderColor: colors.primary },
+                    ]}
+                  >
                     {isSelected && (
-                      <View style={styles.radioDot} />
+                      <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />
                     )}
                   </View>
                 </TouchableOpacity>
@@ -222,11 +241,18 @@ export function ReportUserSheet({
 
           {/* Additional details */}
           <View style={styles.detailsSection}>
-            <Text style={styles.detailsLabel}>Additional details (optional)</Text>
+            <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>Additional details (optional)</Text>
             <TextInput
-              style={styles.detailsInput}
+              style={[
+                styles.detailsInput,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
               placeholder="Tell us more about what happened…"
-              placeholderTextColor={AppColors.iconMuted}
+              placeholderTextColor={colors.iconMuted}
               multiline
               maxLength={500}
               value={additionalDetails}
@@ -234,7 +260,7 @@ export function ReportUserSheet({
               textAlignVertical="top"
               scrollEnabled
             />
-            <Text style={styles.charCount}>{additionalDetails.length}/500</Text>
+            <Text style={[styles.charCount, { color: colors.iconMuted }]}>{additionalDetails.length}/500</Text>
           </View>
 
           {/* Footer */}
@@ -242,7 +268,8 @@ export function ReportUserSheet({
             <TouchableOpacity
               style={[
                 styles.submitBtn,
-                (!selectedReason || isSubmitting) && styles.submitBtnDisabled,
+                { backgroundColor: colors.primary },
+                (!selectedReason || isSubmitting) && { backgroundColor: colors.border },
               ]}
               activeOpacity={0.75}
               onPress={handleSubmit}
@@ -255,7 +282,7 @@ export function ReportUserSheet({
               )}
             </TouchableOpacity>
 
-            <Text style={styles.legalNote}>
+            <Text style={[styles.legalNote, { color: colors.iconMuted }]}>
               Reports are reviewed by our moderation team. We do not notify the reported user.
             </Text>
           </View>
@@ -286,7 +313,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255,255,255,0.96)' : AppColors.surfaceElevated,
     paddingHorizontal: layoutPadding,
     paddingBottom: 34,
     paddingTop: 12,
@@ -300,7 +326,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
     alignSelf: 'center',
     marginBottom: 10,
   },
@@ -310,7 +335,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
   },
   closeBtn: {
     width: 32,
@@ -322,11 +346,9 @@ const styles = StyleSheet.create({
     ...Typography.sectionTitle,
     fontSize: 17,
     fontWeight: '700',
-    color: AppColors.text,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textSecondary,
     lineHeight: 22,
     marginTop: 16,
     marginBottom: 16,
@@ -334,10 +356,8 @@ const styles = StyleSheet.create({
   },
   nameHighlight: {
     fontWeight: '600',
-    color: AppColors.text,
   },
   reasonsContainer: {
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     marginBottom: 16,
@@ -349,10 +369,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
-  },
-  reasonRowSelected: {
-    backgroundColor: `${AppColors.primary}0A`,
   },
   reasonLeft: {
     flex: 1,
@@ -360,30 +376,20 @@ const styles = StyleSheet.create({
   },
   reasonLabel: {
     fontSize: 15,
-    color: AppColors.text,
     fontWeight: '500',
-  },
-  reasonLabelSelected: {
-    color: AppColors.primary,
-    fontWeight: '600',
   },
   radio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: AppColors.border,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  radioSelected: {
-    borderColor: AppColors.primary,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: AppColors.primary,
   },
   detailsSection: {
     marginBottom: 16,
@@ -391,26 +397,21 @@ const styles = StyleSheet.create({
   detailsLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: AppColors.textMuted,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   detailsInput: {
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: AppColors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: AppColors.text,
     minHeight: 90,
     maxHeight: 150,
   },
   charCount: {
     fontSize: 11,
-    color: AppColors.iconMuted,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -419,15 +420,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   submitBtn: {
-    backgroundColor: AppColors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-  },
-  submitBtnDisabled: {
-    backgroundColor: AppColors.border,
   },
   submitBtnText: {
     color: '#FFFFFF',
@@ -436,7 +433,6 @@ const styles = StyleSheet.create({
   },
   legalNote: {
     fontSize: 11,
-    color: AppColors.iconMuted,
     textAlign: 'center',
     lineHeight: 15,
     marginTop: 10,

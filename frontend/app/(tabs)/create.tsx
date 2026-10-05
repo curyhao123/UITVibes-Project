@@ -29,6 +29,7 @@ import { Toast } from '../../components/Toast';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   ContentVisibility,
   contentVisibilityToApiValue,
@@ -71,31 +72,34 @@ function OptionRow({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
         styles.optionRow,
+        { backgroundColor: colors.surface },
         disabled && styles.optionRowDisabled,
-        pressed && !disabled && styles.optionRowPressed,
+        pressed && !disabled && { backgroundColor: colors.surfaceElevated },
       ]}
     >
-      <View style={[styles.optionIconWrap, disabled && styles.optionIconWrapDisabled]}>
+      <View style={[styles.optionIconWrap, { backgroundColor: colors.surfaceElevated }, disabled && { backgroundColor: colors.background }]}>
         <Feather
           name={icon}
           size={18}
-          color={disabled ? AppColors.iconMuted : AppColors.textSecondary}
+          color={disabled ? colors.iconMuted : colors.textSecondary}
           strokeWidth={2}
         />
       </View>
-      <Text style={[styles.optionLabel, disabled && styles.optionLabelDisabled]}>{label}</Text>
-      <Feather name="chevron-right" size={18} color={AppColors.iconMuted} strokeWidth={2} />
+      <Text style={[styles.optionLabel, { color: disabled ? colors.iconMuted : colors.text }]}>{label}</Text>
+      <Feather name="chevron-right" size={18} color={colors.iconMuted} strokeWidth={2} />
     </Pressable>
   );
 }
 
 export default function CreateScreen() {
+  const { colors, isDark } = useTheme();
   const [createType, setCreateType] = React.useState<CreateType>('post');
   const [selectedMedia, setSelectedMedia] = React.useState<string[]>([]);
   const [caption, setCaption] = React.useState('');
@@ -122,7 +126,7 @@ export default function CreateScreen() {
     const backgroundColor = interpolateColor(
       tabAnim.value,
       [0, 1],
-      [AppColors.surface, 'rgba(255,255,255,0)'],
+      [colors.surface, 'rgba(0,0,0,0)'],
     );
     return { backgroundColor };
   });
@@ -131,7 +135,7 @@ export default function CreateScreen() {
     const backgroundColor = interpolateColor(
       tabAnim.value,
       [0, 1],
-      ['rgba(255,255,255,0)', AppColors.surface],
+      ['rgba(0,0,0,0)', colors.surface],
     );
     return { backgroundColor };
   });
@@ -277,10 +281,10 @@ export default function CreateScreen() {
       : !!caption.trim() && !isPosting;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Refined Post / Reels segmented control */}
-      <View style={styles.topSection}>
-        <View style={styles.segmentTrack}>
+      <View style={[styles.topSection, { backgroundColor: colors.background }]}>
+        <View style={[styles.segmentTrack, { backgroundColor: colors.surfaceElevated }]}>
           <Animated.View style={[styles.segmentTab, postTabStyle]}>
             <Pressable
               onPress={() => switchType('post')}
@@ -289,13 +293,14 @@ export default function CreateScreen() {
               <Feather
                 name="grid"
                 size={17}
-                color={createType === 'post' ? AppColors.primary : AppColors.iconMuted}
+                color={createType === 'post' ? colors.primary : colors.iconMuted}
                 strokeWidth={2}
               />
               <Text
                 style={[
                   styles.segmentLabel,
-                  createType === 'post' && styles.segmentLabelActive,
+                  { color: colors.iconMuted },
+                  createType === 'post' && { color: colors.primary },
                 ]}
               >
                 Post
@@ -310,13 +315,14 @@ export default function CreateScreen() {
               <Feather
                 name="video"
                 size={17}
-                color={createType === 'reels' ? AppColors.primary : AppColors.iconMuted}
+                color={createType === 'reels' ? colors.primary : colors.iconMuted}
                 strokeWidth={2}
               />
               <Text
                 style={[
                   styles.segmentLabel,
-                  createType === 'reels' && styles.segmentLabelActive,
+                  { color: colors.iconMuted },
+                  createType === 'reels' && { color: colors.primary },
                 ]}
               >
                 Reels
@@ -330,13 +336,13 @@ export default function CreateScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
-            style={styles.closeBtn}
+            style={[styles.closeBtn, { backgroundColor: colors.surfaceElevated }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+            <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.headerTitleBlock}>
-            <Text style={styles.headerTitle}>New {typeLabel}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>New {typeLabel}</Text>
           </View>
           <TouchableOpacity
             onPress={handlePost}
@@ -345,7 +351,7 @@ export default function CreateScreen() {
             style={styles.shareBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[styles.shareLabel, !shareReady && styles.shareLabelDisabled]}>
+            <Text style={[styles.shareLabel, { color: colors.primary }, !shareReady && { color: colors.iconMuted }]}>
               {isPosting ? 'Sharing…' : 'Share'}
             </Text>
           </TouchableOpacity>
@@ -371,37 +377,38 @@ export default function CreateScreen() {
               onPress={handleMediaPick}
               style={[
                 styles.mediaCard,
+                { borderColor: colors.border },
                 createType === 'reels' ? styles.mediaCardReels : styles.mediaCardPost,
               ]}
             >
               <LinearGradient
-                colors={['#F3EEEA', '#EDE7E0', '#F7F5F2']}
+                colors={isDark ? [colors.surfaceElevated, colors.surface, colors.background] : ['#F3EEEA', '#EDE7E0', '#F7F5F2']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.mediaCardInner}>
-                <View style={styles.mediaIconRing}>
+                <View style={[styles.mediaIconRing, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.45)' }]}>
                   <Feather
                     name={createType === 'reels' ? 'video' : 'plus'}
                     size={createType === 'reels' ? 36 : 34}
-                    color={AppColors.iconMuted}
+                    color={colors.iconMuted}
                     strokeWidth={1.6}
                   />
                 </View>
-                <Text style={styles.mediaPrimaryLabel}>
+                <Text style={[styles.mediaPrimaryLabel, { color: colors.text }]}>
                   {createType === 'reels' ? 'Select video' : 'Add photos (optional)'}
                 </Text>
-                <Text style={styles.mediaInstruction}>
+                <Text style={[styles.mediaInstruction, { color: colors.textSecondary }]}>
                   {createType === 'reels'
                     ? 'Take a video, record, or choose from your gallery'
                     : 'Attach photos from your gallery, or share text only'}
                 </Text>
                 {createType === 'reels' && (
-                  <Text style={styles.mediaHint}>Vertical 9:16 works best for Reels</Text>
+                  <Text style={[styles.mediaHint, { color: colors.iconMuted }]}>Vertical 9:16 works best for Reels</Text>
                 )}
                 {createType === 'post' && (
-                  <Text style={styles.mediaHint}>Select up to 10 photos (optional)</Text>
+                  <Text style={[styles.mediaHint, { color: colors.iconMuted }]}>Select up to 10 photos (optional)</Text>
                 )}
               </View>
             </TouchableOpacity>
@@ -424,19 +431,24 @@ export default function CreateScreen() {
           }}
           style={[
             styles.aspectRatioPill,
-            selectedAspectRatio === option.key && styles.aspectRatioPillActive,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            selectedAspectRatio === option.key && {
+              backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : 'rgba(124, 58, 237, 0.1)',
+              borderColor: colors.primary,
+            },
           ]}
         >
           <Feather
             name={option.icon as React.ComponentProps<typeof Feather>['name']}
             size={13}
-            color={selectedAspectRatio === option.key ? AppColors.primary : AppColors.iconMuted}
+            color={selectedAspectRatio === option.key ? colors.primary : colors.iconMuted}
             strokeWidth={2}
           />
           <Text
             style={[
               styles.aspectRatioPillLabel,
-              selectedAspectRatio === option.key && styles.aspectRatioPillLabelActive,
+              { color: colors.iconMuted },
+              selectedAspectRatio === option.key && { color: colors.primary },
             ]}
           >
             {option.label}
@@ -446,7 +458,7 @@ export default function CreateScreen() {
     </View>
 
     {/* Video preview với tỉ lệ động */}
-    <View style={[styles.previewShell, styles.previewShellReels]}>
+    <View style={[styles.previewShell, styles.previewShellReels, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Image
         source={{ uri: selectedMedia[0] }}
         style={[
@@ -486,7 +498,7 @@ export default function CreateScreen() {
             exiting={FadeOut.duration(180)}
             style={styles.mediaAnimWrap}
           >
-            <View style={styles.mediaGridContainer}>
+            <View style={[styles.mediaGridContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.mediaGrid}>
                 {selectedMedia.map((uri, index) => (
                   <View key={`${uri}-${index}`} style={styles.mediaGridItem}>
@@ -517,25 +529,26 @@ export default function CreateScreen() {
                     style={[
                       styles.mediaGridItem,
                       styles.addMoreMediaBtn,
+                      { backgroundColor: colors.surfaceElevated },
                       selectedMedia.length === 0 && styles.mediaGridImageSingle,
                     ]}
                     onPress={handleMediaPick}
                     activeOpacity={0.8}
                   >
                     <View style={styles.addMoreMediaInner}>
-                      <Feather name="plus" size={28} color={AppColors.iconMuted} strokeWidth={1.5} />
-                      <Text style={styles.addMoreMediaText}>Add more</Text>
+                      <Feather name="plus" size={28} color={colors.iconMuted} strokeWidth={1.5} />
+                      <Text style={[styles.addMoreMediaText, { color: colors.iconMuted }]}>Add more</Text>
                     </View>
                   </TouchableOpacity>
                 )}
               </View>
               {selectedMedia.length > 1 && (
                 <TouchableOpacity
-                  style={styles.changeMediaLink}
+                  style={[styles.changeMediaLink, { borderTopColor: colors.border }]}
                   onPress={handleMediaPick}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.changeMediaLinkText}>
+                  <Text style={[styles.changeMediaLinkText, { color: colors.primary }]}>
                     {selectedMedia.length} photo{selectedMedia.length > 1 ? 's' : ''} selected — tap to change
                   </Text>
                 </TouchableOpacity>
@@ -546,7 +559,7 @@ export default function CreateScreen() {
 
         {/* Caption with @mention support */}
         <View style={styles.captionSection}>
-          <View style={styles.captionDivider} />
+          <View style={[styles.captionDivider, { backgroundColor: colors.border }]} />
           <MentionInput
             value={caption}
             onChangeText={setCaption}
@@ -555,20 +568,21 @@ export default function CreateScreen() {
                 ? 'Write a caption for your reel…'
                 : "What's on your mind? Share your thoughts…"
             }
+            placeholderTextColor={colors.textMuted}
             multiline
             maxLength={CAPTION_MAX}
             style={styles.mentionInputWrapper}
-            inputStyle={styles.captionInput}
+            inputStyle={[styles.captionInput, { color: colors.text }]}
           />
-          <Text style={styles.charCount}>
+          <Text style={[styles.charCount, { color: colors.iconMuted }]}>
             {caption.length}/{CAPTION_MAX}
           </Text>
         </View>
 
         {/* Options */}
         <View style={styles.optionsSection}>
-          <Text style={styles.optionsHeading}>More options</Text>
-          <View style={styles.optionsCard}>
+          <Text style={[styles.optionsHeading, { color: colors.iconMuted }]}>More options</Text>
+          <View style={[styles.optionsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <OptionRow
               icon={selectedVisibility === 'Public' ? 'globe' : selectedVisibility === 'Followers' ? 'users' : 'lock'}
               label={`Visibility: ${selectedVisibility}`}
@@ -587,42 +601,42 @@ export default function CreateScreen() {
           style={styles.visibilityOverlay}
         >
           <Pressable style={styles.visibilityBackdrop} onPress={() => setShowVisibilityPicker(false)} />
-          <View style={styles.visibilityCard}>
-            <View style={styles.visibilityHeader}>
-              <Text style={styles.visibilityTitle}>Who can see your {createType === 'reels' ? 'reel' : 'post'}?</Text>
+          <View style={[styles.visibilityCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.visibilityHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.visibilityTitle, { color: colors.text }]}>Who can see your {createType === 'reels' ? 'reel' : 'post'}?</Text>
               <TouchableOpacity onPress={() => setShowVisibilityPicker(false)} style={styles.visibilityCloseBtn}>
-                <Feather name="x" size={20} color={AppColors.text} strokeWidth={2} />
+                <Feather name="x" size={20} color={colors.text} strokeWidth={2} />
               </TouchableOpacity>
             </View>
             {VISIBILITY_OPTIONS.map((option, index) => (
               <React.Fragment key={option.value}>
-                {index > 0 && <View style={styles.visibilityOptionSeparator} />}
+                {index > 0 && <View style={[styles.visibilityOptionSeparator, { backgroundColor: colors.border }]} />}
                 <Pressable
                   style={[
                     styles.visibilityOption,
-                    selectedVisibility === option.value && styles.visibilityOptionSelected,
+                    selectedVisibility === option.value && { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : `${colors.primary}10` },
                   ]}
                   onPress={() => {
                     setSelectedVisibility(option.value);
                     setShowVisibilityPicker(false);
                   }}
                 >
-                  <View style={[styles.visibilityIconWrap, selectedVisibility === option.value && styles.visibilityIconSelected]}>
+                  <View style={[styles.visibilityIconWrap, { backgroundColor: colors.surfaceElevated }, selectedVisibility === option.value && { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.25)' : `${colors.primary}20` }]}>
                     <Feather
                       name={option.icon}
                       size={20}
-                      color={selectedVisibility === option.value ? AppColors.primary : AppColors.textSecondary}
+                      color={selectedVisibility === option.value ? colors.primary : colors.textSecondary}
                       strokeWidth={2}
                     />
                   </View>
                   <View style={styles.visibilityOptionText}>
-                    <Text style={[styles.visibilityOptionLabel, selectedVisibility === option.value && styles.visibilityOptionLabelSelected]}>
+                    <Text style={[styles.visibilityOptionLabel, { color: colors.text }, selectedVisibility === option.value && { color: colors.primary, fontWeight: '600' }]}>
                       {option.label}
                     </Text>
-                    <Text style={styles.visibilityOptionDesc}>{option.description}</Text>
+                    <Text style={[styles.visibilityOptionDesc, { color: colors.textMuted }]}>{option.description}</Text>
                   </View>
                   {selectedVisibility === option.value && (
-                    <Feather name="check" size={20} color={AppColors.primary} strokeWidth={2.5} />
+                    <Feather name="check" size={20} color={colors.primary} strokeWidth={2.5} />
                   )}
                 </Pressable>
               </React.Fragment>

@@ -26,6 +26,7 @@ import {
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 import { getBlockedUsers, unblockUser } from '../services/blockService';
 import { getCurrentUserId } from '../services/session';
 
@@ -42,6 +43,7 @@ interface UnblockTarget {
 
 export default function BlockedAccountsScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   // ── Data ─────────────────────────────────────────────────────────
   const [allUsers, setAllUsers] = useState<BlockedUserItemData[]>([]);
@@ -156,29 +158,29 @@ export default function BlockedAccountsScreen() {
   const ListHeader = useMemo(
     () => (
       <View style={styles.listHeader}>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Accounts you blocked won&apos;t be able to message, follow, or interact
           with you.
         </Text>
       </View>
     ),
-    [],
+    [colors.textMuted],
   );
 
   // ── Loading state ───────────────────────────────────────────────
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.root} edges={['top']}>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top']}>
         <CompactHeader title="Blocked Accounts" showBack onBack={() => router.back()} />
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top']}>
       <CompactHeader title="Blocked Accounts" showBack onBack={() => router.back()} />
 
       {/* Search bar */}

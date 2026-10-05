@@ -1,15 +1,5 @@
 /**
- * MessageListItem — Swipeable message conversation item.
- *
- * Features:
- * - Avatar on the left with live online status indicator
- * - Conversation name & last message clearly laid out to the right of the avatar
- * - High-contrast, easy-to-read typography for last message
- * - Emphasized separator border between items
- * - Swipe left: Delete conversation
- * - Swipe right: Archive conversation (or mute)
- * - Unread indicator with badge
- * - Smooth animations with haptic feedback
+ * MessageListItem — Swipeable message conversation item with dynamic dark mode.
  */
 
 import { Feather } from '@expo/vector-icons';
@@ -20,11 +10,12 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { AppColors, layoutPadding } from '../constants/theme';
+import { layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { Conversation, User } from '../data/mockData';
 import { triggerHaptic } from '../hooks/useMicroInteractions';
 import { formatDistanceToNow } from '../utils/time';
+import { useTheme } from '../context/ThemeContext';
 import { Avatar } from './Avatar';
 import { SwipeableRow } from './SwipeableRow';
 
@@ -47,6 +38,8 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
   onArchiveConversation,
   onMuteConversation,
 }) => {
+  const { colors, isDark } = useTheme();
+
   const getOtherMember = useCallback(
     (conv: Conversation): User | undefined => {
       return conv.members.find((m) => m.id !== currentUserId);
@@ -99,7 +92,7 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
       rightAction={{
         icon: 'trash-2',
         color: '#FFFFFF',
-        backgroundColor: AppColors.error,
+        backgroundColor: colors.error,
         label: 'Delete',
         onPress: handleDelete,
       }}
@@ -114,13 +107,32 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
     >
       <SwipeableTouchable
         onPress={handlePress}
-        style={[styles.convItem, hasUnread && styles.convItemUnread]}
+        style={[
+          styles.convItem,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          },
+          hasUnread && {
+            backgroundColor: isDark
+              ? `${colors.primary}18`
+              : `${colors.primary}0C`,
+          },
+        ]}
       >
         <View style={styles.convItemInner}>
           {/* Avatar on the left */}
           {isGroup ? (
-            <View style={styles.groupAvatar}>
-              <Feather name="users" size={24} color={AppColors.iconMuted} strokeWidth={2} />
+            <View
+              style={[
+                styles.groupAvatar,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Feather name="users" size={24} color={colors.iconMuted} strokeWidth={2} />
             </View>
           ) : (
             <View style={styles.avatarContainer}>
@@ -146,16 +158,20 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
             </View>
           )}
 
-          {/* Conversation info strictly to the right of the avatar */}
+          {/* Conversation info */}
           <View style={styles.convContent}>
             <View style={styles.convTop}>
               <Text
-                style={[styles.convName, hasUnread && styles.convNameBold]}
+                style={[
+                  styles.convName,
+                  { color: colors.text },
+                  hasUnread && styles.convNameBold,
+                ]}
                 numberOfLines={1}
               >
                 {displayName}
               </Text>
-              <Text style={styles.convTime}>
+              <Text style={[styles.convTime, { color: colors.textMuted }]}>
                 {conversation.lastMessage?.createdAt &&
                   formatDistanceToNow(new Date(conversation.lastMessage.createdAt))}
               </Text>
@@ -163,7 +179,11 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
 
             <View style={styles.convBottom}>
               <Text
-                style={[styles.convLastMessage, hasUnread && styles.convLastMessageBold]}
+                style={[
+                  styles.convLastMessage,
+                  { color: colors.textSecondary },
+                  hasUnread && { color: colors.text, fontWeight: '600' },
+                ]}
                 numberOfLines={1}
               >
                 {isCurrentUser(conversation.lastMessage?.senderId ?? '')
@@ -176,7 +196,7 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
                 })()}
               </Text>
               {hasUnread && (
-                <View style={styles.unreadBadge}>
+                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
                   <Text style={styles.unreadText}>
                     {conversation.unreadCount > 99
                       ? '99+'
@@ -233,16 +253,9 @@ const SwipeableTouchable: React.FC<SwipeableTouchableProps> = ({
   );
 };
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   convItem: {
-    backgroundColor: AppColors.surface,
     borderBottomWidth: 1.5,
-    borderBottomColor: AppColors.border,
-  },
-  convItemUnread: {
-    backgroundColor: `${AppColors.primary}0C`,
   },
   convItemInner: {
     flexDirection: 'row',
@@ -261,11 +274,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: AppColors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: AppColors.border,
   },
   convContent: {
     flex: 1,
@@ -281,19 +292,16 @@ const styles = StyleSheet.create({
   convName: {
     ...Typography.bodyMedium,
     flex: 1,
-    color: AppColors.text,
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
   convNameBold: {
     fontWeight: '700',
-    color: AppColors.text,
   },
   convTime: {
     ...Typography.meta,
     fontSize: 12,
-    color: AppColors.textMuted,
     marginLeft: 8,
   },
   convBottom: {
@@ -305,16 +313,10 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontSize: 14,
     lineHeight: 20,
-    color: AppColors.textSecondary,
     flex: 1,
     letterSpacing: -0.1,
   },
-  convLastMessageBold: {
-    fontWeight: '600',
-    color: AppColors.text,
-  },
   unreadBadge: {
-    backgroundColor: AppColors.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,

@@ -1,8 +1,5 @@
 /**
- * StaticPremiumHeader — Premium header với blur effect.
- * 
- * Phiên bản đơn giản cho các màn hình không cần scroll animation.
- * Dùng glassmorphism blur background.
+ * StaticPremiumHeader — Premium header với blur effect và dynamic theme support.
  */
 
 import React, { memo, type ReactNode } from 'react';
@@ -19,8 +16,9 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Avatar } from './Avatar';
 import { User } from '../data/mockData';
-import { AppColors, layoutPadding, borderRadius } from '../constants/theme';
+import { layoutPadding, borderRadius } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -60,6 +58,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
   largeTitle = false,
 }: StaticPremiumHeaderProps) {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
@@ -79,15 +78,15 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
       {useBlur ? (
         <BlurView
           intensity={70}
-          tint="light"
+          tint={isDark ? 'dark' : 'light'}
           style={StyleSheet.absoluteFill}
         />
       ) : (
-        <View style={[StyleSheet.absoluteFill, styles.solidBackground]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
       )}
 
       {/* Bottom border */}
-      <View style={styles.bottomBorder} />
+      <View style={[styles.bottomBorder, { backgroundColor: colors.border }]} />
 
       {/* Content */}
       <View style={styles.content}>
@@ -96,11 +95,11 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
           {showBack ? (
             <TouchableOpacity
               onPress={handleBack}
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: colors.surfaceElevated }]}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
             >
-              <Feather name="arrow-left" size={20} color={AppColors.text} />
+              <Feather name="arrow-left" size={20} color={colors.text} />
             </TouchableOpacity>
           ) : showAvatar ? (
             <TouchableOpacity
@@ -111,7 +110,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
               {avatarUser ? (
                 <Avatar user={avatarUser} size="medium" />
               ) : (
-                <View style={styles.avatarPlaceholder} />
+                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.borderLight }]} />
               )}
             </TouchableOpacity>
           ) : (
@@ -124,6 +123,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
           <Text
             style={[
               largeTitle ? styles.largeTitleText : styles.titleText,
+              { color: colors.text },
             ]}
             numberOfLines={1}
           >
@@ -143,7 +143,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
                   hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="bell" size={20} color={AppColors.text} />
+                  <Feather name="bell" size={20} color={colors.text} />
                   {notificationCount > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>
@@ -161,7 +161,7 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
                 hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Feather name="message-circle" size={20} color={AppColors.text} />
+                <Feather name="message-circle" size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
           )}
@@ -187,6 +187,7 @@ export const CompactHeader = memo(function CompactHeader({
   rightAction,
 }: CompactHeaderProps) {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
@@ -204,11 +205,17 @@ export const CompactHeader = memo(function CompactHeader({
           {showBack ? (
             <TouchableOpacity
               onPress={handleBack}
-              style={compactStyles.backButton}
+              style={[
+                compactStyles.backButton,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  shadowColor: isDark ? '#000000' : '#2D3748',
+                },
+              ]}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.7}
             >
-              <Feather name="arrow-left" size={20} color={AppColors.text} />
+              <Feather name="arrow-left" size={20} color={colors.text} />
             </TouchableOpacity>
           ) : (
             <View style={compactStyles.placeholder} />
@@ -216,7 +223,10 @@ export const CompactHeader = memo(function CompactHeader({
         </View>
 
         {/* Center */}
-        <Text style={compactStyles.title} numberOfLines={1}>
+        <Text
+          style={[compactStyles.title, { color: colors.text }]}
+          numberOfLines={1}
+        >
           {title}
         </Text>
 
@@ -236,16 +246,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     overflow: 'hidden',
   },
-  solidBackground: {
-    backgroundColor: AppColors.background,
-  },
   bottomBorder: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.border,
     opacity: 0.5,
   },
   content: {
@@ -270,24 +276,20 @@ const styles = StyleSheet.create({
   },
   titleText: {
     ...Typography.screenTitle,
-    color: AppColors.text,
   },
   largeTitleText: {
     fontSize: 28,
     fontWeight: '800',
-    color: AppColors.text,
     letterSpacing: -0.6,
   },
   backButton: {
     width: 36,
     height: 36,
     borderRadius: borderRadius.sm + 2,
-    backgroundColor: AppColors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#2D3748',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 4,
@@ -299,7 +301,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.borderLight,
   },
   placeholder: {
     width: 32,
@@ -357,7 +358,6 @@ const compactStyles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
@@ -370,12 +370,10 @@ const compactStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#2D3748',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 3,

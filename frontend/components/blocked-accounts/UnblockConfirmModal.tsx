@@ -3,6 +3,7 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 interface UnblockConfirmModalProps {
   visible: boolean;
@@ -23,6 +24,8 @@ export const UnblockConfirmModal = memo(function UnblockConfirmModal({
   onUnblock,
   isLoading = false,
 }: UnblockConfirmModalProps) {
+  const { colors, isDark } = useTheme();
+
   return (
     <Modal
       visible={visible}
@@ -38,33 +41,33 @@ export const UnblockConfirmModal = memo(function UnblockConfirmModal({
       >
         <TouchableOpacity
           activeOpacity={1}
-          style={styles.card}
+          style={[styles.card, { backgroundColor: colors.surfaceElevated, borderWidth: isDark ? 1 : 0, borderColor: colors.border }]}
           onPress={() => {}}
         >
           {/* Icon */}
           <View style={styles.iconWrap}>
-            <Feather name="user-x" size={32} color={AppColors.error} />
+            <Feather name="user-x" size={32} color={colors.error || AppColors.error} />
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: colors.text }]}>
             Unblock @{username}?
           </Text>
 
           {/* Description */}
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
             They will be able to follow, message, and interact with your profile again.
           </Text>
 
           {/* Actions */}
           <View style={styles.actions}>
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={[styles.cancelBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
               activeOpacity={0.7}
               onPress={onCancel}
               disabled={isLoading}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.text }]}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

@@ -3,6 +3,7 @@ import React, { memo, useCallback } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 interface BlockedAccountsSearchBarProps {
   value: string;
@@ -13,24 +14,26 @@ export const BlockedAccountsSearchBar = memo(function BlockedAccountsSearchBar({
   value,
   onChangeText,
 }: BlockedAccountsSearchBarProps) {
+  const { colors } = useTheme();
+
   const handleClear = useCallback(() => {
     onChangeText('');
   }, [onChangeText]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Feather
         name="search"
         size={16}
-        color={AppColors.textMuted}
+        color={colors.iconMuted}
         style={styles.searchIcon}
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: colors.text }]}
         value={value}
         onChangeText={onChangeText}
         placeholder="Search blocked accounts"
-        placeholderTextColor={AppColors.textMuted}
+        placeholderTextColor={colors.textMuted}
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
@@ -41,8 +44,8 @@ export const BlockedAccountsSearchBar = memo(function BlockedAccountsSearchBar({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
         >
-          <View style={styles.clearBtn}>
-            <Feather name="x" size={12} color={AppColors.surface} />
+          <View style={[styles.clearBtn, { backgroundColor: colors.textMuted }]}>
+            <Feather name="x" size={12} color={colors.surface} />
           </View>
         </TouchableOpacity>
       )}

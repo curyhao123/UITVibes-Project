@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { StyleProp, Text, TextStyle } from 'react-native';
-import { AppColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { searchUsers } from '../services/userService';
 
 interface MentionTextProps {
@@ -24,6 +24,7 @@ export const MentionText: React.FC<MentionTextProps> = ({
   numberOfLines,
 }) => {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const parsedText = useMemo(() => {
     // Split by @username pattern - same as backend: @(\w+)
@@ -108,7 +109,7 @@ export const MentionText: React.FC<MentionTextProps> = ({
           return (
             <Text
               key={index}
-              style={[styles.mention, usernameStyle]}
+              style={[{ color: colors.primary, fontWeight: '600' }, usernameStyle]}
               onPress={() => handleMentionPress(username)}
             >
               {part.content}
@@ -122,11 +123,4 @@ export const MentionText: React.FC<MentionTextProps> = ({
       })}
     </Text>
   );
-};
-
-const styles = {
-  mention: {
-    color: AppColors.primary,
-    fontWeight: '600' as const,
-  },
 };

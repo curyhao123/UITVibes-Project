@@ -30,6 +30,7 @@ import { User, Post } from "../../data/mockData";
 import { RecentSearch } from "../../services/session";
 import { AppColors, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
+import { useTheme } from "../../context/ThemeContext";
 import defaultAvatar from "../../assets/images/default-avatar.png";
 
 type HashtagOption = {
@@ -40,6 +41,7 @@ type HashtagOption = {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { toggleFollow, currentUser } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -285,11 +287,11 @@ export default function SearchScreen() {
         style={styles.recentAvatar}
       />
       <View style={styles.recentInfo}>
-        <Text style={styles.recentDisplayName} numberOfLines={1}>
+        <Text style={[styles.recentDisplayName, { color: colors.text }]} numberOfLines={1}>
           {item.displayName}
         </Text>
         {item.bio ? (
-          <Text style={styles.recentBio} numberOfLines={1}>
+          <Text style={[styles.recentBio, { color: colors.textSecondary }]} numberOfLines={1}>
             {item.bio}
           </Text>
         ) : null}
@@ -302,7 +304,7 @@ export default function SearchScreen() {
         <Feather
           name="x"
           size={16}
-          color={AppColors.iconMuted}
+          color={colors.iconMuted}
           strokeWidth={2}
         />
       </TouchableOpacity>
@@ -311,7 +313,7 @@ export default function SearchScreen() {
 
   const renderUserItem = ({ item }: { item: User }) => (
     <TouchableOpacity
-      style={styles.userItem}
+      style={[styles.userItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
       onPress={() => handleUserClick(item)}
     >
       <Image
@@ -319,9 +321,9 @@ export default function SearchScreen() {
         style={styles.avatar}
       />
       <View style={styles.userInfo}>
-        <Text style={styles.displayNameHandle}>@{item.displayName}</Text>
+        <Text style={[styles.displayNameHandle, { color: colors.text }]}>@{item.displayName}</Text>
         {item.bio ? (
-          <Text style={styles.userBio} numberOfLines={1}>
+          <Text style={[styles.userBio, { color: colors.textSecondary }]} numberOfLines={1}>
             {item.bio}
           </Text>
         ) : null}
@@ -329,12 +331,12 @@ export default function SearchScreen() {
       <TouchableOpacity
         style={[
           styles.followButton,
-          item.isFollowing && styles.followingButton,
+          item.isFollowing && [styles.followingButton, { backgroundColor: colors.border }],
         ]}
         onPress={() => handleFollowToggle(item.id)}
       >
         <Text
-          style={[styles.followText, item.isFollowing && styles.followingText]}
+          style={[styles.followText, item.isFollowing && [styles.followingText, { color: colors.text }]]}
         >
           {item.isFollowing ? "Following" : "Follow"}
         </Text>
@@ -368,20 +370,20 @@ export default function SearchScreen() {
 
   const renderTrendingHashtag = ({ item }: { item: HashtagOption }) => (
     <TouchableOpacity
-      style={styles.trendingChip}
+      style={[styles.trendingChip, { backgroundColor: colors.borderLight }]}
       onPress={() => handleHashtagSelect(item)}
     >
-      <Text style={styles.trendingChipText}>#{item.name}</Text>
+      <Text style={[styles.trendingChipText, { color: colors.text }]}>#{item.name}</Text>
     </TouchableOpacity>
   );
 
   const renderHashtagItem = ({ item }: { item: HashtagOption }) => (
     <TouchableOpacity
-      style={styles.hashtagItem}
+      style={[styles.hashtagItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
       onPress={() => handleHashtagSelect(item)}
     >
-      <Text style={styles.hashtagName}>#{item.name}</Text>
-      <Text style={styles.hashtagCount}>{item.usageCount} posts</Text>
+      <Text style={[styles.hashtagName, { color: colors.text }]}>#{item.name}</Text>
+      <Text style={[styles.hashtagCount, { color: colors.textMuted }]}>{item.usageCount} posts</Text>
     </TouchableOpacity>
   );
 
@@ -390,7 +392,7 @@ export default function SearchScreen() {
       if (isLoadingHashtags) {
         return (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={AppColors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         );
       }
@@ -401,11 +403,11 @@ export default function SearchScreen() {
             <Feather
               name="hash"
               size={48}
-              color={AppColors.border}
+              color={colors.border}
               strokeWidth={1.5}
             />
-            <Text style={styles.emptyTitle}>No hashtags found</Text>
-            <Text style={styles.emptySubtitle}>Try a different hashtag</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No hashtags found</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Try a different hashtag</Text>
           </View>
         );
       }
@@ -423,7 +425,7 @@ export default function SearchScreen() {
     if (isLoadingPosts) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={AppColors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       );
     }
@@ -439,7 +441,7 @@ export default function SearchScreen() {
           showTrendingHashtags ? (
             <View style={styles.trendingSection}>
               <View style={styles.trendingHeader}>
-                <Text style={styles.trendingTitle}>Trending hashtags</Text>
+                <Text style={[styles.trendingTitle, { color: colors.text }]}>Trending hashtags</Text>
               </View>
               <FlatList
                 data={trendingHashtags}
@@ -457,11 +459,11 @@ export default function SearchScreen() {
             <Feather
               name="grid"
               size={48}
-              color={AppColors.border}
+              color={colors.border}
               strokeWidth={1.5}
             />
-            <Text style={styles.emptyTitle}>No posts found</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No posts found</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
               Try a different search term
             </Text>
           </View>
@@ -472,10 +474,10 @@ export default function SearchScreen() {
 
   const renderRecentHeader = () => (
     <View style={styles.recentHeader}>
-      <Text style={styles.recentTitle}>Recent</Text>
+      <Text style={[styles.recentTitle, { color: colors.text }]}>Recent</Text>
       {recentSearches.length > 0 && (
         <TouchableOpacity onPress={handleClearAll}>
-          <Text style={styles.clearAllText}>Clear All</Text>
+          <Text style={[styles.clearAllText, { color: colors.primary }]}>Clear All</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -485,7 +487,7 @@ export default function SearchScreen() {
     if (isLoadingRecent) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={AppColors.primary} />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       );
     }
@@ -496,11 +498,11 @@ export default function SearchScreen() {
           <Feather
             name="search"
             size={48}
-            color={AppColors.border}
+            color={colors.border}
             strokeWidth={1.5}
           />
-          <Text style={styles.emptyTitle}>No recent searches</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No recent searches</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
             Search for people you want to find
           </Text>
         </View>
@@ -520,7 +522,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <StaticPremiumHeader
         title="Search"
         largeTitle
@@ -528,17 +530,17 @@ export default function SearchScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: colors.borderLight }]}>
           <Feather
             name="search"
             size={18}
-            color={AppColors.iconMuted}
+            color={colors.iconMuted}
             strokeWidth={2}
           />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search"
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={searchQuery}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -549,7 +551,7 @@ export default function SearchScreen() {
               <Feather
                 name="x"
                 size={18}
-                color={AppColors.iconMuted}
+                color={colors.iconMuted}
                 strokeWidth={2}
               />
             </TouchableOpacity>
@@ -560,7 +562,7 @@ export default function SearchScreen() {
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "posts" && styles.activeTab]}
+          style={[styles.tab, activeTab === "posts" && [styles.activeTab, { borderBottomColor: colors.primary }]]}
           onPress={() => setActiveTab("posts")}
         >
           <Feather
@@ -568,14 +570,14 @@ export default function SearchScreen() {
             size={22}
             color={
               activeTab === "posts"
-                ? AppColors.primary
-                : AppColors.iconMuted
+                ? colors.primary
+                : colors.iconMuted
             }
             strokeWidth={2}
           />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === "users" && styles.activeTab]}
+          style={[styles.tab, activeTab === "users" && [styles.activeTab, { borderBottomColor: colors.primary }]]}
           onPress={() => setActiveTab("users")}
         >
           <Feather
@@ -583,8 +585,8 @@ export default function SearchScreen() {
             size={22}
             color={
               activeTab === "users"
-                ? AppColors.primary
-                : AppColors.iconMuted
+                ? colors.primary
+                : colors.iconMuted
             }
             strokeWidth={2}
           />
@@ -599,7 +601,7 @@ export default function SearchScreen() {
         <View key="users-tab">
           {isSearching ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : (
             <FlatList
@@ -612,15 +614,15 @@ export default function SearchScreen() {
                   <Feather
                     name="users"
                     size={48}
-                    color={AppColors.border}
+                    color={colors.border}
                     strokeWidth={1.5}
                   />
-                  <Text style={styles.emptyTitle}>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
                     {searchQuery.length > 0
                       ? `No users found for "@${searchQuery}"`
                       : "Search for people"}
                   </Text>
-                  <Text style={styles.emptySubtitle}>
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                     {searchQuery.length > 0
                       ? "Try a different search term"
                       : "Find friends by their display name"}

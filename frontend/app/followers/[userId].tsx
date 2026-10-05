@@ -15,6 +15,7 @@ import defaultAvatar from "../../assets/images/default-avatar.png";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { AppColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
+import { useTheme } from "../../context/ThemeContext";
 import { User } from "../../data/mockData";
 import {
   getFollowers,
@@ -25,6 +26,7 @@ import {
 
 export default function FollowersScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { userId, tab } = useLocalSearchParams<{
     userId: string;
     tab?: string;
@@ -107,7 +109,7 @@ export default function FollowersScreen() {
 
   const renderItem = ({ item }: { item: User }) => (
     <TouchableOpacity
-      style={styles.userItem}
+      style={[styles.userItem, { borderBottomColor: colors.border }]}
       onPress={() => router.push(`/profile/${item.id}` as any)}
     >
       <Image
@@ -116,22 +118,22 @@ export default function FollowersScreen() {
       />
       <View style={styles.userInfo}>
         <View style={styles.nameRow}>
-          <Text style={styles.displayName} numberOfLines={1}>
+          <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
             {item.displayName}
           </Text>
           {item.isVerified && (
             <Feather
               name="check-circle"
               size={14}
-              color={AppColors.primary}
+              color={colors.primary}
               style={{ marginLeft: 4 }}
             />
           )}
         </View>
-        <Text style={styles.username} numberOfLines={1}>
+        <Text style={[styles.username, { color: colors.textMuted }]} numberOfLines={1}>
           @{item.username}
         </Text>
-        <Text style={styles.bio} numberOfLines={1}>
+        <Text style={[styles.bio, { color: colors.textSecondary }]} numberOfLines={1}>
           {item.bio}
         </Text>
       </View>
@@ -139,14 +141,18 @@ export default function FollowersScreen() {
         <TouchableOpacity
           style={[
             styles.followBtn,
-            !!item.isFollowing && styles.followBtnFollowing,
+            {
+              backgroundColor: item.isFollowing ? colors.surfaceElevated : colors.primary,
+              borderWidth: item.isFollowing ? 1 : 0,
+              borderColor: colors.border,
+            },
           ]}
           onPress={() => handleFollowToggle(item.id, !!item.isFollowing)}
         >
           <Text
             style={[
               styles.followBtnText,
-              !!item.isFollowing && styles.followBtnTextFollowing,
+              { color: item.isFollowing ? colors.text : "#FFFFFF" },
             ]}
           >
             {!!item.isFollowing ? "Following" : "Follow"}
@@ -157,25 +163,25 @@ export default function FollowersScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <CompactHeader
         title={profileDisplayName || "Followers"}
         showBack
         onBack={() => router.back()}
       />
 
-      <View style={styles.tabSwitcher}>
+      <View style={[styles.tabSwitcher, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[
             styles.switchTab,
-            filter === "followers" && styles.switchTabActive,
+            filter === "followers" && { borderBottomWidth: 2, borderBottomColor: colors.primary },
           ]}
           onPress={() => setFilter("followers")}
         >
           <Text
             style={[
               styles.switchTabText,
-              filter === "followers" && styles.switchTabTextActive,
+              { color: filter === "followers" ? colors.primary : colors.textMuted },
             ]}
           >
             Followers
@@ -184,14 +190,14 @@ export default function FollowersScreen() {
         <TouchableOpacity
           style={[
             styles.switchTab,
-            filter === "following" && styles.switchTabActive,
+            filter === "following" && { borderBottomWidth: 2, borderBottomColor: colors.primary },
           ]}
           onPress={() => setFilter("following")}
         >
           <Text
             style={[
               styles.switchTabText,
-              filter === "following" && styles.switchTabTextActive,
+              { color: filter === "following" ? colors.primary : colors.textMuted },
             ]}
           >
             Following
@@ -201,7 +207,7 @@ export default function FollowersScreen() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -212,8 +218,8 @@ export default function FollowersScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Feather name="users" size={40} color={AppColors.textMuted} />
-              <Text style={styles.emptyTitle}>No {filter} yet</Text>
+              <Feather name="users" size={40} color={colors.iconMuted} />
+              <Text style={[styles.emptyTitle, { color: colors.iconMuted }]}>No {filter} yet</Text>
             </View>
           }
         />

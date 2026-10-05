@@ -24,7 +24,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { SPRING_PRESS, SPRING_SOFT, TIMING_FAST } from '../animations/spring';
-import { AppColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { Comment, User } from '../data/mockData';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
@@ -63,6 +63,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onReply,
   isReply = false,
 }) => {
+  const { colors } = useTheme();
   const [showReplies, setShowReplies] = useState(false);
   const likeScale = useSharedValue(1);
 
@@ -95,16 +96,16 @@ const CommentItem: React.FC<CommentItemProps> = ({
   return (
     <View style={[styles.commentItem, isReply && styles.replyItem]}>
       <TouchableOpacity onPress={onReply}>
-        <Image source={{ uri: comment.user.avatar }} style={styles.commentAvatar} />
+        <Image source={{ uri: comment.user.avatar }} style={[styles.commentAvatar, { backgroundColor: colors.borderLight }]} />
       </TouchableOpacity>
 
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
-          <Text style={styles.commentUsername}>{comment.user.username}</Text>
-          <Text style={styles.commentTime}>{formatTime(comment.createdAt)}</Text>
+          <Text style={[styles.commentUsername, { color: colors.text }]}>{comment.user.username}</Text>
+          <Text style={[styles.commentTime, { color: colors.textMuted }]}>{formatTime(comment.createdAt)}</Text>
         </View>
 
-        <Text style={styles.commentText}>{comment.text}</Text>
+        <Text style={[styles.commentText, { color: colors.text }]}>{comment.text}</Text>
 
         <View style={styles.commentActions}>
           <TouchableOpacity onPress={handleLike} style={styles.commentAction}>
@@ -112,17 +113,17 @@ const CommentItem: React.FC<CommentItemProps> = ({
               <Feather
                 name="heart"
                 size={14}
-                color={comment.isLiked ? AppColors.primary : AppColors.textMuted}
-                fill={comment.isLiked ? AppColors.primary : 'transparent'}
+                color={comment.isLiked ? colors.primary : colors.textMuted}
+                fill={comment.isLiked ? colors.primary : 'transparent'}
               />
             </Animated.View>
             {comment.likes > 0 && (
-              <Text style={styles.commentLikeCount}>{comment.likes}</Text>
+              <Text style={[styles.commentLikeCount, { color: colors.textMuted }]}>{comment.likes}</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onReply} style={styles.commentAction}>
-            <Text style={styles.replyText}>Reply</Text>
+            <Text style={[styles.replyText, { color: colors.textMuted }]}>Reply</Text>
           </TouchableOpacity>
 
           {comment.replies && comment.replies.length > 0 && (
@@ -130,7 +131,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               onPress={() => setShowReplies(!showReplies)}
               style={styles.commentAction}
             >
-              <Text style={styles.viewRepliesText}>
+              <Text style={[styles.viewRepliesText, { color: colors.textMuted }]}>
                 {showReplies ? 'Hide' : `View`} {comment.replies.length} replies
               </Text>
             </TouchableOpacity>
@@ -138,7 +139,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
         </View>
 
         {showReplies && comment.replies && (
-          <View style={styles.repliesContainer}>
+          <View style={[styles.repliesContainer, { borderLeftColor: colors.borderLight }]}>
             {comment.replies.map((reply) => (
               <CommentItem
                 key={reply.id}
@@ -157,8 +158,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
           <Feather
             name="heart"
             size={14}
-            color={comment.isLiked ? AppColors.primary : AppColors.iconMuted}
-            fill={comment.isLiked ? AppColors.primary : 'transparent'}
+            color={comment.isLiked ? colors.primary : colors.iconMuted}
+            fill={comment.isLiked ? colors.primary : 'transparent'}
           />
         </Animated.View>
       </TouchableOpacity>
@@ -177,6 +178,7 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
   isLoading = false,
   currentUser,
 }) => {
+  const { colors } = useTheme();
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const totalCommentCount = countCommentsWithReplies(comments);
@@ -237,19 +239,19 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
         keyboardVerticalOffset={0}
         style={styles.keyboardView}
       >
-        <Animated.View style={[styles.sheet, sheetStyle]}>
+        <Animated.View style={[styles.sheet, { backgroundColor: colors.surface }, sheetStyle]}>
           {/* Handle bar */}
           <View style={styles.handleContainer}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>
+          <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
               {totalCommentCount} {totalCommentCount === 1 ? 'comment' : 'comments'}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Feather name="x" size={24} color={AppColors.text} />
+              <Feather name="x" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -274,12 +276,12 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 {isLoading ? (
-                  <ActivityIndicator size="small" color={AppColors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <>
-                    <Feather name="message-circle" size={48} color={AppColors.iconMuted} />
-                    <Text style={styles.emptyText}>No comments yet</Text>
-                    <Text style={styles.emptySubtext}>
+                    <Feather name="message-circle" size={48} color={colors.iconMuted} />
+                    <Text style={[styles.emptyText, { color: colors.text }]}>No comments yet</Text>
+                    <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
                       Be the first to share your thoughts
                     </Text>
                   </>
@@ -289,33 +291,33 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
             ListFooterComponent={
               isLoading && comments.length > 0 ? (
                 <View style={styles.loadingMoreContainer}>
-                  <ActivityIndicator size="small" color={AppColors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               ) : null
             }
           />
 
           {/* Input area */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { borderTopColor: colors.borderLight }]}>
             {replyingTo && (
               <View style={styles.replyingToContainer}>
-                <Text style={styles.replyingToText}>
+                <Text style={[styles.replyingToText, { color: colors.textMuted }]}>
                   Replying to @{replyingTo.user.username}
                 </Text>
                 <TouchableOpacity onPress={() => setReplyingTo(null)}>
-                  <Feather name="x" size={16} color={AppColors.textMuted} />
+                  <Feather name="x" size={16} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             )}
             <View style={styles.inputRow}>
               <Image
                 source={{ uri: currentUser?.avatar || 'https://i.pravatar.cc/150?img=33' }}
-                style={styles.inputAvatar}
+                style={[styles.inputAvatar, { backgroundColor: colors.borderLight }]}
               />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Add a comment..."
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={commentText}
                 onChangeText={setCommentText}
                 multiline
@@ -332,7 +334,8 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
                 <Text
                   style={[
                     styles.postButtonText,
-                    !commentText.trim() && styles.postButtonTextDisabled,
+                    { color: colors.primary },
+                    !commentText.trim() && { opacity: 0.4 },
                   ]}
                 >
                   Post
@@ -365,7 +368,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SHEET_HEIGHT,
-    backgroundColor: AppColors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: TAB_BAR_BOTTOM_OFFSET,
@@ -378,7 +380,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
   },
   header: {
     flexDirection: 'row',
@@ -387,12 +388,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
   },
   closeButton: {
     padding: 4,
@@ -429,16 +428,13 @@ const styles = StyleSheet.create({
   commentUsername: {
     fontSize: 13,
     fontWeight: '600',
-    color: AppColors.text,
     marginRight: 8,
   },
   commentTime: {
     fontSize: 12,
-    color: AppColors.textMuted,
   },
   commentText: {
     fontSize: 14,
-    color: AppColors.text,
     lineHeight: 20,
     marginBottom: 6,
   },
@@ -453,24 +449,20 @@ const styles = StyleSheet.create({
   },
   commentLikeCount: {
     fontSize: 12,
-    color: AppColors.textMuted,
     marginLeft: 4,
   },
   replyText: {
     fontSize: 12,
-    color: AppColors.textMuted,
     fontWeight: '600',
   },
   viewRepliesText: {
     fontSize: 12,
-    color: AppColors.textMuted,
     fontWeight: '600',
   },
   repliesContainer: {
     marginTop: 12,
     paddingLeft: 12,
     borderLeftWidth: 2,
-    borderLeftColor: AppColors.borderLight,
   },
   likeButton: {
     padding: 4,
@@ -484,12 +476,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: AppColors.textMuted,
     marginTop: 4,
   },
   loadingMoreContainer: {
@@ -498,7 +488,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     borderTopWidth: 1,
-    borderTopColor: AppColors.borderLight,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: Platform.OS === 'ios' ? 30 : 12,
@@ -511,7 +500,6 @@ const styles = StyleSheet.create({
   },
   replyingToText: {
     fontSize: 13,
-    color: AppColors.textMuted,
   },
   inputRow: {
     flexDirection: 'row',
@@ -526,7 +514,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: AppColors.text,
     maxHeight: 100,
     paddingVertical: 8,
   },
@@ -541,9 +528,5 @@ const styles = StyleSheet.create({
   postButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.primary,
-  },
-  postButtonTextDisabled: {
-    color: AppColors.primary,
   },
 });

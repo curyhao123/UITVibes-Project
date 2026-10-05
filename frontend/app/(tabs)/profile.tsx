@@ -13,10 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Avatar, PostGrid, EmptyPostsState, EditProfileModal } from '../../components';
 import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
 import { HighlightBar } from '../../components/highlight';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { getUserReposts } from '../../services/postService';
 import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
@@ -24,28 +25,19 @@ import { Post } from '../../data/mockData';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { currentUser, myPosts, refreshMyPosts, isNewUser, deletePost } = useApp();
 
   const [showEditModal, setShowEditModal] = useState(false);
-
-  // Loading state cho posts
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Profile tab state (posts | reposts)
   const [profileTab, setProfileTab] = useState<'posts' | 'reposts'>('posts');
-
-  // Reposts state
   const [reposts, setReposts] = useState<Post[]>([]);
   const [isLoadingReposts, setIsLoadingReposts] = useState(false);
-
-  // Highlights state
   const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
 
-  // Posts của user hiện tại — lấy từ AppContext myPosts
   const userPosts = myPosts.slice(0, 9);
 
-  // Refresh myPosts khi quay lại profile tab
   useFocusEffect(
     useCallback(() => {
       setIsLoadingPosts(true);
@@ -54,7 +46,7 @@ export default function ProfileScreen() {
       }).catch(() => {
         setIsLoadingPosts(false);
       });
-    }, []), // Empty deps - chỉ chạy khi mount/unmount
+    }, []),
   );
 
   const refreshHighlights = useCallback(async () => {
@@ -67,14 +59,12 @@ export default function ProfileScreen() {
     }
   }, [currentUser?.id]);
 
-  // Load highlights when profile is focused
   useFocusEffect(
     useCallback(() => {
       void refreshHighlights();
     }, [refreshHighlights]),
   );
 
-  // Pull-to-Refresh handler
   const handleRefresh = useCallback(async () => {
     if (!currentUser?.id) return;
     setIsRefreshing(true);
@@ -87,7 +77,6 @@ export default function ProfileScreen() {
     }
   }, [refreshMyPosts, refreshHighlights, currentUser?.id]);
 
-  // Load reposts when reposts tab is active
   useFocusEffect(
     useCallback(() => {
       if (!currentUser?.id || profileTab !== 'reposts') return;
@@ -99,7 +88,6 @@ export default function ProfileScreen() {
     }, [currentUser?.id, profileTab]),
   );
 
-  // Wrapper xóa post
   const handleDeletePost = useCallback(
     async (postId: string) => {
       await deletePost(postId);
@@ -131,18 +119,18 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StaticPremiumHeader
         title={currentUser.displayName}
         onNotificationPress={() => router.push('/notifications' as any)}
         rightAction={
           <TouchableOpacity
             onPress={() => router.push('/settings')}
-            style={styles.settingsBtn}
+            style={[styles.settingsBtn, { backgroundColor: colors.surfaceElevated }]}
             hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             activeOpacity={0.7}
           >
-            <Feather name="settings" size={20} color={AppColors.text} />
+            <Feather name="settings" size={20} color={colors.text} />
           </TouchableOpacity>
         }
       />
@@ -153,8 +141,8 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={AppColors.primary}
-            colors={[AppColors.primary]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -162,39 +150,59 @@ export default function ProfileScreen() {
           <Avatar user={currentUser} size="large" />
           <View style={styles.statsContainer}>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/followers/current` as any)}>
-              <Text style={styles.statNumber}>{formatCount(currentUser.posts)}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(currentUser.posts)}</Text>
+              <Text style={[styles.statLabel, { color: colors.iconMuted }]}>Posts</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push(`/followers/current` as any)}>
-              <Text style={styles.statNumber}>{formatCount(currentUser.followers)}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(currentUser.followers)}</Text>
+              <Text style={[styles.statLabel, { color: colors.iconMuted }]}>Followers</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => router.push('/followers/current?tab=following' as any)}
             >
-              <Text style={styles.statNumber}>{formatCount(currentUser.following)}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{formatCount(currentUser.following)}</Text>
+              <Text style={[styles.statLabel, { color: colors.iconMuted }]}>Following</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.bioContainer}>
-          <Text style={styles.displayName}>{currentUser.displayName}</Text>
-          <Text style={styles.bio}>{currentUser.bio}</Text>
+          <Text style={[styles.displayName, { color: colors.text }]}>{currentUser.displayName}</Text>
+          <Text style={[styles.bio, { color: colors.textSecondary }]}>{currentUser.bio}</Text>
           {currentUser.website && (
-            <Text style={styles.website}>{currentUser.website}</Text>
+            <Text style={[styles.website, { color: colors.primary }]}>{currentUser.website}</Text>
           )}
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton} onPress={() => setShowEditModal(true)}>
-            <Feather name="user" size={16} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.editButtonText}> Edit Profile</Text>
+          <TouchableOpacity
+            style={[
+              styles.editButton,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+            onPress={() => setShowEditModal(true)}
+          >
+            <Feather name="user" size={16} color={colors.text} strokeWidth={2} />
+            <Text style={[styles.editButtonText, { color: colors.text }]}> Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.editButton} onPress={handleShareProfile}>
-            <Feather name="share" size={16} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.editButtonText}> Share</Text>
+          <TouchableOpacity
+            style={[
+              styles.editButton,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+            onPress={handleShareProfile}
+          >
+            <Feather name="share" size={16} color={colors.text} strokeWidth={2} />
+            <Text style={[styles.editButtonText, { color: colors.text }]}> Share</Text>
           </TouchableOpacity>
         </View>
 
@@ -204,25 +212,25 @@ export default function ProfileScreen() {
           onRefresh={refreshHighlights}
         />
 
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, { borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.tab, profileTab === 'posts' && styles.activeTab]}
+            style={[styles.tab, profileTab === 'posts' && { borderTopColor: colors.primary, borderTopWidth: 2 }]}
             onPress={() => setProfileTab('posts')}
           >
-            <Feather name="grid" size={22} color={profileTab === 'posts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
+            <Feather name="grid" size={22} color={profileTab === 'posts' ? colors.primary : colors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, profileTab === 'reposts' && styles.activeTab]}
+            style={[styles.tab, profileTab === 'reposts' && { borderTopColor: colors.primary, borderTopWidth: 2 }]}
             onPress={() => setProfileTab('reposts')}
           >
-            <Feather name="refresh-cw" size={22} color={profileTab === 'reposts' ? AppColors.primary : AppColors.iconMuted} strokeWidth={2} />
+            <Feather name="refresh-cw" size={22} color={profileTab === 'reposts' ? colors.primary : colors.iconMuted} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
         {profileTab === 'posts' ? (
           isLoadingPosts ? (
             <View style={styles.loadingPosts}>
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : userPosts.length === 0 ? (
             <EmptyPostsState isNewUser={isNewUser ?? false} />
@@ -232,12 +240,12 @@ export default function ProfileScreen() {
         ) : (
           isLoadingReposts ? (
             <View style={styles.loadingPosts}>
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : reposts.length === 0 ? (
             <View style={styles.emptyStories}>
-              <Feather name="refresh-cw" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
-              <Text style={styles.emptyStoriesText}>No reposts yet</Text>
+              <Feather name="refresh-cw" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+              <Text style={[styles.emptyStoriesText, { color: colors.iconMuted }]}>No reposts yet</Text>
             </View>
           ) : (
             <PostGrid posts={reposts} onDeletePost={handleDeletePost} currentUserId={currentUser?.id} />
@@ -256,13 +264,11 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
   },
   settingsBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: AppColors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -283,11 +289,9 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     ...Typography.statNumber,
-    color: AppColors.text,
   },
   statLabel: {
     ...Typography.statLabel,
-    color: AppColors.iconMuted,
     marginTop: 2,
   },
   bioContainer: {
@@ -297,16 +301,13 @@ const styles = StyleSheet.create({
   displayName: {
     ...Typography.captionSemibold,
     marginBottom: 2,
-    color: AppColors.text,
   },
   bio: {
     ...Typography.caption,
     lineHeight: 20,
-    color: AppColors.textSecondary,
   },
   website: {
     ...Typography.caption,
-    color: AppColors.primary,
     marginTop: 4,
     textDecorationLine: 'underline',
   },
@@ -317,7 +318,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    backgroundColor: AppColors.border,
     paddingVertical: 8,
     borderRadius: 8,
     marginRight: 8,
@@ -327,82 +327,15 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     ...Typography.captionSemibold,
-    color: AppColors.text,
-  },
-  highlights: {
-    marginBottom: 2,
-  },
-  storyStripScroll: {
-    paddingHorizontal: layoutPadding,
-    paddingVertical: 12,
-  },
-  storyStripItem: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 72,
-  },
-  addStoryCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: AppColors.borderLight,
-    borderWidth: 2,
-    borderColor: AppColors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  storyCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2,
-    borderColor: AppColors.border,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  storyCircleActive: {
-    borderColor: AppColors.primary,
-  },
-  storyCircleImg: {
-    width: '100%',
-    height: '100%',
-  },
-  storyStripLabel: {
-    ...Typography.meta,
-    color: AppColors.text,
-    textAlign: 'center',
-  },
-  highlightItem: {
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  highlightCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: AppColors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  highlightText: {
-    ...Typography.meta,
-    color: AppColors.text,
   },
   tabsContainer: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
-  },
-  activeTab: {
-    borderTopWidth: 1,
-    borderTopColor: AppColors.primary,
   },
   loadingPosts: {
     paddingVertical: 40,
@@ -415,18 +348,5 @@ const styles = StyleSheet.create({
   },
   emptyStoriesText: {
     ...Typography.sectionTitle,
-    color: AppColors.iconMuted,
-  },
-  emptyAddBtn: {
-    backgroundColor: AppColors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  emptyAddBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });

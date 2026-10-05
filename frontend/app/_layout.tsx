@@ -5,13 +5,37 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AppProvider , useApp } from '@/context/AppContext';
-import { AppColors } from '@/constants/theme';
+import { AppProvider, useApp } from '@/context/AppContext';
+import { AppThemeProvider, useTheme } from '@/context/ThemeContext';
+import { LightThemeColors, DarkThemeColors } from '@/constants/theme';
 import { ToastProvider } from '@/components/EnhancedToast';
 
 export const unstable_settings = {
   anchor: '(tabs)',
+};
+
+const customLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: LightThemeColors.background,
+    card: LightThemeColors.surface,
+    text: LightThemeColors.text,
+    border: LightThemeColors.border,
+    primary: LightThemeColors.primary,
+  },
+};
+
+const customDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: DarkThemeColors.background,
+    card: DarkThemeColors.surface,
+    text: DarkThemeColors.text,
+    border: DarkThemeColors.border,
+    primary: DarkThemeColors.primary,
+  },
 };
 
 function AuthGuard() {
@@ -58,53 +82,61 @@ function AuthGuard() {
   return null;
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function AppLayoutInner() {
+  const { isDark, colors } = useTheme();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? customDarkTheme : customLightTheme}>
       <AppProvider>
         <ToastProvider>
           <AuthGuard />
           <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: AppColors.background },
-            animation: 'fade',
-            animationDuration: 200,
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="message" options={{ headerShown: false }} />
-          <Stack.Screen name="profile/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="story/create" options={{ headerShown: false }} />
-          <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ headerShown: false }} />
-          <Stack.Screen name="change-password" options={{ headerShown: false }} />
-          <Stack.Screen name="change-password/verify" options={{ headerShown: false }} />
-          <Stack.Screen name="blocked-accounts" options={{ headerShown: false }} />
-          <Stack.Screen name="help" options={{ headerShown: false }} />
-          <Stack.Screen name="terms" options={{ headerShown: false }} />
-          <Stack.Screen name="privacy" options={{ headerShown: false }} />
-          <Stack.Screen name="followers/[userId]" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/email-verification" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/onboarding-fullname" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/onboarding-find-friends" options={{ headerShown: false }} />
-          <Stack.Screen name="admin" options={{ headerShown: false }} />
-          <Stack.Screen name="admin/dashboard" options={{ headerShown: false }} />
-          <Stack.Screen name="admin/users" options={{ headerShown: false }} />
-          <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="dark" />
+            screenOptions={{
+              contentStyle: { backgroundColor: colors.background },
+              animation: 'fade',
+              animationDuration: 200,
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="message" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="story/create" options={{ headerShown: false }} />
+            <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="change-password" options={{ headerShown: false }} />
+            <Stack.Screen name="change-password/verify" options={{ headerShown: false }} />
+            <Stack.Screen name="blocked-accounts" options={{ headerShown: false }} />
+            <Stack.Screen name="help" options={{ headerShown: false }} />
+            <Stack.Screen name="terms" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy" options={{ headerShown: false }} />
+            <Stack.Screen name="followers/[userId]" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/email-verification" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/onboarding-fullname" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/onboarding-find-friends" options={{ headerShown: false }} />
+            <Stack.Screen name="admin" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/users" options={{ headerShown: false }} />
+            <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
         </ToastProvider>
       </AppProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <AppLayoutInner />
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

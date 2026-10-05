@@ -1,20 +1,3 @@
-/**
- * UserActionsSheet — animated bottom sheet with user action options.
- *
- * Uses React Native's built-in Animated API (no reanimated dependency)
- * for maximum compatibility across iOS, Android, and Expo.
- *
- * Features:
- * - Slide-up animation via Animated.timing + Animated.spring
- * - Semi-transparent backdrop with press-to-dismiss
- * - Swipe handle visual cue
- * - Actions: Report User (neutral), Block User (danger), Cancel
- * - Block action has async loading state and auto-navigates after block
- * - Report action shows a confirm-alert placeholder
- *
- * Design: Instagram-style modal, rounded sheet, frosted-like blur via tint,
- * danger action with red text.
- */
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -30,8 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,6 +39,7 @@ export function UserActionsSheet({
   reportedUserId,
   blockedUsername,
 }: UserActionsSheetProps) {
+  const { colors, isDark } = useTheme();
   const [isBlocking, setIsBlocking] = useState(false);
 
   // Local state so animation out completes before React unmounts the Modal.
@@ -155,21 +140,24 @@ export function UserActionsSheet({
       <Animated.View
         style={[
           styles.sheet,
-          { transform: [{ translateY: sheetTranslateY }] },
+          {
+            backgroundColor: isDark ? colors.surface : (Platform.OS === 'ios' ? 'rgba(255,255,255,0.92)' : colors.surfaceElevated),
+            transform: [{ translateY: sheetTranslateY }],
+          },
         ]}
       >
         {/* Swipe handle */}
-        <View style={styles.swipeHandle} />
+        <View style={[styles.swipeHandle, { backgroundColor: colors.border }]} />
 
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>More Options</Text>
+        <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>More Options</Text>
         </View>
 
         {/* Actions */}
-        <View style={styles.actionsContainer}>
+        <View style={[styles.actionsContainer, { backgroundColor: colors.surfaceElevated }]}>
           <TouchableOpacity
-            style={styles.actionRow}
+            style={[styles.actionRow, { borderBottomColor: colors.borderLight }]}
             activeOpacity={0.65}
             onPress={handleReport}
           >
@@ -177,15 +165,15 @@ export function UserActionsSheet({
               <Feather
                 name="flag"
                 size={20}
-                color={AppColors.textSecondary}
+                color={colors.textSecondary}
                 strokeWidth={2}
               />
             </View>
-            <Text style={styles.actionLabel}>Report User</Text>
+            <Text style={[styles.actionLabel, { color: colors.text }]}>Report User</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionRow, isBlocking && styles.actionRowDisabled]}
+            style={[styles.actionRow, { borderBottomColor: colors.borderLight }, isBlocking && styles.actionRowDisabled]}
             activeOpacity={0.65}
             onPress={handleBlock}
             disabled={isBlocking}
@@ -204,7 +192,7 @@ export function UserActionsSheet({
             {isBlocking && (
               <ActivityIndicator
                 size="small"
-                color={AppColors.primary}
+                color={colors.primary}
                 style={{ marginLeft: 8 }}
               />
             )}
@@ -213,11 +201,11 @@ export function UserActionsSheet({
 
         {/* Cancel */}
         <TouchableOpacity
-          style={styles.cancelBtn}
+          style={[styles.cancelBtn, { backgroundColor: colors.surfaceElevated }]}
           activeOpacity={0.65}
           onPress={handleClose}
         >
-          <Text style={styles.cancelLabel}>Cancel</Text>
+          <Text style={[styles.cancelLabel, { color: colors.primary }]}>Cancel</Text>
         </TouchableOpacity>
       </Animated.View>
     </Modal>
@@ -243,7 +231,6 @@ const styles = StyleSheet.create({
     height: SHEET_HEIGHT,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255,255,255,0.92)' : AppColors.surfaceElevated,
     paddingHorizontal: layoutPadding,
     paddingBottom: 34, // home indicator inset
     paddingTop: 14,
@@ -257,24 +244,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
     alignSelf: 'center',
     marginBottom: 12,
   },
   header: {
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
   },
   headerTitle: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
     fontWeight: '600',
     textAlign: 'center',
   },
   actionsContainer: {
     marginTop: 12,
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
   },
@@ -284,10 +267,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
   },
   actionRowDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   actionIcon: {
     width: 32,
@@ -296,7 +278,6 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
     flex: 1,
   },
   dangerLabel: {
@@ -304,14 +285,12 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     marginTop: 10,
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.lg,
     paddingVertical: 15,
     alignItems: 'center',
   },
   cancelLabel: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
     fontWeight: '700',
   },
 });

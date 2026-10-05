@@ -38,6 +38,7 @@ import { HighlightCard } from '../components/privacy/HighlightCard';
 import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
 import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
@@ -208,15 +209,15 @@ const TRUST_HIGHLIGHTS = [
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [supportModalVisible, setSupportModalVisible] = useState(false);
 
   const handleContactSupport = () => {
     setSupportModalVisible(true);
   };
 
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <CompactHeader
         title="Privacy Policy"
@@ -232,13 +233,13 @@ export default function PrivacyPolicyScreen() {
       >
         {/* ── Hero block ── */}
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Your Privacy Matters</Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Your Privacy Matters</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
             How we collect, use, and protect your information.
           </Text>
           <View style={styles.lastUpdatedRow}>
-            <Feather name="clock" size={13} color={AppColors.iconMuted} strokeWidth={2} />
-            <Text style={styles.lastUpdatedText}>Last updated: May 17, 2026</Text>
+            <Feather name="clock" size={13} color={colors.iconMuted} strokeWidth={2} />
+            <Text style={[styles.lastUpdatedText, { color: colors.iconMuted }]}>Last updated: May 17, 2026</Text>
           </View>
         </View>
 
@@ -267,7 +268,7 @@ export default function PrivacyPolicyScreen() {
 
         {/* ── Privacy sections ── */}
         <SectionHeader title="Privacy Details" />
-        <View style={styles.accordionWrap}>
+        <View style={[styles.accordionWrap, { backgroundColor: colors.surface, borderWidth: isDark ? 1 : 0, borderColor: colors.border }]}>
           {PRIVACY_SECTIONS.map((item, index) => (
             <PrivacySection
               key={item.id}
@@ -281,23 +282,23 @@ export default function PrivacyPolicyScreen() {
         {/* ── Manage privacy CTA ── */}
         <SectionHeader title="Manage Your Privacy" />
         <View style={styles.sectionPadding}>
-          <View style={styles.ctaCard}>
-            <View style={styles.ctaIconWrap}>
+          <View style={[styles.ctaCard, { backgroundColor: colors.surface, borderWidth: isDark ? 1 : 0, borderColor: colors.border }]}>
+            <View style={[styles.ctaIconWrap, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : `${colors.primary}12` }]}>
               <Feather
                 name="settings"
                 size={22}
-                color={AppColors.primary}
+                color={colors.primary}
                 strokeWidth={2}
               />
             </View>
-            <Text style={styles.ctaTitle}>Take control of your data</Text>
-            <Text style={styles.ctaSubtitle}>
+            <Text style={[styles.ctaTitle, { color: colors.text }]}>Take control of your data</Text>
+            <Text style={[styles.ctaSubtitle, { color: colors.textMuted }]}>
               Adjust your privacy settings, secure your account, or reach out to our team
               for any concerns.
             </Text>
 
             <TouchableOpacity
-              style={styles.ctaPrimaryBtn}
+              style={[styles.ctaPrimaryBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.8}
               onPress={() => router.push('/settings' as any)}
             >
@@ -306,21 +307,21 @@ export default function PrivacyPolicyScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.ctaSecondaryBtn}
+              style={[styles.ctaSecondaryBtn, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : `${colors.primary}10` }]}
               activeOpacity={0.7}
               onPress={handleContactSupport}
             >
-              <Feather name="shield" size={16} color={AppColors.primary} strokeWidth={2} />
-              <Text style={styles.ctaSecondaryBtnText}>Account Security</Text>
+              <Feather name="shield" size={16} color={colors.primary} strokeWidth={2} />
+              <Text style={[styles.ctaSecondaryBtnText, { color: colors.primary }]}>Account Security</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.ctaSecondaryBtn}
+              style={[styles.ctaSecondaryBtn, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : `${colors.primary}10` }]}
               activeOpacity={0.7}
               onPress={handleContactSupport}
             >
-              <Feather name="message-square" size={16} color={AppColors.primary} strokeWidth={2} />
-              <Text style={styles.ctaSecondaryBtnText}>Contact Support</Text>
+              <Feather name="message-square" size={16} color={colors.primary} strokeWidth={2} />
+              <Text style={[styles.ctaSecondaryBtnText, { color: colors.primary }]}>Contact Support</Text>
             </TouchableOpacity>
           </View>
         </View>

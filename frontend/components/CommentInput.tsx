@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AppColors } from "../constants/theme";
+import { useTheme } from "../context/ThemeContext";
 import { useApp } from "../context/AppContext";
 import { Comment } from "../data/mockData";
 import { uploadMedia } from "../services/postService";
@@ -36,6 +36,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   onCancelReply,
   isSubmitting = false,
 }) => {
+  const { colors, isDark } = useTheme();
   const { currentUser } = useApp();
   const isEditMode = editingComment != null;
 
@@ -66,32 +67,19 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   const canSend = trimmed.length > 0 || selectedImage !== null || pendingImageRef.current !== null;
 
   const handleSubmitEditing = () => {
-    console.log("[CommentInput] handleSubmitEditing called");
-    console.log("[CommentInput] - isUploadingImage:", isUploadingImage);
-    console.log("[CommentInput] - pendingImageRef.current:", pendingImageRef.current);
-    console.log("[CommentInput] - selectedImage:", selectedImage);
-    console.log("[CommentInput] - text:", text);
-
     // Don't submit while an image is being uploaded
     if (isUploadingImage) {
-      console.log("[CommentInput] Still uploading, ignoring submit");
       return;
     }
 
-    // Use ref value directly to avoid race condition with setState
     const imageToSend = pendingImageRef.current ?? selectedImage;
-    console.log("[CommentInput] imageToSend:", imageToSend);
-
     if (!trimmed && !imageToSend) {
-      console.log("[CommentInput] Nothing to send, returning");
       return;
     }
     if (isSubmitting) {
-      console.log("[CommentInput] Already submitting, returning");
       return;
     }
 
-    console.log("[CommentInput] Calling onSubmit with image:", imageToSend);
     onSubmit(trimmed, imageToSend ?? undefined);
     setText("");
     setSelectedImage(null);
@@ -113,7 +101,6 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   };
 
   const handleCameraPress = async () => {
-    // Show options: Camera or Gallery
     Alert.alert(
       "Add Image",
       "Choose an option",
@@ -136,14 +123,11 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   };
 
   const pickImage = async (source: "camera" | "gallery") => {
-    console.log("[CommentInput] pickImage called, source:", source);
     try {
       const permissionResult =
         source === "camera"
           ? await ImagePicker.requestCameraPermissionsAsync()
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      console.log("[CommentInput] Permission result:", permissionResult);
 
       if (!permissionResult.granted) {
         Alert.alert(
@@ -168,28 +152,21 @@ export const CommentInput: React.FC<CommentInputProps> = ({
               aspect: [1, 1],
             });
 
-      console.log("[CommentInput] Picker result:", JSON.stringify(result));
-
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        console.log("[CommentInput] Image URI:", imageUri);
         setIsUploadingImage(true);
 
         try {
-          // Upload image to Cloudinary
           const uploadResult = await uploadMedia(imageUri, "image");
-          console.log("[CommentInput] Upload success:", uploadResult.url);
           const uploadedUrl = uploadResult.url;
           setSelectedImage(uploadedUrl);
-          pendingImageRef.current = uploadedUrl; // Update ref immediately
+          pendingImageRef.current = uploadedUrl;
         } catch (uploadError) {
           console.error("[CommentInput] Upload failed:", uploadError);
           Alert.alert("Upload Failed", "Failed to upload image. Please try again.");
         } finally {
           setIsUploadingImage(false);
         }
-      } else {
-        console.log("[CommentInput] Image picker was cancelled or no assets");
       }
     } catch (error) {
       console.error("[CommentInput] Error picking image:", error);
@@ -199,23 +176,23 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.borderLight }]}>
       {/* Reply banner — only in Create Mode */}
       {!isEditMode && replyTo && (
         <View style={styles.replyBanner}>
           <Feather
             name="corner-down-left"
             size={12}
-            color={AppColors.textMuted}
+            color={colors.textMuted}
           />
-          <View style={styles.replyBannerText}>
+          <Text style={[styles.replyBannerText, { color: colors.textMuted }]}>
             Replying to{" "}
-            <Text style={styles.replyBannerUsername}>
+            <Text style={[styles.replyBannerUsername, { color: colors.text }]}>
               {replyTo.user.fullName || replyTo.user.displayName}
             </Text>
-          </View>
+          </Text>
           <TouchableOpacity onPress={onCancelReply} style={styles.cancelReply}>
-            <Feather name="x" size={14} color={AppColors.textMuted} />
+            <Feather name="x" size={14} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       )}
@@ -223,12 +200,12 @@ export const CommentInput: React.FC<CommentInputProps> = ({
       {/* Image preview */}
       {selectedImage && (
         <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+          <Image source={{ uri: selectedImage }} style={[styles.imagePreview, { backgroundColor: colors.borderLight }]} />
           <TouchableOpacity
-            style={styles.removeImageButton}
+            style={[styles.removeImageButton, { backgroundColor: colors.surface }]}
             onPress={handleRemoveImage}
           >
-            <Feather name="x-circle" size={20} color={AppColors.text} />
+            <Feather name="x-circle" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
       )}
@@ -240,7 +217,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
           {currentUser ? (
             <Avatar user={currentUser} size="tiny" />
           ) : (
-            <View style={styles.avatarFallback} />
+            <View style={[styles.avatarFallback, { backgroundColor: colors.borderLight }]} />
           )}
         </View>
 
@@ -254,9 +231,10 @@ export const CommentInput: React.FC<CommentInputProps> = ({
               ? `Reply to ${replyTo.user.fullName || replyTo.user.displayName}...`
               : "Add a comment..."
           }
+          placeholderTextColor={colors.textMuted}
           onSubmit={handleSubmitEditing}
           style={styles.mentionInputContainer}
-          inputStyle={[styles.input, styles.inputPill]}
+          inputStyle={[styles.input, { backgroundColor: isDark ? colors.surfaceElevated : '#F2F2F2', color: colors.text }]}
         />
 
         {/* Camera button - only in Create Mode */}
@@ -267,9 +245,9 @@ export const CommentInput: React.FC<CommentInputProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {isUploadingImage ? (
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Feather name="camera" size={20} color={AppColors.iconMuted} />
+              <Feather name="camera" size={20} color={colors.iconMuted} />
             )}
           </TouchableOpacity>
         )}
@@ -277,14 +255,14 @@ export const CommentInput: React.FC<CommentInputProps> = ({
         {/* Image upload indicator */}
         {isUploadingImage && !selectedImage && (
           <View style={styles.iconWrap}>
-            <ActivityIndicator size="small" color={AppColors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
 
         {/* Submit / Save button */}
         {isSubmitting ? (
           <View style={styles.iconWrap}>
-            <ActivityIndicator size="small" color={AppColors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
           <TouchableOpacity
@@ -294,12 +272,12 @@ export const CommentInput: React.FC<CommentInputProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {isEditMode ? (
-              <Feather name="check" size={20} color={AppColors.primary} />
+              <Feather name="check" size={20} color={colors.primary} />
             ) : (
               <Feather
                 name="send"
                 size={20}
-                color={canSend ? AppColors.primary : AppColors.iconMuted}
+                color={canSend ? colors.primary : colors.iconMuted}
               />
             )}
           </TouchableOpacity>
@@ -312,7 +290,7 @@ export const CommentInput: React.FC<CommentInputProps> = ({
             style={styles.iconWrap}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="x" size={20} color={AppColors.textMuted} />
+            <Feather name="x" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -325,8 +303,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: AppColors.borderLight,
-    backgroundColor: AppColors.surface,
   },
   replyBanner: {
     flexDirection: "row",
@@ -338,11 +314,9 @@ const styles = StyleSheet.create({
   replyBannerText: {
     flex: 1,
     fontSize: 12,
-    color: AppColors.textMuted,
   },
   replyBannerUsername: {
     fontWeight: "600",
-    color: AppColors.text,
   },
   cancelReply: {
     padding: 2,
@@ -356,13 +330,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
-    backgroundColor: AppColors.borderLight,
   },
   removeImageButton: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: AppColors.surface,
     borderRadius: 12,
   },
   inputRow: {
@@ -376,7 +348,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: AppColors.borderLight,
   },
   mentionInputContainer: {
     flex: 1,
@@ -387,10 +358,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     fontSize: 14,
-    color: AppColors.text,
-  },
-  inputPill: {
-    backgroundColor: "#F2F2F2",
     borderRadius: 18,
   },
   iconWrap: {

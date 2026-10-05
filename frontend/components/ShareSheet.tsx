@@ -1,7 +1,3 @@
-/**
- * ShareSheet — Bottom sheet for sharing reels.
- * Instagram-style share options with messaging apps and copy link.
- */
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
 import {
@@ -21,7 +17,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SPRING_SOFT, TIMING_FAST } from '../animations/spring';
-import { AppColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -50,6 +46,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   caption,
   username,
 }) => {
+  const { colors, isDark } = useTheme();
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
@@ -86,8 +83,6 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   }, [username, caption, reelId, onClose]);
 
   const handleCopyLink = useCallback(() => {
-    // In a real app, you'd copy the link to clipboard
-    // For now, we'll just close the sheet
     onClose();
   }, [onClose]);
 
@@ -167,14 +162,14 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       id: 'twitter',
       name: 'X',
       icon: 'twitter',
-      color: '#000000',
+      color: isDark ? '#333333' : '#000000',
       onPress: handleTwitter,
     },
     {
       id: 'copy',
       name: 'Copy Link',
       icon: 'link',
-      color: AppColors.textMuted,
+      color: colors.iconMuted,
       onPress: handleCopyLink,
     },
   ];
@@ -192,17 +187,17 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
         />
       </Animated.View>
 
-      <Animated.View style={[styles.sheet, sheetStyle]}>
+      <Animated.View style={[styles.sheet, { backgroundColor: colors.surface }, sheetStyle]}>
         {/* Handle bar */}
         <View style={styles.handleContainer}>
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: colors.border }]} />
         </View>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Share</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Share</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Feather name="x" size={24} color={AppColors.text} />
+            <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -225,22 +220,22 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                   strokeWidth={2}
                 />
               </View>
-              <Text style={styles.optionName}>{option.name}</Text>
+              <Text style={[styles.optionName, { color: colors.text }]}>{option.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Divider */}
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
 
         {/* Native share button */}
         <TouchableOpacity
-          style={styles.nativeShareButton}
+          style={[styles.nativeShareButton, { backgroundColor: isDark ? colors.surfaceElevated : colors.borderLight }]}
           onPress={handleNativeShare}
           activeOpacity={0.7}
         >
-          <Feather name="share" size={20} color={AppColors.text} />
-          <Text style={styles.nativeShareText}>Share to...</Text>
+          <Feather name="share" size={20} color={colors.text} />
+          <Text style={[styles.nativeShareText, { color: colors.text }]}>Share to...</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -263,7 +258,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SHEET_HEIGHT,
-    backgroundColor: AppColors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -275,7 +269,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
   },
   header: {
     flexDirection: 'row',
@@ -287,7 +280,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: AppColors.text,
   },
   closeButton: {
     padding: 4,
@@ -313,12 +305,10 @@ const styles = StyleSheet.create({
   },
   optionName: {
     fontSize: 12,
-    color: AppColors.text,
     textAlign: 'center',
   },
   divider: {
     height: 1,
-    backgroundColor: AppColors.borderLight,
     marginHorizontal: 16,
     marginBottom: 16,
   },
@@ -329,13 +319,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginHorizontal: 16,
-    backgroundColor: AppColors.borderLight,
     borderRadius: 12,
   },
   nativeShareText: {
     fontSize: 15,
     fontWeight: '600',
-    color: AppColors.text,
     marginLeft: 8,
   },
 });

@@ -17,9 +17,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useApp } from '../context/AppContext';
+import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import { ConfirmationModal, EditProfileModal } from '../components';
 import { SettingsSection, SettingsRow } from '../components/settings';
 import { CompactHeader } from '../components/StaticPremiumHeader';
@@ -40,12 +41,23 @@ interface ProfileCardProps {
 
 function ProfileCard({ onEditPress }: ProfileCardProps) {
   const { currentUser } = useApp();
+  const { colors, isDark } = useTheme();
   const profileRouter = useRouter();
 
   if (!currentUser) return null;
 
   return (
-    <View style={profileStyles.card}>
+    <View
+      style={[
+        profileStyles.card,
+        {
+          backgroundColor: colors.surfaceElevated,
+          borderColor: colors.border,
+          borderWidth: isDark ? 1 : 0,
+          shadowColor: isDark ? '#000000' : '#2D3748',
+        },
+      ]}
+    >
       {/* Avatar */}
       <TouchableOpacity
         activeOpacity={0.85}
@@ -69,14 +81,23 @@ function ProfileCard({ onEditPress }: ProfileCardProps) {
 
       {/* Name + handle */}
       <View style={profileStyles.identity}>
-        <Text style={profileStyles.displayName} numberOfLines={1}>
+        <Text
+          style={[profileStyles.displayName, { color: colors.text }]}
+          numberOfLines={1}
+        >
           {currentUser.username}
         </Text>
-        <Text style={profileStyles.username} numberOfLines={1}>
+        <Text
+          style={[profileStyles.username, { color: colors.textMuted }]}
+          numberOfLines={1}
+        >
           @{currentUser.displayName}
         </Text>
         {currentUser.bio ? (
-          <Text style={profileStyles.bio} numberOfLines={2}>
+          <Text
+            style={[profileStyles.bio, { color: colors.textSecondary }]}
+            numberOfLines={2}
+          >
             {currentUser.bio}
           </Text>
         ) : null}
@@ -84,11 +105,19 @@ function ProfileCard({ onEditPress }: ProfileCardProps) {
 
       {/* CTA */}
       <TouchableOpacity
-        style={profileStyles.editBtn}
+        style={[
+          profileStyles.editBtn,
+          {
+            backgroundColor: `${colors.primary}15`,
+            borderColor: `${colors.primary}35`,
+          },
+        ]}
         activeOpacity={0.75}
         onPress={onEditPress}
       >
-        <Text style={profileStyles.editBtnText}>Edit Profile</Text>
+        <Text style={[profileStyles.editBtnText, { color: colors.primary }]}>
+          Edit Profile
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -98,13 +127,10 @@ const profileStyles = StyleSheet.create({
   card: {
     marginHorizontal: layoutPadding,
     marginBottom: 28,
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    // Soft premium shadow
-    shadowColor: '#2D3748',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -118,7 +144,6 @@ const profileStyles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: AppColors.borderLight,
   },
   identity: {
     flex: 1,
@@ -126,40 +151,61 @@ const profileStyles = StyleSheet.create({
   },
   displayName: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
     fontWeight: '700',
   },
   username: {
     ...Typography.caption,
-    color: AppColors.textMuted,
     marginTop: 2,
   },
   bio: {
     ...Typography.caption,
-    color: AppColors.textSecondary,
     marginTop: 4,
     lineHeight: 18,
   },
   editBtn: {
     flexShrink: 0,
-    backgroundColor: `${AppColors.primary}12`,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderWidth: 1.5,
-    borderColor: `${AppColors.primary}30`,
   },
   editBtnText: {
     ...Typography.captionSemibold,
-    color: AppColors.primary,
   },
 });
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
+const THEME_OPTIONS: Array<{
+  id: ThemePreference;
+  label: string;
+  subtitle: string;
+  icon: 'smartphone' | 'sun' | 'moon';
+}> = [
+  {
+    id: 'system',
+    label: 'System (Auto)',
+    subtitle: 'Follows device system appearance',
+    icon: 'smartphone',
+  },
+  {
+    id: 'light',
+    label: 'Light Mode',
+    subtitle: 'Classic warm and crisp aesthetic',
+    icon: 'sun',
+  },
+  {
+    id: 'dark',
+    label: 'Dark Mode',
+    subtitle: 'Modern deep charcoal dark theme',
+    icon: 'moon',
+  },
+];
+
 export default function SettingsScreen() {
   const settingsRouter = useRouter();
   const { logout, deleteAccount } = useApp();
+  const { themePreference, setThemePreference, colors, isDark } = useTheme();
 
   // Modal states
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
@@ -169,6 +215,7 @@ export default function SettingsScreen() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [postVisibility, setPostVisibility] = useState<ContentVisibility>('Public');
   const [reelVisibility, setReelVisibility] = useState<ContentVisibility>('Public');
   const [visibilityPickerType, setVisibilityPickerType] = useState<ContentType | null>(null);
@@ -255,9 +302,14 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleSelectTheme = async (pref: ThemePreference) => {
+    await setThemePreference(pref);
+    setShowThemePicker(false);
+  };
+
   // ── Body ──────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* ── Header ── */}
       <CompactHeader
         title="Settings"
@@ -271,6 +323,24 @@ export default function SettingsScreen() {
       >
         {/* ── Profile Card ── */}
         <ProfileCard onEditPress={() => setShowEditModal(true)} />
+
+        {/* ── APPEARANCE ── */}
+        <SettingsSection title="Appearance">
+          <SettingsRow
+            icon={isDark ? 'moon' : 'sun'}
+            label="Theme"
+            value={
+              themePreference === 'system'
+                ? 'System (Auto)'
+                : themePreference === 'dark'
+                  ? 'Dark Mode'
+                  : 'Light Mode'
+            }
+            onPress={() => setShowThemePicker(true)}
+            isFirst
+            isLast
+          />
+        </SettingsSection>
 
         {/* ── ACCOUNT ── */}
         <SettingsSection title="Account">
@@ -387,8 +457,8 @@ export default function SettingsScreen() {
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
-          <Text style={styles.footerBrand}>UITVibes</Text>
-          <Text style={styles.footerVersion}>Version 1.0.0</Text>
+          <Text style={[styles.footerBrand, { color: colors.iconMuted }]}>UITVibes</Text>
+          <Text style={[styles.footerVersion, { color: colors.textMuted }]}>Version 1.0.0</Text>
         </View>
 
         <View style={{ height: 40 }} />
@@ -399,6 +469,107 @@ export default function SettingsScreen() {
         visible={showEditModal}
         onClose={() => setShowEditModal(false)}
       />
+
+      {/* ── Theme Picker Modal ── */}
+      <Modal
+        visible={showThemePicker}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowThemePicker(false)}
+      >
+        <Pressable
+          style={styles.optionBackdrop}
+          onPress={() => setShowThemePicker(false)}
+        >
+          <Pressable
+            style={[
+              styles.optionCard,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+            onPress={() => undefined}
+          >
+            <View
+              style={[
+                styles.optionHeader,
+                { borderBottomColor: colors.borderLight },
+              ]}
+            >
+              <Text style={[styles.optionTitle, { color: colors.text }]}>
+                Choose Theme
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.optionClose,
+                  { backgroundColor: colors.background },
+                ]}
+                onPress={() => setShowThemePicker(false)}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {THEME_OPTIONS.map((opt, index) => {
+              const selected = themePreference === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[
+                    styles.optionItem,
+                    index > 0 && {
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colors.borderLight,
+                    },
+                    selected && {
+                      backgroundColor: `${colors.primary}12`,
+                    },
+                  ]}
+                  onPress={() => void handleSelectTheme(opt.id)}
+                  activeOpacity={0.75}
+                >
+                  <View
+                    style={[
+                      styles.optionItemIcon,
+                      { backgroundColor: colors.background },
+                    ]}
+                  >
+                    <Feather
+                      name={opt.icon}
+                      size={18}
+                      color={selected ? colors.primary : colors.textSecondary}
+                    />
+                  </View>
+                  <View style={styles.optionItemText}>
+                    <Text
+                      style={[
+                        styles.optionItemLabel,
+                        { color: selected ? colors.primary : colors.text },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.optionItemSubtitle,
+                        { color: colors.textMuted },
+                      ]}
+                    >
+                      {opt.subtitle}
+                    </Text>
+                  </View>
+                  {selected && (
+                    <Feather name="check" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Content visibility picker */}
       <Modal
@@ -411,17 +582,35 @@ export default function SettingsScreen() {
           style={styles.optionBackdrop}
           onPress={() => setVisibilityPickerType(null)}
         >
-          <Pressable style={styles.optionCard} onPress={() => undefined}>
-            <View style={styles.optionHeader}>
-              <Text style={styles.optionTitle}>
+          <Pressable
+            style={[
+              styles.optionCard,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+            onPress={() => undefined}
+          >
+            <View
+              style={[
+                styles.optionHeader,
+                { borderBottomColor: colors.borderLight },
+              ]}
+            >
+              <Text style={[styles.optionTitle, { color: colors.text }]}>
                 Default {visibilityPickerType === 'reels' ? 'reels' : 'post'} visibility
               </Text>
               <TouchableOpacity
-                style={styles.optionClose}
+                style={[
+                  styles.optionClose,
+                  { backgroundColor: colors.background },
+                ]}
                 onPress={() => setVisibilityPickerType(null)}
                 activeOpacity={0.7}
               >
-                <Feather name="x" size={20} color={AppColors.text} />
+                <Feather name="x" size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
             {CONTENT_VISIBILITY_OPTIONS.map((visibility, index) => {
@@ -441,29 +630,44 @@ export default function SettingsScreen() {
                   key={visibility}
                   style={[
                     styles.optionItem,
-                    index > 0 && styles.optionItemBorder,
-                    selected && styles.optionItemSelected,
+                    index > 0 && {
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colors.borderLight,
+                    },
+                    selected && {
+                      backgroundColor: `${colors.primary}12`,
+                    },
                   ]}
                   onPress={() => void selectVisibility(visibility)}
                   activeOpacity={0.75}
                 >
-                  <View style={styles.optionItemIcon}>
+                  <View
+                    style={[
+                      styles.optionItemIcon,
+                      { backgroundColor: colors.background },
+                    ]}
+                  >
                     <Feather
                       name={icon}
                       size={18}
-                      color={selected ? AppColors.primary : AppColors.textSecondary}
+                      color={selected ? colors.primary : colors.textSecondary}
                     />
                   </View>
                   <View style={styles.optionItemText}>
                     <Text
                       style={[
                         styles.optionItemLabel,
-                        selected && styles.optionItemLabelSelected,
+                        { color: selected ? colors.primary : colors.text },
                       ]}
                     >
                       {visibility}
                     </Text>
-                    <Text style={styles.optionItemSubtitle}>
+                    <Text
+                      style={[
+                        styles.optionItemSubtitle,
+                        { color: colors.textMuted },
+                      ]}
+                    >
                       {visibility === 'Public'
                         ? 'Anyone can see it'
                         : visibility === 'Followers'
@@ -472,7 +676,7 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                   {selected && (
-                    <Feather name="check" size={20} color={AppColors.primary} />
+                    <Feather name="check" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               );
@@ -517,15 +721,33 @@ export default function SettingsScreen() {
           style={styles.modalBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Confirm deletion</Text>
-            <Text style={styles.modalHint}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Confirm deletion
+            </Text>
+            <Text style={[styles.modalHint, { color: colors.textMuted }]}>
               Enter your password to permanently delete your account.
             </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[
+                styles.modalInput,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                },
+              ]}
               placeholder="Password"
-              placeholderTextColor={AppColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               secureTextEntry
               value={deletePassword}
               onChangeText={setDeletePassword}
@@ -534,7 +756,13 @@ export default function SettingsScreen() {
             />
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={styles.modalBtnSecondary}
+                style={[
+                  styles.modalBtnSecondary,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   if (!deleteBusy) {
                     setDeleteModalVisible(false);
@@ -544,10 +772,15 @@ export default function SettingsScreen() {
                 disabled={deleteBusy}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalBtnSecondaryText}>Cancel</Text>
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.text }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalBtnDanger}
+                style={[
+                  styles.modalBtnDanger,
+                  { backgroundColor: colors.error },
+                ]}
                 onPress={() => void submitDeleteAccount()}
                 disabled={deleteBusy}
                 activeOpacity={0.8}
@@ -571,36 +804,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: layoutPadding,
-    paddingVertical: 14,
-    backgroundColor: AppColors.background,
-    gap: 12,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: AppColors.surfaceElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#2D3748',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  headerTitle: {
-    ...Typography.screenTitle,
-    color: AppColors.text,
-    flex: 1,
-  },
-  headerRight: {
-    width: 36,
   },
   scrollContent: {
     paddingTop: 8,
@@ -614,7 +817,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 24,
     width: '100%',
@@ -626,24 +828,13 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
   },
-  modalIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: `${AppColors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   modalTitle: {
     ...Typography.screenTitle,
-    color: AppColors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalHint: {
     ...Typography.body,
-    color: AppColors.textMuted,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 22,
@@ -651,14 +842,11 @@ const styles = StyleSheet.create({
   modalInput: {
     width: '100%',
     borderWidth: 1.5,
-    borderColor: AppColors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: AppColors.text,
     marginBottom: 20,
-    backgroundColor: AppColors.background,
   },
   modalActions: {
     flexDirection: 'row',
@@ -670,33 +858,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.background,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
   },
   modalBtnSecondaryText: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
-  },
-  modalBtnPrimary: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-    backgroundColor: AppColors.primary,
-    minHeight: 50,
-    justifyContent: 'center',
-  },
-  modalBtnPrimaryText: {
-    ...Typography.bodySemibold,
-    color: '#fff',
   },
   modalBtnDanger: {
     flex: 1,
     paddingVertical: 14,
     alignItems: 'center',
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.error,
     minHeight: 50,
     justifyContent: 'center',
   },
@@ -706,7 +877,7 @@ const styles = StyleSheet.create({
   },
   optionBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -714,7 +885,6 @@ const styles = StyleSheet.create({
   optionCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: AppColors.surfaceElevated,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -730,11 +900,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
   },
   optionTitle: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
     fontSize: 17,
   },
   optionClose: {
@@ -743,21 +911,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.background,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
     paddingVertical: 14,
-    backgroundColor: AppColors.surfaceElevated,
-  },
-  optionItemBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
-  },
-  optionItemSelected: {
-    backgroundColor: `${AppColors.primary}10`,
   },
   optionItemIcon: {
     width: 38,
@@ -765,7 +924,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.background,
     marginRight: 12,
   },
   optionItemText: {
@@ -774,14 +932,9 @@ const styles = StyleSheet.create({
   },
   optionItemLabel: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
-  },
-  optionItemLabelSelected: {
-    color: AppColors.primary,
   },
   optionItemSubtitle: {
     ...Typography.caption,
-    color: AppColors.textMuted,
     marginTop: 2,
   },
   // Footer
@@ -793,12 +946,9 @@ const styles = StyleSheet.create({
   },
   footerBrand: {
     ...Typography.captionSemibold,
-    color: AppColors.iconMuted,
     letterSpacing: 0.3,
   },
   footerVersion: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
-    letterSpacing: 0.5,
   },
 });

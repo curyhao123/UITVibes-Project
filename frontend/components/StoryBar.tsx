@@ -1,12 +1,5 @@
 /**
- * StoryBar — horizontal story strip with smooth scroll & press animations.
- *
- * Enhancements over the plain ScrollView:
- * 1. Animated.ScrollView tracks content offset on the UI thread
- * 2. Each story item scales + fades subtly based on distance from center
- *    (center = full opacity/scale, edges = slightly dimmer/smaller)
- * 3. Spring press feedback on tap (scale down → spring back)
- * 4. "Add story" circle pulses gently to draw attention
+ * StoryBar — horizontal story strip with smooth scroll & press animations and dynamic dark theme.
  */
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,14 +14,15 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { SPRING_PRESS, SPRING_SOFT } from '../animations/spring';
-import { AppColors, layoutPadding } from '../constants/theme';
+import { layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { Story } from '../services/storyService';
+import { useTheme } from '../context/ThemeContext';
 import { Avatar } from './Avatar';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 const STORY_ITEM_WIDTH = 68;
-const STORY_ITEM_SPACING = 74; // itemWidth(68) + marginRight(6)
+const STORY_ITEM_SPACING = 74;
 
 interface StoryBarProps {
   stories: Story[];
@@ -38,11 +32,11 @@ interface StoryBarProps {
 
 export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, onAddStory }) => {
   const router = useRouter();
+  const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0);
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-  // ── Scroll handler — tracks position on UI thread ─────────────────────────
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollX.value = event.contentOffset.x;
@@ -57,7 +51,6 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
     if (onAddStory) onAddStory();
   };
 
-  // ── "Add story" pulse ──────────────────────────────────────────────────────
   const AddStoryCircle = () => {
     const pulseScale = useSharedValue(1);
     const startPulse = () => { pulseScale.value = withSpring(0.9, SPRING_PRESS); };
@@ -75,19 +68,25 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
         activeOpacity={1}
         style={styles.addStoryItem}
       >
-        <Animated.View style={[styles.addStoryCircle, animatedStyle]}>
-          <Feather name="plus" size={26} color={AppColors.primary} strokeWidth={2} />
+        <Animated.View
+          style={[
+            styles.addStoryCircle,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.border,
+            },
+            animatedStyle,
+          ]}
+        >
+          <Feather name="plus" size={26} color={colors.primary} strokeWidth={2} />
         </Animated.View>
-        <Text style={styles.addStoryText}>Add story</Text>
+        <Text style={[styles.addStoryText, { color: colors.text }]}>Add story</Text>
       </TouchableOpacity>
     );
   };
 
-  // Story item with scroll-aware scale + fade ──────────────────────────────
   const StoryItem = ({ story, index }: { story: Story; index: number }) => {
     const pressScale = useSharedValue(1);
-
-    // First story item center = 82 (AddStory width 68 + spacing 14) + itemWidth/2
     const itemCenterX = 82 + STORY_ITEM_WIDTH / 2 + index * STORY_ITEM_SPACING;
 
     const startPress = () => {
@@ -117,9 +116,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
       );
 
       return {
-        transform: [
-          { scale: pressScale.value * scale },
-        ],
+        transform: [{ scale: pressScale.value * scale }],
         opacity,
       };
     });
@@ -154,7 +151,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
             showBorder
             isViewed={story.isViewed}
           />
-          <Text style={styles.storyUsername} numberOfLines={1}>
+          <Text style={[styles.storyUsername, { color: colors.text }]} numberOfLines={1}>
             {story.displayName}
           </Text>
         </Animated.View>
@@ -171,7 +168,7 @@ export const StoryBar: React.FC<StoryBarProps> = ({ stories, isNewUser = false, 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         onScroll={scrollHandler}
-        scrollEventThrottle={16} // ~60fps scroll events
+        scrollEventThrottle={16}
       >
         <AddStoryCircle />
 
@@ -203,16 +200,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: AppColors.surfaceElevated,
     borderWidth: 2,
-    borderColor: AppColors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addStoryText: {
     ...Typography.meta,
     marginTop: 4,
-    color: AppColors.text,
   },
   storyItem: {
     alignItems: 'center',
@@ -225,7 +219,6 @@ const styles = StyleSheet.create({
   storyUsername: {
     ...Typography.meta,
     marginTop: 3,
-    color: AppColors.text,
     textAlign: 'center',
     width: STORY_ITEM_WIDTH,
   },

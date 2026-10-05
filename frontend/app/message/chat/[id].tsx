@@ -34,6 +34,7 @@ import {
 import { AppColors, layoutPadding } from '../../../constants/theme';
 import { Typography } from '../../../constants/typography';
 import { useApp } from '../../../context/AppContext';
+import { useTheme } from '../../../context/ThemeContext';
 import * as api from '../../../services/api';
 import {
   blockUser,
@@ -52,6 +53,7 @@ import { invokeHub } from '../../../services/signalrService';
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const {
     currentUser,
@@ -570,11 +572,11 @@ export default function ChatScreen() {
 
   if (!conversation) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.centerState}>
-          <Text style={styles.emptyChatTitle}>Conversation not found</Text>
+          <Text style={[styles.emptyChatTitle, { color: colors.textMuted }]}>Conversation not found</Text>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.emptyChatSubtitle}>Go back</Text>
+            <Text style={[styles.emptyChatSubtitle, { color: colors.primary }]}>Go back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -583,7 +585,7 @@ export default function ChatScreen() {
 
   return (
     <>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         {/* Chat Header */}
         <ChatHeader
           title={headerName}
@@ -605,8 +607,8 @@ export default function ChatScreen() {
         {/* Messages */}
         {isLoadingMessages ? (
           <View style={styles.centerState}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={styles.loadingText}>Loading messages...</Text>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading messages...</Text>
           </View>
         ) : (
           <FlatList
@@ -639,9 +641,9 @@ export default function ChatScreen() {
             scrollEventThrottle={16}
             ListEmptyComponent={
               <View style={styles.centerState}>
-                <Feather name="message-circle" size={48} color={AppColors.iconMuted} strokeWidth={1.5} />
-                <Text style={styles.emptyChatTitle}>No messages yet</Text>
-                <Text style={styles.emptyChatSubtitle}>
+                <Feather name="message-circle" size={48} color={colors.iconMuted} strokeWidth={1.5} />
+                <Text style={[styles.emptyChatTitle, { color: colors.text }]}>No messages yet</Text>
+                <Text style={[styles.emptyChatSubtitle, { color: colors.textMuted }]}>
                   Send the first message to start the conversation
                 </Text>
               </View>
@@ -653,7 +655,7 @@ export default function ChatScreen() {
         {/* Typing Indicator */}
         {partnerTyping && (
           <View style={styles.typingContainer}>
-            <Text style={styles.typingText}>
+            <Text style={[styles.typingText, { color: colors.textMuted }]}>
               {otherUser ? otherUser.displayName : 'Someone'} is typing...
             </Text>
           </View>
@@ -663,12 +665,12 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={[
               styles.scrollToBottomButton,
-              { bottom: Math.max(insets.bottom, 10) + 74 },
+              { bottom: Math.max(insets.bottom, 10) + 74, backgroundColor: colors.surfaceElevated },
             ]}
             onPress={handleScrollToBottomPress}
             activeOpacity={0.8}
           >
-            <Feather name="arrow-down" size={20} color={AppColors.text} strokeWidth={2.4} />
+            <Feather name="arrow-down" size={20} color={colors.text} strokeWidth={2.4} />
           </TouchableOpacity>
         )}
 

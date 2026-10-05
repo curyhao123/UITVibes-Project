@@ -5,12 +5,14 @@ import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FeedSkeleton, PostCard, StoryBar } from '../../components';
 import { StaticPremiumHeader } from '../../components/StaticPremiumHeader';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const {
     currentUser,
@@ -24,8 +26,6 @@ export default function HomeScreen() {
     unreadCount,
     refreshNotifications,
     isNewUser,
-    lastPostsFetch,
-    lastStoriesFetch,
   } = useApp();
 
   const onRefresh = async () => {
@@ -35,8 +35,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Refresh when the screen regains focus so actions taken on another screen
-  // (like/comment/post back navigation) are reflected immediately.
+  // Refresh when the screen regains focus
   useFocusEffect(
     useCallback(() => {
       void refreshPosts();
@@ -50,13 +49,11 @@ export default function HomeScreen() {
     router.push('/story/create' as any);
   };
 
-  // Backend already returns only own posts + followed users' posts.
-  // Both tabs use the same data until "For You" gains a separate recommendation engine.
   const displayedPosts = posts;
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <StaticPremiumHeader
           title="Home"
           showAvatar
@@ -64,13 +61,13 @@ export default function HomeScreen() {
           onNotificationPress={() => router.push('/notifications' as any)}
           notificationCount={unreadCount}
         />
-        <View style={styles.feedTabsContainer}>
-          <View style={styles.feedTabs}>
-            <View style={[styles.feedTab, styles.feedTabActive]}>
-              <Text style={[styles.feedTabText, styles.feedTabTextActive]}>For You</Text>
+        <View style={[styles.feedTabsContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.feedTabs, { backgroundColor: colors.background }]}>
+            <View style={[styles.feedTab, { borderBottomColor: colors.primary }]}>
+              <Text style={[styles.feedTabText, { color: colors.text }]}>For You</Text>
             </View>
             <View style={styles.feedTab}>
-              <Text style={styles.feedTabText}>Following</Text>
+              <Text style={[styles.feedTabText, { color: colors.iconMuted }]}>Following</Text>
             </View>
           </View>
         </View>
@@ -80,7 +77,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Premium header với blur effect */}
       <StaticPremiumHeader
         title="Home"
@@ -92,21 +89,21 @@ export default function HomeScreen() {
       />
 
       {/* Feed tabs */}
-      <View style={styles.feedTabsContainer}>
-        <View style={styles.feedTabs}>
+      <View style={[styles.feedTabsContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.feedTabs, { backgroundColor: colors.background }]}>
           <TouchableOpacity
-            style={[styles.feedTab, feedTab === 'foryou' && styles.feedTabActive]}
+            style={[styles.feedTab, feedTab === 'foryou' && { borderBottomColor: colors.primary }]}
             onPress={() => setFeedTab('foryou')}
           >
-            <Text style={[styles.feedTabText, feedTab === 'foryou' && styles.feedTabTextActive]}>
+            <Text style={[styles.feedTabText, { color: feedTab === 'foryou' ? colors.text : colors.iconMuted }]}>
               For You
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.feedTab, feedTab === 'following' && styles.feedTabActive]}
+            style={[styles.feedTab, feedTab === 'following' && { borderBottomColor: colors.primary }]}
             onPress={() => setFeedTab('following')}
           >
-            <Text style={[styles.feedTabText, feedTab === 'following' && styles.feedTabTextActive]}>
+            <Text style={[styles.feedTabText, { color: feedTab === 'following' ? colors.text : colors.iconMuted }]}>
               Following
             </Text>
           </TouchableOpacity>
@@ -130,22 +127,22 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={AppColors.primary}
+            tintColor={colors.primary}
           />
         }
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           posts.length === 0 && feedTab === 'foryou' ? (
             <View style={styles.emptyFeed}>
-              <View style={styles.welcomeIconWrap}>
-                <Feather name="send" size={32} color={AppColors.primary} strokeWidth={1.8} />
+              <View style={[styles.welcomeIconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                <Feather name="send" size={32} color={colors.primary} strokeWidth={1.8} />
               </View>
-              <Text style={styles.welcomeTitle}>Welcome to UITVibes!</Text>
-              <Text style={styles.emptyFeedSubtitle}>
+              <Text style={[styles.welcomeTitle, { color: colors.text }]}>Welcome to UITVibes!</Text>
+              <Text style={[styles.emptyFeedSubtitle, { color: colors.textMuted }]}>
                 Be the first to share something with the community.
               </Text>
               <TouchableOpacity
-                style={styles.createPostBtn}
+                style={[styles.createPostBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
                 onPress={() => router.push('/(tabs)/create' as any)}
               >
@@ -154,11 +151,11 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.emptyFeed}>
-              <Feather name="users" size={40} color={AppColors.iconMuted} strokeWidth={1.8} />
-              <Text style={styles.emptyFeedTitle}>
+              <Feather name="users" size={40} color={colors.iconMuted} strokeWidth={1.8} />
+              <Text style={[styles.emptyFeedTitle, { color: colors.text }]}>
                 {feedTab === 'following' ? 'No posts from people you follow' : 'No posts yet'}
               </Text>
-              <Text style={styles.emptyFeedSubtitle}>
+              <Text style={[styles.emptyFeedSubtitle, { color: colors.iconMuted }]}>
                 {feedTab === 'following'
                   ? 'Follow more people to see their posts here'
                   : 'Be the first to share something!'}
@@ -175,43 +172,12 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: AppColors.borderLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: AppColors.primary,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: AppColors.surfaceElevated,
-  },
-  notificationBadgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '700',
   },
   // Feed Tabs
-  feedTabsContainer: {
-    backgroundColor: AppColors.background,
-  },
+  feedTabsContainer: {},
   feedTabs: {
     flexDirection: 'row',
     paddingHorizontal: layoutPadding,
-    backgroundColor: AppColors.background,
   },
   feedTab: {
     flex: 1,
@@ -220,16 +186,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  feedTabActive: {
-    borderBottomColor: AppColors.primary,
-  },
   feedTabText: {
     ...Typography.bodySemibold,
     fontSize: 14,
-    color: AppColors.iconMuted,
-  },
-  feedTabTextActive: {
-    color: AppColors.text,
   },
   // Feed Content
   feedContent: {
@@ -246,11 +205,9 @@ const styles = StyleSheet.create({
     ...Typography.sectionTitle,
     marginTop: 16,
     textAlign: 'center',
-    color: AppColors.text,
   },
   emptyFeedSubtitle: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
     textAlign: 'center',
     marginTop: 6,
   },
@@ -259,20 +216,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: `${AppColors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   welcomeTitle: {
     ...Typography.screenTitle,
-    color: AppColors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   createPostBtn: {
     marginTop: 24,
-    backgroundColor: AppColors.primary,
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 8,

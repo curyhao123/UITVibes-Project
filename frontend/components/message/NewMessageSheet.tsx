@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { User } from '../../data/mockData';
 import { Avatar } from '../Avatar';
 
@@ -41,6 +42,8 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
   onSelectUser,
   onClose,
 }) => {
+  const { colors } = useTheme();
+
   if (!visible) return null;
 
   const data = searchQuery.trim().length > 0 ? searchResults : suggestedUsers;
@@ -52,20 +55,20 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
         activeOpacity={1}
         onPress={onClose}
       />
-      <View style={styles.newMsgSheet}>
-        <View style={styles.newMsgSheetHeader}>
-          <Text style={styles.newMsgSheetTitle}>New Message</Text>
+      <View style={[styles.newMsgSheet, { backgroundColor: colors.surfaceElevated }]}>
+        <View style={[styles.newMsgSheetHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.newMsgSheetTitle, { color: colors.text }]}>New Message</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+            <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.newMsgSearchContainer}>
-          <Feather name="search" size={16} color={AppColors.iconMuted} strokeWidth={2} />
+        <View style={[styles.newMsgSearchContainer, { backgroundColor: colors.borderLight }]}>
+          <Feather name="search" size={16} color={colors.iconMuted} strokeWidth={2} />
           <TextInput
-            style={styles.newMsgSearchInput}
+            style={[styles.newMsgSearchInput, { color: colors.text }]}
             placeholder="Search people..."
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={searchQuery}
             onChangeText={onChangeSearch}
             autoFocus
@@ -98,11 +101,11 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
                 </View>
                 <View style={styles.newMsgUserInfo}>
                   {isStarting ? (
-                    <ActivityIndicator size="small" color={AppColors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
                     <>
-                      <Text style={styles.newMsgUserName}>{item.username || item.displayName}</Text>
-                      <Text style={styles.newMsgUserDisplay}>{item.displayName}</Text>
+                      <Text style={[styles.newMsgUserName, { color: colors.text }]}>{item.username || item.displayName}</Text>
+                      <Text style={[styles.newMsgUserDisplay, { color: colors.textMuted }]}>{item.displayName}</Text>
                     </>
                   )}
                 </View>
@@ -112,10 +115,10 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
           ListEmptyComponent={
             isSearching ? (
               <View style={styles.newMsgEmpty}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : (
-              <Text style={styles.newMsgEmpty}>
+              <Text style={[styles.newMsgEmpty, { color: colors.textMuted }]}>
                 {searchQuery.trim().length > 0 ? 'No users found' : 'No suggested users'}
               </Text>
             )

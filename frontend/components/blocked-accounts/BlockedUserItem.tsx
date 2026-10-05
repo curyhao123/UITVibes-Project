@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import defaultAvatar from '../../assets/images/default-avatar.png';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 import { formatRelativeTime } from '../../utils/time';
 
 export interface BlockedUserItemData {
@@ -28,6 +29,8 @@ export const BlockedUserItem = memo(function BlockedUserItem({
   isUnblocking = false,
   isLast = false,
 }: BlockedUserItemProps) {
+  const { colors } = useTheme();
+
   const handleUnblock = useCallback(() => {
     onUnblock(item);
   }, [item, onUnblock]);
@@ -35,11 +38,17 @@ export const BlockedUserItem = memo(function BlockedUserItem({
   const relativeTime = formatRelativeTime(item.blockedAt);
 
   return (
-    <View style={[styles.container, !isLast && styles.separator]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface },
+        !isLast && [styles.separator, { borderBottomColor: colors.border }],
+      ]}
+    >
       {/* Avatar */}
       <Image
         source={item.avatarUrl ? { uri: item.avatarUrl } : defaultAvatar}
-        style={styles.avatar}
+        style={[styles.avatar, { backgroundColor: colors.border }]}
         contentFit="cover"
         placeholder={defaultAvatar}
         transition={200}
@@ -47,28 +56,35 @@ export const BlockedUserItem = memo(function BlockedUserItem({
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.displayName} numberOfLines={1}>
+        <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
           {item.displayName}
         </Text>
-        <Text style={styles.username} numberOfLines={1}>
+        <Text style={[styles.username, { color: colors.textMuted }]} numberOfLines={1}>
           @{item.username}
         </Text>
         {relativeTime ? (
-          <Text style={styles.blockedTime}>{relativeTime}</Text>
+          <Text style={[styles.blockedTime, { color: colors.textMuted }]}>{relativeTime}</Text>
         ) : null}
       </View>
 
       {/* Unblock button */}
       <TouchableOpacity
-        style={[styles.unblockBtn, isUnblocking && styles.unblockBtnLoading]}
+        style={[
+          styles.unblockBtn,
+          {
+            backgroundColor: colors.surfaceElevated,
+            borderColor: colors.border,
+          },
+          isUnblocking && styles.unblockBtnLoading,
+        ]}
         activeOpacity={0.7}
         onPress={handleUnblock}
         disabled={isUnblocking}
       >
         {isUnblocking ? (
-          <Text style={styles.unblockBtnLoadingText}>...</Text>
+          <Text style={[styles.unblockBtnLoadingText, { color: colors.textMuted }]}>...</Text>
         ) : (
-          <Text style={styles.unblockBtnText}>Unblock</Text>
+          <Text style={[styles.unblockBtnText, { color: colors.text }]}>Unblock</Text>
         )}
       </TouchableOpacity>
     </View>

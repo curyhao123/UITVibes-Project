@@ -29,6 +29,7 @@ import Animated, {
 
 import { SPRING_PRESS, SPRING_SOFT } from "../animations/spring";
 import { AppColors } from "../constants/theme";
+import { useTheme } from "../context/ThemeContext";
 import { getOnlineFriends, OnlineFriendDto } from "../services/onlineTrackingService";
 import { Avatar } from "./Avatar";
 
@@ -44,22 +45,24 @@ const TOP_PADDING = 10;
 
 // ── Status helpers ──────────────────────────────────────────────────────────────
 
-function getDotStyle(friend: OnlineFriendDto): {
+function getDotStyle(friend: OnlineFriendDto, borderColor: string): {
   backgroundColor: string;
   borderColor: string;
 } {
-  if (friend.isOnline) return { backgroundColor: "#22c55e", borderColor: "#fff" };
-  return { backgroundColor: "#9ca3af", borderColor: "#fff" };
+  if (friend.isOnline) return { backgroundColor: "#22c55e", borderColor };
+  return { backgroundColor: "#9ca3af", borderColor };
 }
 
 // ── Friend Item ────────────────────────────────────────────────────────────────
 
 interface FriendItemProps {
   friend: OnlineFriendDto;
+  textColor: string;
+  surfaceColor: string;
   onPress: (friend: OnlineFriendDto) => void;
 }
 
-const FriendItem: React.FC<FriendItemProps> = ({ friend, onPress }) => {
+const FriendItem: React.FC<FriendItemProps> = ({ friend, textColor, surfaceColor, onPress }) => {
   const pressScale = useSharedValue(1);
 
   const startPress = () => {
@@ -73,7 +76,7 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, onPress }) => {
     transform: [{ scale: pressScale.value }],
   }));
 
-  const dotStyle = getDotStyle(friend);
+  const dotStyle = getDotStyle(friend, surfaceColor);
 
   const user = {
     id: friend.userId,
@@ -122,7 +125,7 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, onPress }) => {
         </View>
 
         {/* Name below avatar */}
-        <Text style={styles.itemName} numberOfLines={1}>
+        <Text style={[styles.itemName, { color: textColor }]} numberOfLines={1}>
           {friend.displayName.split(" ")[0]}
         </Text>
       </Animated.View>
@@ -139,6 +142,7 @@ interface OnlineFriendsListProps {
 export const OnlineFriendsList: React.FC<OnlineFriendsListProps> = ({
   onFriendPress = () => {},
 }) => {
+  const { colors, isDark } = useTheme();
   const [friends, setFriends] = useState<OnlineFriendDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -181,13 +185,13 @@ export const OnlineFriendsList: React.FC<OnlineFriendsListProps> = ({
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Friends</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Friends</Text>
           {onlineCount > 0 && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: isDark ? "rgba(34,197,94,0.18)" : "#ecfdf5" }]}>
               <Text style={styles.badgeText}>{onlineCount} Online</Text>
             </View>
           )}
@@ -197,7 +201,7 @@ export const OnlineFriendsList: React.FC<OnlineFriendsListProps> = ({
             onPress={fetchOnlineFriends}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="refresh-cw" size={14} color={AppColors.iconMuted} strokeWidth={2} />
+            <Feather name="refresh-cw" size={14} color={colors.iconMuted} strokeWidth={2} />
           </Pressable>
         </Animated.View>
       </View>
@@ -208,22 +212,27 @@ export const OnlineFriendsList: React.FC<OnlineFriendsListProps> = ({
         data={friends}
         keyExtractor={(item) => item.userId}
         renderItem={({ item }) => (
-          <FriendItem friend={item} onPress={onFriendPress} />
+          <FriendItem
+            friend={item}
+            textColor={colors.textSecondary}
+            surfaceColor={colors.surface}
+            onPress={onFriendPress}
+          />
         )}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         ListFooterComponent={<View style={styles.footerSpacer} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No friends yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No friends yet</Text>
           </View>
         }
       />
 
       {/* Everyone is busy */}
       {allOffline && (
-        <View style={styles.busyBanner}>
-          <Text style={styles.busyText}>Everyone is busy</Text>
+        <View style={[styles.busyBanner, { borderTopColor: colors.borderLight }]}>
+          <Text style={[styles.busyText, { color: colors.textMuted }]}>Everyone is busy</Text>
         </View>
       )}
     </View>

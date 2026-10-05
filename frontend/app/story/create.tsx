@@ -24,10 +24,11 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { useApp } from "../../context/AppContext";
-import { createStory } from "../../services/storyService";
 import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
+import { useApp } from "../../context/AppContext";
+import { useTheme } from "../../context/ThemeContext";
+import { createStory } from "../../services/storyService";
 import { Avatar } from "../../components/Avatar";
 
 interface SelectedMedia {
@@ -37,6 +38,7 @@ interface SelectedMedia {
 
 export default function CreateStoryScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { currentUser, refreshStories } = useApp();
   const [selectedMedias, setSelectedMedias] = useState<SelectedMedia[]>([]);
   const [isPosting, setIsPosting] = useState(false);
@@ -115,19 +117,19 @@ export default function CreateStoryScreen() {
   const canShare = selectedMedias.length > 0 && !isPosting;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={styles.closeBtn}
+          style={[styles.closeBtn, { backgroundColor: colors.surfaceElevated }]}
           activeOpacity={0.7}
           disabled={isPosting}
         >
-          <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+          <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>New Story</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>New Story</Text>
 
         <TouchableOpacity
           onPress={handleShare}
@@ -136,9 +138,9 @@ export default function CreateStoryScreen() {
           activeOpacity={0.7}
         >
           {isPosting ? (
-            <ActivityIndicator size="small" color={AppColors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={[styles.shareLabel, !canShare && styles.shareLabelDisabled]}>
+            <Text style={[styles.shareLabel, { color: colors.primary }, !canShare && { color: colors.iconMuted }]}>
               Share
             </Text>
           )}
@@ -155,11 +157,11 @@ export default function CreateStoryScreen() {
           {currentUser ? (
             <Avatar user={currentUser} size="small" />
           ) : (
-            <View style={styles.avatarFallback}>
-              <Feather name="user" size={18} color={AppColors.iconMuted} />
+            <View style={[styles.avatarFallback, { backgroundColor: colors.surfaceElevated }]}>
+              <Feather name="user" size={18} color={colors.iconMuted} />
             </View>
           )}
-          <Text style={styles.userName}>{currentUser?.displayName || "Your story"}</Text>
+          <Text style={[styles.userName, { color: colors.text }]}>{currentUser?.displayName || "Your story"}</Text>
         </View>
 
         {/* Preview */}
@@ -171,7 +173,7 @@ export default function CreateStoryScreen() {
             style={styles.previewGrid}
           >
             {selectedMedias.map((media, index) => (
-              <View key={`${media.uri}-${index}`} style={styles.previewItem}>
+              <View key={`${media.uri}-${index}`} style={[styles.previewItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Image
                   source={{ uri: media.uri }}
                   style={styles.previewImage}
@@ -200,11 +202,11 @@ export default function CreateStoryScreen() {
             exiting={FadeOut.duration(160)}
             style={styles.emptyState}
           >
-            <View style={styles.emptyIconRing}>
-              <Feather name="camera" size={36} color={AppColors.iconMuted} strokeWidth={1.6} />
+            <View style={[styles.emptyIconRing, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Feather name="camera" size={36} color={colors.iconMuted} strokeWidth={1.6} />
             </View>
-            <Text style={styles.emptyTitle}>Create a story</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Create a story</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.iconMuted }]}>
               Stories disappear after 24 hours
             </Text>
           </Animated.View>
@@ -213,28 +215,28 @@ export default function CreateStoryScreen() {
         {/* Pick media buttons */}
         <View style={styles.actionsSection}>
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={pickImage}
             activeOpacity={0.8}
             disabled={isPosting}
           >
-            <Feather name="image" size={20} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.actionBtnText}>Photo</Text>
+            <Feather name="image" size={20} color={colors.text} strokeWidth={2} />
+            <Text style={[styles.actionBtnText, { color: colors.text }]}>Photo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={pickVideo}
             activeOpacity={0.8}
             disabled={isPosting}
           >
-            <Feather name="video" size={20} color={AppColors.text} strokeWidth={2} />
-            <Text style={styles.actionBtnText}>Video</Text>
+            <Feather name="video" size={20} color={colors.text} strokeWidth={2} />
+            <Text style={[styles.actionBtnText, { color: colors.text }]}>Video</Text>
           </TouchableOpacity>
         </View>
 
         {selectedMedias.length > 0 && (
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: colors.iconMuted }]}>
             {selectedMedias.length} item(s) selected — tap to add more
           </Text>
         )}

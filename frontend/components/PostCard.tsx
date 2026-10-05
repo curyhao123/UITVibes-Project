@@ -10,9 +10,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useDoubleTap } from '../animations/useDoubleTap';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { Post } from '../data/mockData';
 import { triggerHaptic } from '../hooks/useMicroInteractions';
 import { type ReportReason } from '../services/backendTypes';
@@ -35,6 +36,7 @@ interface PostCardProps {
 
 const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, images }) => {
   const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost } = useApp();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const [showActionsSheet, setShowActionsSheet] = useState(false);
@@ -101,7 +103,6 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
   };
 
   const handleRepost = async () => {
-    // Prevent reposting own post
     if (isOwner) {
       Alert.alert(
         'Cannot Repost',
@@ -124,7 +125,6 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
         setLocalRepostCount(fresh.repostCount ?? localRepostCount + 1);
       }
     } catch {
-      // Revert optimistic update on error
       setLocalReposted(wasReposted);
       setLocalRepostCount((prev) => (wasReposted ? prev + 1 : prev - 1));
     }
@@ -238,49 +238,72 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
       rightAction={{
         icon: 'trash-2',
         color: '#FFFFFF',
-        backgroundColor: AppColors.error,
+        backgroundColor: colors.error,
         label: 'Delete',
         onPress: handleSwipeDelete,
       }}
       testID={`swipeable-post-${post.id}`}
     >
-      <View style={styles.container}>
-        {/* Post Header: avatar + username (left) | follow + ellipsis (right) */}
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: isDark ? 1 : 0,
+            shadowColor: isDark ? '#000000' : '#2D3748',
+          },
+        ]}
+      >
+        {/* Post Header */}
         <View style={styles.postHeader}>
           <TouchableOpacity style={styles.headerLeft} onPress={handleProfilePress} activeOpacity={0.7}>
             <Avatar user={post.user} size="medium" />
-            <Text style={styles.headerUsername} numberOfLines={1}>@{displayName}</Text>
+            <Text style={[styles.headerUsername, { color: colors.text }]} numberOfLines={1}>
+              @{displayName}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.headerRight}>
             {!isOwner && (
               <TouchableOpacity
-                style={[styles.followBtn, localIsFollowing && styles.followBtnFollowing]}
+                style={[
+                  styles.followBtn,
+                  { backgroundColor: colors.primary },
+                  localIsFollowing && {
+                    backgroundColor: colors.surfaceElevated,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={handleFollowToggle}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.followBtnText, localIsFollowing && styles.followBtnTextFollowing]}>
+                <Text
+                  style={[
+                    styles.followBtnText,
+                    localIsFollowing && { color: colors.text },
+                  ]}
+                >
                   {localIsFollowing ? 'Following' : 'Follow'}
                 </Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={styles.ellipsisBtn}
+              style={[styles.ellipsisBtn, { backgroundColor: colors.surfaceElevated }]}
               onPress={handleEllipsisPress}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="ellipsis-horizontal" size={20} color={AppColors.text} />
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Image + Actions wrapper — enables absolute positioning */}
+        {/* Image + Actions wrapper */}
         <View style={styles.imageContainer}>
-          {/* Image Area — double tap likes, single tap opens post detail */}
           <GestureDetector gesture={tapGesture}>
             <View>
-              {/* Instagram-style carousel: swipe, dots, carousel icon */}
               <View style={styles.carouselWrapper}>
                 <ImageCarousel
                   images={images}
@@ -289,15 +312,14 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
                 />
               </View>
 
-              {/* Heart overlay — positioned on the carousel */}
               <View style={styles.heartOverlay}>
                 <AnimatedHeart scale={heartScale} opacity={heartOpacity} />
               </View>
             </View>
           </GestureDetector>
 
-          {/* Action buttons — horizontal row below image */}
-          <View style={styles.actionsRow}>
+          {/* Action buttons */}
+          <View style={[styles.actionsRow, { borderTopColor: colors.borderLight }]}>
             <TouchableOpacity
               onPress={handleLike}
               onLongPress={handleLikeLongPress}
@@ -306,7 +328,9 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
-              <Text style={styles.actionText}>{formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}</Text>
+              <Text style={[styles.actionText, { color: colors.iconMuted }]}>
+                {formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}
+              </Text>
             </TouchableOpacity>
 
             <Animated.View style={commentAnimatedStyle}>
@@ -315,8 +339,8 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
                 style={styles.actionGroup}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                <Feather name="message-circle" size={ACTION_ICON} color={AppColors.iconMuted} strokeWidth={2} />
-                <Text style={styles.actionText}>
+                <Feather name="message-circle" size={ACTION_ICON} color={colors.iconMuted} strokeWidth={2} />
+                <Text style={[styles.actionText, { color: colors.iconMuted }]}>
                   {post.commentsCount ?? 0} {(post.commentsCount ?? 0) === 1 ? 'Comment' : 'Comments'}
                 </Text>
               </TouchableOpacity>
@@ -330,10 +354,10 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
               <Feather
                 name="refresh-cw"
                 size={ACTION_ICON}
-                color={localReposted ? AppColors.primary : AppColors.iconMuted}
+                color={localReposted ? colors.primary : colors.iconMuted}
                 strokeWidth={2}
               />
-              <Text style={styles.actionText}>
+              <Text style={[styles.actionText, { color: colors.iconMuted }]}>
                 {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
               </Text>
             </TouchableOpacity>
@@ -347,8 +371,8 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
                 <Feather
                   name="bookmark"
                   size={ACTION_ICON}
-                  color={localBookmarked ? AppColors.primary : AppColors.iconMuted}
-                  fill={localBookmarked ? AppColors.primary : 'transparent'}
+                  color={localBookmarked ? colors.primary : colors.iconMuted}
+                  fill={localBookmarked ? colors.primary : 'transparent'}
                   strokeWidth={2}
                 />
               </TouchableOpacity>
@@ -360,18 +384,21 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
           <MentionText
             text={post.caption}
             numberOfLines={5}
+            style={{ color: colors.text }}
           />
         </View>
 
         {(post.commentsCount ?? 0) > 0 && (
           <TouchableOpacity onPress={handleCommentPress}>
-            <Text style={styles.viewComments}>View all {post.commentsCount} comments</Text>
+            <Text style={[styles.viewComments, { color: colors.iconMuted }]}>
+              View all {post.commentsCount} comments
+            </Text>
           </TouchableOpacity>
         )}
 
-        <Text style={styles.timeAgo}>{formatTimeAgo(post.createdAt)}</Text>
+        <Text style={[styles.timeAgo, { color: colors.iconMuted }]}>{formatTimeAgo(post.createdAt)}</Text>
 
-        {/* ── Action Sheets ── */}
+        {/* Action Sheets */}
         <PostActionsSheet
           visible={showActionsSheet}
           postOwnerId={post.userId}
@@ -409,7 +436,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: AppColors.surface,
     marginBottom: 14,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
@@ -417,7 +443,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     ...Platform.select({
       ios: {
-        shadowColor: '#2D3748',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.035,
         shadowRadius: 10,
@@ -427,7 +452,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  // ── Post Header ──────────────────────────────────────────────────────
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -444,7 +468,6 @@ const styles = StyleSheet.create({
   headerUsername: {
     ...Typography.bodySemibold,
     fontSize: 14,
-    color: AppColors.text,
     fontWeight: '600',
     flexShrink: 1,
   },
@@ -457,43 +480,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.primary,
-  },
-  followBtnFollowing: {
-    backgroundColor: AppColors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: AppColors.border,
   },
   followBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  followBtnTextFollowing: {
-    color: AppColors.text,
-  },
   ellipsisBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: AppColors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // ── Image area ──────────────────────────────────────────────────────
   imageContainer: {
     position: 'relative',
     width: '100%',
   },
   carouselWrapper: {
     width: '100%',
-    height: 332, // carousel height (300) + dots area (32)
-  },
-  postImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    height: 332,
   },
   heartOverlay: {
     position: 'absolute',
@@ -526,26 +532,16 @@ const styles = StyleSheet.create({
     ...Typography.meta,
     fontSize: 12,
     fontWeight: '600',
-    color: AppColors.iconMuted,
   },
   captionContainer: {
     paddingHorizontal: layoutPadding,
     paddingTop: 14,
     paddingBottom: 8,
   },
-  caption: {
-    ...Typography.caption,
-    color: AppColors.text,
-  },
-  captionUsername: {
-    ...Typography.captionSemibold,
-    color: AppColors.text,
-  },
   viewComments: {
     paddingHorizontal: layoutPadding,
     paddingBottom: 6,
     ...Typography.caption,
-    color: AppColors.iconMuted,
   },
   timeAgo: {
     paddingHorizontal: layoutPadding,
@@ -554,7 +550,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.4,
-    color: AppColors.iconMuted,
     textTransform: 'uppercase',
   },
 });

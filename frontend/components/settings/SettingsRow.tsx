@@ -5,10 +5,10 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { AppColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 type IconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -46,15 +46,7 @@ interface SettingsRowProps {
 }
 
 /**
- * Premium settings row component.
- *
- * WHY this design:
- * - Supports multiple layouts: link row, toggle row, value row
- * - Consistent 60px row height for modern mobile feel
- * - Icon container uses soft tinted background (not raw icon)
- * - Subtle separator lines only on non-last rows
- * - Proper touch targets (full row is tappable)
- * - Icon + label left-aligned, value/chevron/toggle right-aligned
+ * Premium settings row component with dynamic theme support.
  */
 export const SettingsRow = memo(function SettingsRow({
   icon,
@@ -72,6 +64,8 @@ export const SettingsRow = memo(function SettingsRow({
   iconBg,
   iconColor,
 }: SettingsRowProps) {
+  const { colors } = useTheme();
+
   const handlePress = useCallback(() => {
     if (!isToggle && onPress) {
       onPress();
@@ -82,14 +76,14 @@ export const SettingsRow = memo(function SettingsRow({
 
   // Determine text color based on variant
   const labelColor =
-    variant === 'danger' ? AppColors.error : AppColors.text;
-  const subtitleColor = AppColors.textMuted;
+    variant === 'danger' ? colors.error : colors.text;
+  const subtitleColor = colors.textMuted;
   const iconBgColor =
     iconBg ??
     (variant === 'danger'
-      ? `${AppColors.error}15`
-      : `${AppColors.primary}12`);
-  const iconFgColor = iconColor ?? (variant === 'danger' ? AppColors.error : AppColors.primary);
+      ? `${colors.error}18`
+      : `${colors.primary}18`);
+  const iconFgColor = iconColor ?? (variant === 'danger' ? colors.error : colors.primary);
 
   const content = (
     <>
@@ -130,18 +124,18 @@ export const SettingsRow = memo(function SettingsRow({
             value={toggleValue}
             onValueChange={onToggle}
             trackColor={{
-              false: AppColors.border,
-              true: `${AppColors.primary}60`,
+              false: colors.border,
+              true: `${colors.primary}80`,
             }}
             thumbColor={
-              toggleValue ? AppColors.primary : AppColors.surfaceElevated
+              toggleValue ? colors.primary : colors.surfaceElevated
             }
-            ios_backgroundColor={AppColors.border}
+            ios_backgroundColor={colors.border}
           />
         ) : (
           <>
             {value && (
-              <Text style={styles.valueText} numberOfLines={1}>
+              <Text style={[styles.valueText, { color: colors.textMuted }]} numberOfLines={1}>
                 {value}
               </Text>
             )}
@@ -149,7 +143,7 @@ export const SettingsRow = memo(function SettingsRow({
               <Feather
                 name="chevron-right"
                 size={18}
-                color={AppColors.iconMuted}
+                color={colors.iconMuted}
                 style={styles.chevron}
               />
             )}
@@ -164,7 +158,8 @@ export const SettingsRow = memo(function SettingsRow({
       <View
         style={[
           styles.row,
-          !isLast && styles.rowBorderBottom,
+          { backgroundColor: colors.surfaceElevated },
+          !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight },
           isFirst && styles.rowFirst,
           isLast && styles.rowLast,
         ]}
@@ -178,7 +173,8 @@ export const SettingsRow = memo(function SettingsRow({
     <TouchableOpacity
       style={[
         styles.row,
-        !isLast && styles.rowBorderBottom,
+        { backgroundColor: colors.surfaceElevated },
+        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderLight },
         isFirst && styles.rowFirst,
         isLast && styles.rowLast,
       ]}
@@ -200,11 +196,6 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: AppColors.surfaceElevated,
-  },
-  rowBorderBottom: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
   },
   rowFirst: {
     borderTopLeftRadius: 12,
@@ -245,7 +236,6 @@ const styles = StyleSheet.create({
   },
   valueText: {
     ...Typography.body,
-    color: AppColors.textMuted,
     maxWidth: 120,
   },
   chevron: {
