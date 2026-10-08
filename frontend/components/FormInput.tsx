@@ -50,22 +50,24 @@ export function FormInput({ label, error, hint, rightIcon, style, ...props }: Fo
           onBlur={() => setIsFocused(false)}
           {...props}
         />
-        {rightIcon}
-        {props.value && props.value.length > 0 && !hasError && !rightIcon && (
+        {rightIcon != null ? <View>{rightIcon}</View> : null}
+        {props.value && props.value.length > 0 && !hasError && !rightIcon ? (
           <TouchableOpacity
             onPress={() => props.onChangeText?.('')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Feather name="x-circle" size={18} color={colors.iconMuted} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
-      {hasError && (
+      {hasError ? (
         <Text style={[styles.errorText, { color: colors.error }]}>
           <Feather name="alert-circle" size={13} color={colors.error} /> {error}
         </Text>
-      )}
-      {hint && !hasError && <Text style={[styles.hintText, { color: colors.textMuted }]}>{hint}</Text>}
+      ) : null}
+      {hint && !hasError ? (
+        <Text style={[styles.hintText, { color: colors.textMuted }]}>{hint}</Text>
+      ) : null}
     </View>
   );
 }

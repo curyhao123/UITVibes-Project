@@ -28,7 +28,6 @@ var smtpUsername = builder.AddParameter("smtp-username");
 var smtpPassword = builder.AddParameter("smtp-password", secret: true);
 var smtpSenderEmail = builder.AddParameter("smtp-senderemail");
 var smtpSenderName = builder.AddParameter("smtp-sendername");
-var firebaseCredentialPath = builder.AddParameter("firebase-credentialpath", secret: true);
 var deepSeekApiKey = builder.AddParameter("deepseek-apikey", secret: true);
 
 
@@ -102,7 +101,6 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
     .WaitFor(cache)
     .WithReference(messaging)
     .WaitFor(messaging)
-    .WithEnvironment("Firebase__CredentialPath", firebaseCredentialPath)
     .WithHttpHealthCheck("/health");
 
 

@@ -1,6 +1,4 @@
-﻿using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using NotificationService.Messaging;
 using NotificationService.Models;
 using NotificationService.ServiceLayer.Implementation;
@@ -16,11 +14,8 @@ builder.AddNpgsqlDbContext<NotificationDbContext>("notificationdb");
 // Add RabbitMQ
 builder.AddRabbitMQClient("messaging");
 
-// Khởi tạo Firebase một lần duy nhất
-FirebaseApp.Create(new AppOptions
-{
-    Credential = GoogleCredential.FromFile(builder.Configuration["Firebase:CredentialPath"]!)
-});
+// NOTE: Firebase removed - push notifications use dummy sender
+// To re-enable: Install FirebaseAdmin package and configure Firebase credentials
 
 builder.Services.AddScoped<IFcmPushSender, FcmPushSender>();
 builder.Services.AddScoped<NotificationService.ServiceLayer.Interface.INotificationService, NotificationService.ServiceLayer.Implementation.NotificationService>();

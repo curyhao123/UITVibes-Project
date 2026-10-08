@@ -163,7 +163,11 @@ export default function HomeScreen() {
             </View>
           )
         }
-        contentContainerStyle={styles.feedContent}
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={[
+          styles.feedContent,
+          { backgroundColor: colors.background },
+        ]}
       />
     </SafeAreaView>
   );

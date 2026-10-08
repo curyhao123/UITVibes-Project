@@ -22,13 +22,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: AppColors.primary,
-        tabBarInactiveTintColor: AppColors.iconMuted,
         tabBarStyle: {
-          // Suppress the default bottom-tabs bar — ModernTabBar replaces it completely
+          // Hide the default bottom-tabs bar — ModernTabBar replaces it completely
           display: 'none',
         },
         tabBarLabelStyle: {
+          display: 'none',
+        },
+        tabBarItemStyle: {
           display: 'none',
         },
         tabBarIconStyle: {
