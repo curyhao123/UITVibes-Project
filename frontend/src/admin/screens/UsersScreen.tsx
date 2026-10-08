@@ -447,8 +447,8 @@ const styles = StyleSheet.create({
   },
   bannedIndicatorText: { fontSize: 10, color: "#EF4444", fontWeight: "600" },
   // Sheet
-  sheetOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end" },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheetOverlay: { ...StyleSheet.absoluteFill, justifyContent: "flex-end" },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
     backgroundColor: AppColors.surface,
     borderTopLeftRadius: 20,

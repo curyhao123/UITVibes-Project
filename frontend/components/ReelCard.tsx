@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
   bottomGradient: {
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   heartOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   playPauseContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,

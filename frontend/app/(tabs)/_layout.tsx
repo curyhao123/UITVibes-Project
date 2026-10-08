@@ -18,7 +18,8 @@ const CREATE_ICON_SIZE = 26;
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={(props) => <ModernTabBar {...props} />}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tabBar={(props: any) => <ModernTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,

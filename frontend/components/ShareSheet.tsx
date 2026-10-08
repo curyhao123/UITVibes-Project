@@ -244,12 +244,12 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 999,
     pointerEvents: 'box-none',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
