@@ -239,6 +239,7 @@ export default function MessageScreen() {
       <StaticPremiumHeader
         title="Messages"
         largeTitle
+        showBack
         rightAction={
           <View style={styles.headerActionsRow}>
             <TouchableOpacity
@@ -265,14 +266,6 @@ export default function MessageScreen() {
               }}
             >
               <Feather name="users" size={25} color={colors.text} strokeWidth={2} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.headerAction}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => router.back()}
-            >
-              <Feather name="arrow-right" size={25} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
         }

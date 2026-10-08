@@ -36,7 +36,7 @@ import { useTheme } from '../context/ThemeContext';
 // ── Design tokens ────────────────────────────────────────────────────────────
 
 const TAB_COUNT = 5;
-const TAB_ICONS = ['home', 'search', 'plus', 'play-circle', 'user'] as const;
+const TAB_ICONS = ['home', 'search', 'plus', 'film', 'user'] as const;
 
 const CAPSULE_WIDTH_RATIO = 0.88;
 const CAPSULE_RADIUS = 28;
@@ -89,9 +89,10 @@ const ACTIVE_BOUNCE = {
 interface ActivePillProps {
   positions: SharedValue<number[]>;
   currentIndex: number;
+  fallbackTick: number;
 }
 
-function ActivePill({ positions, currentIndex }: ActivePillProps) {
+function ActivePill({ positions, currentIndex, fallbackTick }: ActivePillProps) {
   const { isDark } = useTheme();
   const animatedX = useSharedValue(0);
 
@@ -100,11 +101,11 @@ function ActivePill({ positions, currentIndex }: ActivePillProps) {
       const posArray = positions.value;
       const targetX = posArray.length > 0 && posArray[currentIndex] !== undefined
         ? posArray[currentIndex]
-        : CAPSULE_PADDING + currentIndex * TAB_WIDTH;
+        : currentIndex * TAB_WIDTH - CAPSULE_PADDING + PILL_GAP / 2;
       animatedX.value = withSpring(targetX, SPRING);
     };
     updatePosition();
-  }, [positions.value, currentIndex]);
+  }, [positions.value, currentIndex, fallbackTick]);
 
   const animatedStyle = useAnimatedStyle(() => {
     'worklet';
@@ -280,6 +281,11 @@ export function ModernTabBar({
   const currentRoute = state.routes[state.index]?.name;
   const shouldHideTabBar = currentRoute === 'create';
 
+  // Re-render when the pill positions array is (re)computed after layout,
+  // so the ActivePill effect can read the latest values via the fallback
+  // `targetX`. We keep the shared-value for the spring animation, and use
+  // the render counter only to trigger React updates.
+  const [layoutTick, setLayoutTick] = React.useState(0);
   const positions = useSharedValue<number[]>([]);
 
   const handleTabPress = useCallback(
@@ -292,10 +298,15 @@ export function ModernTabBar({
   );
 
   const onCapsuleLayout = useCallback(() => {
+    // PillWrapper has `left: CAPSULE_PADDING` and width `PILL_WIDTH = TAB_WIDTH - PILL_GAP`.
+    // To center the pill inside tab `i`, we need its center at `i*W + W/2`.
+    // pill center = CAPSULE_PADDING + translateX + (W-6)/2
+    // ⇒ translateX = i*W - CAPSULE_PADDING + PILL_GAP/2
     positions.value = Array.from(
       { length: TAB_COUNT },
-      (_, i) => CAPSULE_PADDING + i * TAB_WIDTH + TAB_WIDTH / 2,
+      (_, i) => i * TAB_WIDTH - CAPSULE_PADDING + PILL_GAP / 2,
     );
+    setLayoutTick((t) => t + 1);
   }, [positions]);
 
   if (!isTabNavigator || shouldHideTabBar) {
@@ -345,7 +356,11 @@ export function ModernTabBar({
           ]}
         />
 
-        <ActivePill positions={positions} currentIndex={state.index} />
+        <ActivePill
+          positions={positions}
+          currentIndex={state.index}
+          fallbackTick={layoutTick}
+        />
 
         <View style={styles.tabsRow} pointerEvents="box-none">
           {state.routes.map((route, index) => (
