@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
     aspectRatio: 9 / 16,
   },
   previewGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     pointerEvents: 'none',
   },
   changeMediaFab: {
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   visibilityBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   visibilityCard: {

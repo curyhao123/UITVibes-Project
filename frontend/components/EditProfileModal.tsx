@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   modalTitleLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     borderRadius: 44,
   },
   avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderRadius: 44,
     justifyContent: 'center',

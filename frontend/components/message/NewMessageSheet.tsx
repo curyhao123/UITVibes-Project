@@ -133,7 +133,7 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
 
 const styles = StyleSheet.create({
   sheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
     zIndex: 100,
   },

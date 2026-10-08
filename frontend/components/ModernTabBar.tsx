@@ -409,11 +409,11 @@ const styles = StyleSheet.create({
   },
 
   capsuleTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
 
   capsuleBorder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: CAPSULE_RADIUS,
     borderWidth: 0.5,
   },
