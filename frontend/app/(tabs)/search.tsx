@@ -414,11 +414,12 @@ export default function SearchScreen() {
 
       return (
         <FlatList
-          data={hashtagResults}
-          renderItem={renderHashtagItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-        />
+        key="hashtag-results"
+        data={hashtagResults}
+        renderItem={renderHashtagItem}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+      />
       );
     }
 
@@ -432,6 +433,7 @@ export default function SearchScreen() {
 
     return (
       <FlatList
+        key="post-grid"
         data={posts}
         renderItem={renderPostItem}
         keyExtractor={(item) => item.id}

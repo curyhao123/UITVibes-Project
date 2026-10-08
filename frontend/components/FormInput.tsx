@@ -44,7 +44,17 @@ export function FormInput({ label, error, hint, rightIcon, style, ...props }: Fo
         ]}
       >
         <TextInput
-          style={[styles.input, { color: colors.text }, style]}
+          style={[
+            styles.input,
+            {
+              color: colors.text,
+
+              // DARK MODE FIX:
+              // Đảm bảo TextInput không tự dùng background màu trắng của native platform.
+              backgroundColor: 'transparent',
+            },
+            style,
+          ]}
           placeholderTextColor={colors.textMuted}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
