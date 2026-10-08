@@ -8,14 +8,6 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
   debug: 4,
 };
 
-function normalizeLevel(value: string | undefined): LogLevel {
-  const lower = value?.toLowerCase();
-  if (lower === 'debug' || lower === 'info' || lower === 'warn' || lower === 'error' || lower === 'silent') {
-    return lower;
-  }
-  return __DEV__ ? 'warn' : 'silent';
-}
-
 const configuredLevel: LogLevel = 'silent';
 
 function canLog(level: Exclude<LogLevel, 'silent'>): boolean {

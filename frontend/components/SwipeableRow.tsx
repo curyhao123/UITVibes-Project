@@ -23,7 +23,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SNAP_THRESHOLD = 0.25; // 25% of row width to trigger action reveal
@@ -65,9 +66,9 @@ export const SwipeableRow: React.FC<SwipeableRowProps> = ({
   enabled = true,
   testID,
 }) => {
+  const { colors } = useTheme();
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
-  const rowWidth = useSharedValue(SCREEN_WIDTH);
 
   const hasLeftActions = leftAction || (leftActions && leftActions.length > 0);
   const hasRightActions = rightAction || (rightActions && rightActions.length > 0);
@@ -212,7 +213,9 @@ export const SwipeableRow: React.FC<SwipeableRowProps> = ({
 
       {/* Main Content - Swipeable */}
       <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[styles.rowContent, rowStyle]}>
+        <Animated.View
+          style={[styles.rowContent, rowStyle, { backgroundColor: colors.background }]}
+        >
           {children}
         </Animated.View>
       </GestureDetector>
@@ -254,7 +257,6 @@ const styles = StyleSheet.create({
   },
   rowContent: {
     zIndex: 1,
-    backgroundColor: AppColors.surface,
   },
   actionsContainer: {
     position: 'absolute',

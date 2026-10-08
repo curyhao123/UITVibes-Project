@@ -1,4 +1,4 @@
-import { User, Post, mockUsers } from "../data/mockData";
+import { User, mockUsers } from "../data/mockData";
 import apiClient, { delay } from "./httpClient";
 import {
   applyLocalUsernameToUser,
@@ -6,7 +6,6 @@ import {
   clearPersistedAvatarUrl,
   clearUserCache,
   getCachedUser,
-  getCurrentAccount,
   getCurrentUser,
   getCurrentUserId,
   isUserFollowed,
@@ -24,7 +23,6 @@ import {
 import {
   BE_UserProfile,
   BE_FollowStats,
-  BE_PostResponse,
   BE_UpdateProfileRequest,
   BE_UpdateBioRequest,
   BE_SearchUserProfileDto,
@@ -190,7 +188,7 @@ export async function searchUsers(query: string): Promise<User[]> {
       isFollowing: isFollowingResults[i] ?? false,
     }));
     return results;
-  } catch (err) {
+  } catch {
     await delay(300);
     return [];
   }
@@ -305,7 +303,6 @@ export async function getUserById(id: string): Promise<User | undefined> {
       posts: 45,
       isVerified: false,
     } as User;
-    return mockUsers.find((user) => user.id === id);
   }
 }
 

@@ -179,12 +179,12 @@ interface BE_HighlightGroupDetail {
   coverImage: string | null;
   itemCount: number;
   createdAt: string;
-  items: Array<{
+  items: {
     id: string;
     storyItemId: string;
     mediaUrl: string | null;
     thumbnailUrl: string | null;
     mediaType: number;
     createdAt: string;
-  }>;
+  }[];
 }

@@ -28,7 +28,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Comment, User } from '../data/mockData';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 interface CommentSheetProps {
@@ -351,11 +351,11 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 998,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   keyboardView: {

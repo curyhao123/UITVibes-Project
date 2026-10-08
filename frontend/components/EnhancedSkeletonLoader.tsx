@@ -21,6 +21,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { AppColors, borderRadius as themeRadii } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Animation constants ───────────────────────────────────────────────────────
 
@@ -248,41 +249,46 @@ export const SkeletonBox: React.FC<SkeletonBoxProps> = ({
 
 // ─── Post skeleton ──────────────────────────────────────────────────────────
 
-export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) => (
-  <Animated.View style={[postStyles.card]}>
-    <BounceEntrance index={index}>
-      {/* Avatar + username row */}
-      <View style={postStyles.avatarRow}>
-        <SkeletonCircle size={36} />
-        <View style={postStyles.nameLines}>
-          <SkeletonLine width="35%" height={12} />
-          <SkeletonLine width="20%" height={10} style={{ marginTop: 4 }} />
+export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) => {
+  const { colors } = useTheme();
+  return (
+    <Animated.View
+      style={[postStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+    >
+      <BounceEntrance index={index}>
+        {/* Avatar + username row */}
+        <View style={postStyles.avatarRow}>
+          <SkeletonCircle size={36} />
+          <View style={postStyles.nameLines}>
+            <SkeletonLine width="35%" height={12} />
+            <SkeletonLine width="20%" height={10} style={{ marginTop: 4 }} />
+          </View>
         </View>
-      </View>
 
-      {/* Square image placeholder */}
-      <SkeletonBox
-        width="100%"
-        height={320}
-        borderRadius={themeRadii.lg}
-        style={{ marginTop: 8 }}
-      />
+        {/* Square image placeholder */}
+        <SkeletonBox
+          width="100%"
+          height={320}
+          borderRadius={themeRadii.lg}
+          style={{ marginTop: 8 }}
+        />
 
-      {/* Action icons row */}
-      <View style={postStyles.actionsRow}>
-        <SkeletonCircle size={24} />
-        <SkeletonCircle size={24} style={{ marginLeft: 16 }} />
-        <SkeletonCircle size={24} style={{ marginLeft: 16 }} />
-      </View>
+        {/* Action icons row */}
+        <View style={postStyles.actionsRow}>
+          <SkeletonCircle size={24} />
+          <SkeletonCircle size={24} style={{ marginLeft: 16 }} />
+          <SkeletonCircle size={24} style={{ marginLeft: 16 }} />
+        </View>
 
-      {/* Caption lines */}
-      <View style={postStyles.captionArea}>
-        <SkeletonLine width="60%" height={12} />
-        <SkeletonLine width="40%" height={12} style={{ marginTop: 6 }} />
-      </View>
-    </BounceEntrance>
-  </Animated.View>
-);
+        {/* Caption lines */}
+        <View style={postStyles.captionArea}>
+          <SkeletonLine width="60%" height={12} />
+          <SkeletonLine width="40%" height={12} style={{ marginTop: 6 }} />
+        </View>
+      </BounceEntrance>
+    </Animated.View>
+  );
+};
 
 // ─── Feed skeleton ──────────────────────────────────────────────────────────
 
@@ -451,11 +457,11 @@ const styles = StyleSheet.create({
 
 const postStyles = StyleSheet.create({
   card: {
-    backgroundColor: AppColors.surface,
     marginBottom: 14,
     padding: 12,
     borderRadius: themeRadii.lg,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   avatarRow: {
     flexDirection: 'row',

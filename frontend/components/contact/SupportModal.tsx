@@ -21,7 +21,6 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect } from 'react';
 import {
-  Dimensions,
   Linking,
   Modal,
   Pressable,
@@ -44,8 +43,6 @@ import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { ADMIN_CONTACTS, type AdminContact } from '../../data/adminContacts';
 import { ContactAvatar } from './ContactAvatar';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface SupportModalProps {
   visible: boolean;
@@ -242,7 +239,7 @@ export function SupportModal({ visible, onClose }: SupportModalProps) {
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {

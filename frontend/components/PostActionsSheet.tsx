@@ -14,7 +14,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -26,8 +25,6 @@ import {
 import { borderRadius, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface PostActionsSheetProps {
   visible: boolean;
@@ -253,7 +250,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdropFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {

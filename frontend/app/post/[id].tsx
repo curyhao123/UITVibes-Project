@@ -73,7 +73,7 @@ const PostDetailSkeleton = () => {
 // ─── Main screen ────────────────────────────────────────────────────────────
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -277,7 +277,6 @@ export default function PostDetailScreen() {
 
   const handleSubmitEdit = async (text: string, _imageUrl?: string) => {
     if (!post || !editingComment || isSubmitting) return;
-    const savedText = editingComment.text;
     setIsSubmitting(true);
 
     const replaceComment = (comments: Comment[]): Comment[] =>

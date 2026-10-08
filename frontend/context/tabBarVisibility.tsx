@@ -17,12 +17,10 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import type { NavigatorScreenParams, ParamListBase } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NavigatorScreenParams, ParamListBase, NavigationProp } from '@react-navigation/native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -63,10 +61,10 @@ export function useTabBarVisibilityContext() {
  */
 export function TabBarVisibilityProvider({ children }: { children: React.ReactNode }) {
   const [isTabBarVisible, setIsTabBarVisible] = useState(true);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('state', (e) => {
+    const unsubscribe = navigation.addListener('state', (e: { data: { state?: { routes: { name: string; state?: unknown }[]; index?: number } } }) => {
       const state = e.data.state;
       if (!state) return;
 

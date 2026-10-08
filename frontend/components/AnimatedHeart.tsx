@@ -10,21 +10,19 @@
  * All animations run on the UI thread.
  */
 import React, { useEffect, useCallback } from 'react';
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withSequence,
   withDelay,
-  runOnJS,
   type SharedValue,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { AppColors } from '../constants/theme';
 import { SPRING_BOUNCE, TIMING_FAST } from '../animations/spring';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HEART_SIZE = 100;
 
 // ─── Hook: useAnimatedHeart — drives the heart visibility & animations ──────────

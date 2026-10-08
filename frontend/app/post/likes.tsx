@@ -19,7 +19,7 @@ import { useTheme } from "../../context/ThemeContext";
 
 export default function PostLikesScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const [likes, setLikes] = useState<BE_LikeDto[]>([]);
   const [loading, setLoading] = useState(true);

@@ -98,17 +98,6 @@ const AddStoryCircle = () => {
   );
 };
 
-const AddHighlightCircle: React.FC<{ onPress: () => void }> = ({ onPress }) => (
-  <TouchableOpacity style={styles.circleItem} onPress={onPress} activeOpacity={0.7}>
-    <View style={styles.circleOuter}>
-      <View style={styles.addIconCircle}>
-        <Feather name="plus-square" size={22} color={AppColors.primary} strokeWidth={2.5} />
-      </View>
-    </View>
-    <Text style={styles.circleLabel}>New</Text>
-  </TouchableOpacity>
-);
-
 const HighlightViewer: React.FC<HighlightViewerProps> = ({
   visible,
   highlight,
@@ -211,17 +200,14 @@ export const HighlightBar: React.FC<HighlightBarProps> = ({
 }) => {
   const [viewerVisible, setViewerVisible] = useState(false);
   const [selectedHighlight, setSelectedHighlight] = useState<HighlightGroup | null>(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   const handleHighlightPress = async (highlight: HighlightGroup) => {
-    setIsLoadingDetail(true);
     setSelectedHighlight(highlight);
     setViewerVisible(true);
     const detail = await getHighlightDetail(highlight.id);
     if (detail) {
       setSelectedHighlight(detail);
     }
-    setIsLoadingDetail(false);
   };
 
   const handleDeleted = () => {

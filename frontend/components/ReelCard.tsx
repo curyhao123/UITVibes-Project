@@ -15,8 +15,9 @@
  * - Mock Reel type (with nested user object)
  * - API Reel type (with userId, ownerDisplayName, ownerAvatarUrl fields)
  */
+import { useEventListener } from 'expo';
 import { Feather } from '@expo/vector-icons';
-import { ResizeMode, Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -35,7 +36,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPRING_BOUNCE, SPRING_SOFT } from '../animations/spring';
 import { AppColors } from '../constants/theme';
 import { User } from '../data/mockData';
@@ -447,7 +447,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onTogglePaused,
   isCurrentUser = false,
 }) => {
-  const insets = useSafeAreaInsets();
   const [showHeart, setShowHeart] = useState(false);
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [showPlayPause, setShowPlayPause] = useState(false);
@@ -455,8 +454,25 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   const [progress, setProgress] = useState(0);
   const lastTap = useRef<number>(0);
   const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRef = useRef<Video>(null);
   const buttonPressedRef = useRef(false);
+
+  // Build a video player instance when a videoUrl is provided
+  const player = useVideoPlayer(
+    item.videoUrl ? { uri: item.videoUrl } : null,
+    (p) => {
+      if (!p) return;
+      p.loop = true;
+      // Emit timeUpdate events at ~10 fps so the progress bar updates smoothly
+      p.timeUpdateEventInterval = 0.1;
+    }
+  );
+
+  // Subscribe to playback progress events from the player
+  useEventListener(player, 'timeUpdate', (payload) => {
+    if (!player) return;
+    const duration = player.duration > 0 ? player.duration : 1;
+    setProgress(payload.currentTime / duration);
+  });
 
   // Set flag to prevent card's onPress from triggering when button is pressed
   // Must stay true long enough to cover the entire touch sequence (touchstart → touchend)
@@ -473,21 +489,20 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
   // Control video playback
   useEffect(() => {
-    if (!videoRef.current) return;
-
+    if (!player) return;
     if (shouldPlay) {
-      videoRef.current.playAsync();
+      player.play();
     } else {
-      videoRef.current.pauseAsync();
+      player.pause();
     }
-  }, [shouldPlay]);
+  }, [shouldPlay, player]);
 
   // Seek to beginning when becoming active
   useEffect(() => {
-    if (isActive && videoRef.current) {
-      videoRef.current.setPositionAsync(0);
+    if (isActive && player) {
+      player.currentTime = 0;
     }
-  }, [isActive]);
+  }, [isActive, player]);
 
   useEffect(() => {
     return () => {
@@ -551,21 +566,11 @@ export const ReelCard: React.FC<ReelCardProps> = ({
     <Pressable style={[styles.card, { height: itemHeight }]} onPress={handlePress}>
       {/* Background Video - extends edge-to-edge, full height */}
       {item.videoUrl ? (
-        <Video
-          ref={videoRef}
-          source={{ uri: item.videoUrl }}
+        <VideoView
+          player={player}
           style={[styles.background, { height: itemHeight }]}
-          resizeMode={ResizeMode.COVER}
-          isLooping
-          shouldPlay={shouldPlay}
-          isMuted={false}
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded) {
-              const duration = status.durationMillis || 1;
-              const position = status.positionMillis || 0;
-              setProgress(position / duration);
-            }
-          }}
+          contentFit="cover"
+          nativeControls={false}
         />
       ) : (
         <Image
@@ -685,7 +690,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
   bottomGradient: {
@@ -697,7 +702,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   heartOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -720,7 +725,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   playPauseContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,

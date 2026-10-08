@@ -12,7 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const {
     currentUser,
@@ -163,7 +163,11 @@ export default function HomeScreen() {
             </View>
           )
         }
-        contentContainerStyle={styles.feedContent}
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={[
+          styles.feedContent,
+          { backgroundColor: colors.background },
+        ]}
       />
     </SafeAreaView>
   );

@@ -1,0 +1,253 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm 
+help npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Hao Tran\AppData\Roami ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+D:\UITVibes-Project\frontend\animations\useDoubleTap.ts
+  115:5  warning  React Hook useMemo has an unnecessary dependency: 'handleSingleTapJS'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\(tabs)\_layout.tsx
+  21:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+D:\UITVibes-Project\frontend\app\(tabs)\create.tsx
+    2:32  warning  'D:\UITVibes-Project\frontend\node_modules\expo-router\build\index.js' imported multiple times              import/no-duplicates
+    7:27  warning  'D:\UITVibes-Project\frontend\node_modules\expo-router\build\index.js' imported multiple times              import/no-duplicates
+  123:6   warning  React Hook useEffect has a missing dependency: 'tabAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\(tabs)\home.tsx
+  15:19  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\app\(tabs)\profile.tsx
+  49:8  warning  React Hook useCallback has a missing dependency: 'refreshMyPosts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\(tabs)\reels.tsx
+   54:16  warning  'SCREEN_WIDTH' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+   55:7   warning  'AnimatedFlatList' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  298:6   warning  React Hook useEffect has a missing dependency: 'reelUsers'. Either include it or remove the dependency array           react-hooks/exhaustive-deps
+  326:5   warning  React Hook useCallback has a missing dependency: 'ITEM_HEIGHT'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+  527:5   warning  React Hook useCallback has a missing dependency: 'MemoizedReelCard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\(tabs)\search.tsx
+   44:19  warning  'isDark' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+   45:25  warning  'currentUser' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  212:6   warning  React Hook useEffect has a missing dependency: 'searchQuery'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\archive.tsx
+  47:19  warning  'isDark' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  51:10  warning  'hasMore' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  79:9   warning  'handlePostPress' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\app\auth\onboarding-find-friends.tsx
+  88:6  warning  React Hook useEffect has a missing dependency: 'fetchSuggestedUsers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\blocked-accounts.tsx
+  46:19  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  78:13  warning  'userId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\app\followers\[userId].tsx
+  29:19  warning  'isDark' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+  50:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array                                                react-hooks/exhaustive-deps
+  69:6   warning  React Hook useEffect has missing dependencies: 'currentUser?.displayName' and 'currentUser?.username'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\message\chat\[id].tsx
+   55:19  warning  'isDark' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+  122:6   warning  React Hook useEffect has missing dependencies: 'conversation' and 'setActiveConversation'. Either include them or remove the dependency array              react-hooks/exhaustive-deps
+  161:6   warning  React Hook useEffect has missing dependencies: 'conversation', 'loadMessages', and 'markMessagesRead'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\post\[id].tsx
+   76:19  warning  'isDark' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+   92:6   warning  React Hook useEffect has a missing dependency: 'loadPost'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  280:11  warning  'savedText' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\app\post\likes.tsx
+  22:19  warning  'isDark' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  30:6   warning  React Hook useEffect has a missing dependency: 'loadLikes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\app\profile\[id].tsx
+  25:19  warning  'isDark' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+  49:6   warning  React Hook useEffect has a missing dependency: 'loadUserData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  89:14  warning  'err' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\app\settings.tsx
+  179:22  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+D:\UITVibes-Project\frontend\app\story\create.tsx
+  41:19  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\AnimatedHeart.tsx
+   20:3   warning  'runOnJS' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+   27:16  warning  'SCREEN_WIDTH' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+   57:6   warning  React Hook useCallback has missing dependencies: 'opacity' and 'scale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  105:6   warning  React Hook useEffect has a missing dependency: 'scale'. Either include it or remove the dependency array                    react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\AnimatedModal.tsx
+  127:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'opacity', 'scale', 'translateY', and 'triggerHaptic'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  315:6  warning  React Hook useEffect has a missing dependency: 'opacity'. Either include it or remove the dependency array                                                                   react-hooks/exhaustive-deps
+  360:6  warning  React Hook useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array                                                react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\CommentContextMenu.tsx
+  65:6  warning  React Hook useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\CommentInput.tsx
+  55:6  warning  React Hook useEffect has a missing dependency: 'editingComment'. Either include it or remove the dependency array                                                                                                                                                                                       react-hooks/exhaustive-deps
+  64:6  warning  React Hook useEffect has a missing dependency: 'editingComment.image'. Either include it or remove the dependency array. If 'setSelectedImage' needs the current value of 'editingComment.image', you can also switch to useReducer instead of useState and read 'editingComment.image' in the reducer  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\CommentSheet.tsx
+  31:16  warning  'SCREEN_WIDTH' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\ConfirmationModal.tsx
+  80:6  warning  React Hook useEffect has missing dependencies: 'opacityAnim' and 'scaleAnim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\EditProfileModal.tsx
+  46:19  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\EnhancedSkeletonLoader.tsx
+   63:6  warning  React Hook useEffect has a missing dependency: 'progress'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  134:6  warning  React Hook useEffect has a missing dependency: 'opacity'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
+  185:6  warning  React Hook useEffect has missing dependencies: 'index', 'opacity', and 'scale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\EnhancedToast.tsx
+   89:9  warning  'remainingTime' is assigned a value but never used                                                                                       @typescript-eslint/no-unused-vars
+   98:6  warning  React Hook useEffect has missing dependencies: 'onDismiss' and 'progress'. Either include them or remove the dependency array            react-hooks/exhaustive-deps
+  109:6  warning  React Hook useEffect has missing dependencies: 'opacity', 'scale', and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  111:9  warning  'triggerHaptic' is assigned a value but never used                                                                                       @typescript-eslint/no-unused-vars
+  357:6  warning  React Hook useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array            react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\MessageContextMenu.tsx
+  63:6  warning  React Hook useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\ModernTabBar.tsx
+  108:6  warning  React Hook React.useEffect has a missing dependency: 'animatedX'. Either include it or remove the dependency array               react-hooks/exhaustive-deps
+  166:6  warning  React Hook React.useEffect has missing dependencies: 'isCreate' and 'scale'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\OTPInput.tsx
+   91:8   warning  React Hook useEffect has a missing dependency: 'value'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  143:11  warning  'handlePaste' is assigned a value but never used                                                          @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\OnlineFriendsList.tsx
+   31:10  warning  'AppColors' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  163:6   warning  React Hook useCallback has a missing dependency: 'refreshRotation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\PostActionsSheet.tsx
+   30:17  warning  'SCREEN_HEIGHT' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+   90:6   warning  React Hook useEffect has missing dependencies: 'backdropOpacity' and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  109:6   warning  React Hook useEffect has missing dependencies: 'backdropOpacity' and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\PremiumHeader.tsx
+   35:7   warning  'LARGE_TITLE_MIN_SIZE' is assigned a value but never used                                                      @typescript-eslint/no-unused-vars
+   70:22  warning  'setIsScrolled' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  139:6   warning  React Hook useEffect has a missing dependency: 'badgeScale'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\ReelCard.tsx
+   88:6  warning  React Hook React.useEffect has missing dependencies: 'opacity' and 'scale'. Either include them or remove the dependency array       react-hooks/exhaustive-deps
+  121:6  warning  React Hook React.useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  404:6  warning  React Hook React.useEffect has missing dependencies: 'opacity' and 'scale'. Either include them or remove the dependency array       react-hooks/exhaustive-deps
+  451:9  warning  'insets' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\ReportPostSheet.tsx
+  104:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'sheetOpacity', and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  128:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'sheetOpacity', and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\ShareSheet.tsx
+  23:16  warning  'SCREEN_WIDTH' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+  23:38  warning  'SCREEN_HEIGHT' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+  61:6   warning  React Hook React.useEffect has missing dependencies: 'backdropOpacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\SkeletonLoader.tsx
+  58:6  warning  React Hook useEffect has a missing dependency: 'progress'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\SwipeableRow.tsx
+   72:9  warning  'rowWidth' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  182:6  warning  React Hook useCallback has a missing dependency: 'triggerHaptic'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\contact\SupportModal.tsx
+   48:17  warning  'SCREEN_HEIGHT' is assigned a value but never used                                                                             @typescript-eslint/no-unused-vars
+  164:6   warning  React Hook useEffect has missing dependencies: 'opacity' and 'translateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\highlight\AddToHighlightModal.tsx
+   65:6   warning  React Hook useEffect has a missing dependency: 'loadHighlights'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  266:16  warning  'SCREEN_WIDTH' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\highlight\HighlightBar.tsx
+  101:7   warning  'AddHighlightCircle' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  214:10  warning  'isLoadingDetail' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\components\profile\ReportUserSheet.tsx
+  108:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'sheetOpacity', and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  132:6  warning  React Hook useEffect has missing dependencies: 'backdropOpacity', 'sheetOpacity', and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\components\profile\UserActionsSheet.tsx
+  20:17  warning  'SCREEN_HEIGHT' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+  75:6   warning  React Hook useEffect has missing dependencies: 'backdropOpacity' and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  94:6   warning  React Hook useEffect has missing dependencies: 'backdropOpacity' and 'sheetTranslateY'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\context\AppContext.tsx
+  351:6  warning  React Hook useEffect has missing dependencies: 'auth', 'chat', 'feed', and 'notifications'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\context\ThemeContext.tsx
+  46:10  warning  'isReady' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\context\tabBarVisibility.tsx
+  20:3   warning  'useRef' is defined but never used                           @typescript-eslint/no-unused-vars
+  68:89  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+D:\UITVibes-Project\frontend\context\useFeedState.ts
+  2:10  warning  'User' is defined but never used     @typescript-eslint/no-unused-vars
+  2:22  warning  'Comment' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\hooks\use-color-scheme.ts
+  6:29  error  React Hook "useTheme" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  9:16  error  React Hook "useRNColorScheme" is called conditionally. React Hooks must be called in the exact same order in every component render                                                         react-hooks/rules-of-hooks
+
+D:\UITVibes-Project\frontend\hooks\use-color-scheme.web.ts
+  16:29  error  React Hook "useTheme" is called conditionally. React Hooks must be called in the exact same order in every component render          react-hooks/rules-of-hooks
+  22:25  error  React Hook "useRNColorScheme" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+
+D:\UITVibes-Project\frontend\hooks\useOnlineUsers.ts
+  98:6  warning  React Hook useCallback has a missing dependency: 'stopHeartbeat'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\services\backendTypes.ts
+   48:16  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  147:10  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  198:13  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  226:11  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  262:11  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+D:\UITVibes-Project\frontend\services\highlightService.ts
+  182:10  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+D:\UITVibes-Project\frontend\services\storyService.ts
+   15:10  warning  'getCurrentUserId' is defined but never used                 @typescript-eslint/no-unused-vars
+  184:14  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+D:\UITVibes-Project\frontend\services\userService.ts
+    1:16  warning  'Post' is defined but never used               @typescript-eslint/no-unused-vars
+    9:3   warning  'getCurrentAccount' is defined but never used  @typescript-eslint/no-unused-vars
+   27:3   warning  'BE_PostResponse' is defined but never used    @typescript-eslint/no-unused-vars
+  193:12  warning  'err' is defined but never used                @typescript-eslint/no-unused-vars
+  308:5   warning  Unreachable code                               no-unreachable
+
+D:\UITVibes-Project\frontend\src\admin\navigation\AdminNavigator.tsx
+  31:6  warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\src\admin\screens\DashboardScreen.tsx
+  266:19  warning  'isDark' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  288:14  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead                                                    @typescript-eslint/array-type
+  348:6   warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\UITVibes-Project\frontend\src\admin\screens\ReportsScreen.tsx
+  253:10  warning  'page' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\src\admin\screens\UsersScreen.tsx
+  239:10  warning  'page' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\UITVibes-Project\frontend\utils\logger.ts
+  11:10  warning  'normalizeLevel' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 125 problems (4 errors, 121 warnings)
+  0 errors and 12 warnings potentially fixable with the `--fix` option.
+

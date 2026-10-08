@@ -169,7 +169,7 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
 
 const styles = StyleSheet.create({
   sheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
     zIndex: 100,
   },

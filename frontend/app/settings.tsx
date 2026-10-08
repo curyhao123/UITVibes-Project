@@ -176,12 +176,12 @@ const profileStyles = StyleSheet.create({
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
-const THEME_OPTIONS: Array<{
+const THEME_OPTIONS: {
   id: ThemePreference;
   label: string;
   subtitle: string;
   icon: 'smartphone' | 'sun' | 'moon';
-}> = [
+}[] = [
   {
     id: 'system',
     label: 'System (Auto)',

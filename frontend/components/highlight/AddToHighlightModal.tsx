@@ -263,7 +263,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
   );
 };
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   keyboardView: {

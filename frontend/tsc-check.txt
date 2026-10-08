@@ -1,0 +1,43 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm 
+help npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\Hao Tran\AppData\Roami ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+
+#
+# Fatal process out of memory: Zone
+#
+----- Native stack trace -----
+
+
+
+#
+# Fatal process out of memory: Zone
+#
+----- Native stack trace -----
+
+ 1: 00007FF626F570F7 
+ 2: 00007FF626E2B6EF 
+ 3: 00007FF628125076 
+ 4: 00007FF627AABAE1 
+ 5: 00007FF62758E4EB 
+ 6: 00007FF6274BD03A 
+ 7: 00007FF62855153D 
+ 8: 00007FF628551B14 
+ 9: 00007FF62855169E 
+10: 00007FF62855ED74 
+11: 00007FF628237BD0 
+12: 00007FF628245B42 
+13: 00007FF62823F4AA 
+14: 00007FF627A28E14 
+15: 00007FF6279EF9F2 
+16: 00007FF627CB0926 
+17: 00007FF626E2E490 
+18: 00007FF626FB6063 
+19: 00007FF628839FFB 
+20: 00007FFA8BF5CD87 BaseThreadInitThunk+23
+21: 00007FFA8CDCCAEC 

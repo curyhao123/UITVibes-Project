@@ -1,7 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
 import {
-  Dimensions,
   Linking,
   Platform,
   Share,
@@ -20,7 +19,7 @@ import { SPRING_SOFT, TIMING_FAST } from '../animations/spring';
 import { useTheme } from '../context/ThemeContext';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// SCREEN dimensions are not needed at runtime — SHEET_HEIGHT drives layout.
 const SHEET_HEIGHT = 400 + TAB_BAR_BOTTOM_OFFSET;
 
 interface ShareOption {
@@ -244,12 +243,12 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 999,
     pointerEvents: 'box-none',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {

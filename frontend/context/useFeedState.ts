@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { User, Post, Comment } from '../data/mockData';
+import { Post } from '../data/mockData';
 import * as api from '../services/api';
 import type { Story } from '../services/storyService';
 import type { Reel as APIReel } from '../services/postService';

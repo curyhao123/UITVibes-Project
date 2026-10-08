@@ -28,7 +28,6 @@ import { AppColors, layoutPadding } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
 import { getBlockedUsers, unblockUser } from '../services/blockService';
-import { getCurrentUserId } from '../services/session';
 
 if (
   Platform.OS === 'android' &&
@@ -43,7 +42,7 @@ interface UnblockTarget {
 
 export default function BlockedAccountsScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   // ── Data ─────────────────────────────────────────────────────────
   const [allUsers, setAllUsers] = useState<BlockedUserItemData[]>([]);
@@ -75,7 +74,6 @@ export default function BlockedAccountsScreen() {
     else if (!hasLoaded) setIsLoading(true);
 
     try {
-      const userId = getCurrentUserId();
       const users = await getBlockedUsers(0, 100);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setAllUsers(users);

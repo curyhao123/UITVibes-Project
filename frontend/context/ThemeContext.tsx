@@ -26,7 +26,7 @@ interface ThemeContextType {
 
 const THEME_STORAGE_KEY = '@app_theme_mode';
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -43,7 +43,6 @@ interface AppThemeProviderProps {
 export const AppThemeProvider: React.FC<AppThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useRNColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +56,10 @@ export const AppThemeProvider: React.FC<AppThemeProviderProps> = ({ children }) 
         console.warn('Failed to load theme preference:', err);
       })
       .finally(() => {
-        if (isMounted) setIsReady(true);
+        if (isMounted) {
+          // Theme is resolved based on `themePreference` reactively.
+          // Keeping this side-effect-free callback avoids storing redundant state.
+        }
       });
 
     return () => {

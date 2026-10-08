@@ -51,8 +51,7 @@ import { fetchUserById } from '../../services/userService';
 
 import { AppColors } from '../../constants/theme';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ─── Transform API Reel to Display Data ───────────────────────────────────────
 

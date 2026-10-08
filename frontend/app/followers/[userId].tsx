@@ -26,7 +26,7 @@ import {
 
 export default function FollowersScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { userId, tab } = useLocalSearchParams<{
     userId: string;
     tab?: string;

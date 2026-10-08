@@ -44,11 +44,10 @@ const EmptyState = () => {
 
 export default function ArchiveScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
 
   const loadBookmarks = useCallback(async (refresh = false) => {
     try {
@@ -59,7 +58,6 @@ export default function ArchiveScreen() {
       }
       const data = await getBookmarkedPosts();
       setPosts(data);
-      setHasMore(data.length >= 20);
     } catch (error) {
       console.error("[Archive] Failed to load bookmarks:", error);
     } finally {
@@ -74,10 +72,6 @@ export default function ArchiveScreen() {
 
   const handleRefresh = () => {
     loadBookmarks(true);
-  };
-
-  const handlePostPress = (post: Post) => {
-    router.push(`/post/${post.id}` as any);
   };
 
   const renderPost = ({ item }: { item: Post }) => (

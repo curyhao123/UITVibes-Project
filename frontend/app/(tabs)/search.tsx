@@ -41,8 +41,8 @@ type HashtagOption = {
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
-  const { toggleFollow, currentUser } = useApp();
+  const { colors } = useTheme();
+  const { toggleFollow } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);

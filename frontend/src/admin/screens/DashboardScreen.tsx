@@ -263,7 +263,7 @@ const ReportPieChartCard: React.FC<ReportPieChartCardProps> = ({
 export default function DashboardScreen() {
   const router = useRouter();
   const { logout } = useApp();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   // Card width calculation: screenWidth - screen padding (20 * 2) - grid gap (12) - card inner padding (12 * 2)
   const chartWidth = Math.max(Math.floor((screenWidth - 40 - 12 - 24) / 2), 120);
@@ -285,7 +285,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const countStatus = (
-    reports: Array<{ status?: string | number }>
+    reports: { status?: string | number }[]
   ): StatusBreakdown => {
     const counts: StatusBreakdown = {
       pending: 0,

@@ -236,7 +236,7 @@ export default function UsersScreen() {
   const [users, setUsers] = useState<BE_AdminUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
+  const [, setPage] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [selectedUser, setSelectedUser] = useState<BE_AdminUserProfile | null>(null);
@@ -447,8 +447,8 @@ const styles = StyleSheet.create({
   },
   bannedIndicatorText: { fontSize: 10, color: "#EF4444", fontWeight: "600" },
   // Sheet
-  sheetOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end" },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheetOverlay: { ...StyleSheet.absoluteFill, justifyContent: "flex-end" },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
     backgroundColor: AppColors.surface,
     borderTopLeftRadius: 20,

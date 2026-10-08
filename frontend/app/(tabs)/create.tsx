@@ -1,10 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect , useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+
 import React, { useEffect } from 'react';
 import {
   Platform,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
     aspectRatio: 9 / 16,
   },
   previewGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     pointerEvents: 'none',
   },
   changeMediaFab: {
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   visibilityBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   visibilityCard: {
