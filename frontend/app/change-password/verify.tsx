@@ -19,6 +19,7 @@ import { resetPassword } from '../../services/authService';
 import { getCurrentUserEmail } from '../../services/session';
 import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 const OTP_LENGTH = 6;
 
@@ -33,6 +34,7 @@ export default function ChangePasswordVerifyScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { colors } = useTheme();
 
   const otpCode = useMemo(() => otp.join(''), [otp]);
   const canSubmit = useMemo(() => {
@@ -102,7 +104,14 @@ export default function ChangePasswordVerifyScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView
+      // DARK MODE
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+      edges={['top']}
+    >
       <CompactHeader title="Confirm Change" showBack onBack={() => router.back()} />
 
       <ScrollView
@@ -150,11 +159,26 @@ export default function ChangePasswordVerifyScreen() {
           />
 
           {submitError ? (
-            <Text style={styles.errorText}>{submitError}</Text>
+            <Text
+              // DARK MODE
+              style={[
+                styles.errorText,
+                { color: colors.error },
+              ]}
+            >
+              {submitError}
+            </Text>
           ) : null}
 
           <TouchableOpacity
-            style={[styles.primaryBtn, !canSubmit && styles.primaryBtnDisabled]}
+            style={[
+              styles.primaryBtn,
+              {
+                // DARK MODE
+                backgroundColor: colors.primary,
+              },
+              !canSubmit && styles.primaryBtnDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={!canSubmit || isSubmitting}
             activeOpacity={0.85}
@@ -162,7 +186,9 @@ export default function ChangePasswordVerifyScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryBtnText}>Update Password</Text>
+              <Text style={styles.primaryBtnText}>
+                Update Password
+              </Text>
             )}
           </TouchableOpacity>
         </View>
