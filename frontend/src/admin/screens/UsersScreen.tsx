@@ -236,7 +236,7 @@ export default function UsersScreen() {
   const [users, setUsers] = useState<BE_AdminUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
+  const [, setPage] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [selectedUser, setSelectedUser] = useState<BE_AdminUserProfile | null>(null);

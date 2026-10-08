@@ -12,7 +12,6 @@
  * by the API gateway from the JWT Bearer token).
  */
 import apiClient, { delay } from "./httpClient";
-import { getCurrentUserId } from "./session";
 import {
   BE_StoryFeedItem,
   BE_StoryDetailResponse,
@@ -181,7 +180,7 @@ async function uriToFile(uri: string, mimeType: string, name: string): Promise<F
 
 /** POST /post/story — create story (multipart: files + optional displayOrders) */
 export async function createStory(
-  mediaUris: Array<{ uri: string; type: "image" | "video" }>,
+  mediaUris: { uri: string; type: "image" | "video" }[],
 ): Promise<Story | null> {
   if (mediaUris.length === 0) return null;
 

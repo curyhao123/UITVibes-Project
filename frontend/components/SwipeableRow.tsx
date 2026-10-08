@@ -69,7 +69,6 @@ export const SwipeableRow: React.FC<SwipeableRowProps> = ({
   const { colors } = useTheme();
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
-  const rowWidth = useSharedValue(SCREEN_WIDTH);
 
   const hasLeftActions = leftAction || (leftActions && leftActions.length > 0);
   const hasRightActions = rightAction || (rightActions && rightActions.length > 0);

@@ -38,7 +38,7 @@ interface SelectedMedia {
 
 export default function CreateStoryScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { currentUser, refreshStories } = useApp();
   const [selectedMedias, setSelectedMedias] = useState<SelectedMedia[]>([]);
   const [isPosting, setIsPosting] = useState(false);

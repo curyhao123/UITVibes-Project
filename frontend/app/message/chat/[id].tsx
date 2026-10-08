@@ -52,7 +52,7 @@ import { invokeHub } from '../../../services/signalrService';
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const {
     currentUser,

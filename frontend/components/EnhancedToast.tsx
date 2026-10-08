@@ -11,7 +11,6 @@
  */
 
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -86,7 +85,6 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, index }) => {
   const contextX = useSharedValue(0);
 
   const config = VARIANT_CONFIG[toast.variant];
-  const remainingTime = useRef(Date.now() + toast.duration);
 
   // Progress animation
   useEffect(() => {
@@ -106,12 +104,6 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, index }) => {
     translateY.value = withSpring(0, { damping: 18, stiffness: 200 });
     opacity.value = withTiming(1, { duration: 200 });
     scale.value = withSpring(1, { damping: 18, stiffness: 200 });
-  }, []);
-
-  const triggerHaptic = useCallback(() => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
   }, []);
 
   const dismiss = useCallback(() => {

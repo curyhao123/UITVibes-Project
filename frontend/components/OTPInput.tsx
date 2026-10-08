@@ -140,7 +140,7 @@ const OTPInput = forwardRef<OTPInputRef, OTPInputProps>(
     };
 
     // ── Paste handler — fill all boxes from clipboard ────────────────────────
-    const handlePaste = (pasted: string) => {
+    function _handlePaste(pasted: string) {
       const digits = pasted.replace(/\D/g, "").slice(0, length).split("");
       const newOtp = Array(length).fill("");
       digits.forEach((d, i) => {
@@ -150,7 +150,8 @@ const OTPInput = forwardRef<OTPInputRef, OTPInputProps>(
       // Focus the last filled box or the first empty
       const lastFilledIndex = Math.min(digits.length, length - 1);
       inputRefs.current[lastFilledIndex]?.focus();
-    };
+    }
+    void _handlePaste;
 
     // ── Container tap: focus first empty box ────────────────────────────────
     const handleContainerPress = () => {

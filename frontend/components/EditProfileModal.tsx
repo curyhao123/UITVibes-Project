@@ -43,7 +43,7 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { currentUser, updateProfile, updateAvatar, deleteAvatar } = useApp();
 
   const [editSnapshot, setEditSnapshot] = useState<EditFormSnapshot | null>(null);

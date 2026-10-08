@@ -28,7 +28,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { SPRING_PRESS, SPRING_SOFT } from "../animations/spring";
-import { AppColors } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { getOnlineFriends, OnlineFriendDto } from "../services/onlineTrackingService";
 import { Avatar } from "./Avatar";

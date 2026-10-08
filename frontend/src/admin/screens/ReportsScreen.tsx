@@ -250,7 +250,7 @@ export default function ReportsScreen() {
   const [postReports, setPostReports] = useState<BE_PostReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
+  const [, setPage] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});

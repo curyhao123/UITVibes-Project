@@ -22,7 +22,7 @@ import { getCurrentUserId } from '../../services/session';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function UserProfileScreen() {
       // Load highlights for this user
       const userHighlights = await getUserHighlights(targetId);
       setHighlights(userHighlights);
-    } catch (err) {
+    } catch {
       // Try to at least load the user even if posts/stories fail
       try {
         const userData = await getUserById(id as string);

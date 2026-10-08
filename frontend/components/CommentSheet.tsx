@@ -28,7 +28,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Comment, User } from '../data/mockData';
 import { TAB_BAR_BOTTOM_OFFSET } from './ModernTabBar';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 interface CommentSheetProps {

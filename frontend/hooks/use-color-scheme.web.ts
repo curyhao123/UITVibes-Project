@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 /**
  * To support static rendering, this value needs to be re-calculated on the client side for web
@@ -12,17 +12,16 @@ export function useColorScheme(): 'light' | 'dark' {
     setHasHydrated(true);
   }, []);
 
-  try {
-    const { activeTheme } = useTheme();
-    if (hasHydrated) {
-      return activeTheme;
-    }
-    return 'light';
-  } catch {
-    const colorScheme = useRNColorScheme();
-    if (hasHydrated) {
-      return colorScheme === 'dark' ? 'dark' : 'light';
-    }
+  // Hooks must be called unconditionally at the top level.
+  const themeContext = useContext(ThemeContext);
+  const rnColorScheme = useRNColorScheme();
+
+  if (!hasHydrated) {
     return 'light';
   }
+
+  if (themeContext) {
+    return themeContext.activeTheme;
+  }
+  return rnColorScheme === 'dark' ? 'dark' : 'light';
 }

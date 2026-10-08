@@ -45,7 +45,7 @@ export interface BE_UserProfile {
   website: string;
   fullName: string;
   gender: string;
-  socialLinks: Array<{ platform: string; url: string }>;
+  socialLinks: { platform: string; url: string }[];
 }
 
 /** BE có thể trả camelCase hoặc PascalCase tùy cấu hình JSON */
@@ -144,7 +144,7 @@ export interface BE_PostResponse {
   repostCount: number;
   createdAt: string;
   updatedAt: string;
-  media: Array<{
+  media: {
     id: string;
     type: string;
     url: string;
@@ -153,7 +153,7 @@ export interface BE_PostResponse {
     width: number | null;
     height: number | null;
     duration: number | null;
-  }>;
+  }[];
   hashtags: string[];
   isLikedByCurrentUser: boolean;
   isBookmarkedByCurrentUser: boolean;
@@ -195,7 +195,7 @@ export interface BE_ConversationResponse {
   lastMessageAt: string | null;
   unreadCount: number;
   createdAt: string;
-  members?: Array<{
+  members?: {
     userId: string;
     role: string;
     nickname: string | null;
@@ -203,7 +203,7 @@ export interface BE_ConversationResponse {
     joinedAt: string;
     displayName?: string | null;
     avatarUrl?: string | null;
-  }>;
+  }[];
   updatedAt?: string;
   isMuted?: boolean;
   isPinned?: boolean;
@@ -223,7 +223,7 @@ export interface BE_MessageResponse {
   replyToMessage: BE_MessageResponse | null;
   isEdited: boolean;
   isDeleted: boolean;
-  readBy: Array<{ userId: string; readAt: string }>;
+  readBy: { userId: string; readAt: string }[];
   createdAt: string;
   editedAt: string | null;
 }
@@ -259,7 +259,7 @@ export interface CreatePostBody {
   content: string;
   location?: string;
   visibility?: number;
-  media?: Array<{
+  media?: {
     type: number;
     url: string;
     publicId?: string;
@@ -267,7 +267,7 @@ export interface CreatePostBody {
     displayOrder?: number;
     width?: number;
     height?: number;
-  }>;
+  }[];
 }
 
 export interface BE_RepostResponse {

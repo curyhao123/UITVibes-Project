@@ -32,7 +32,6 @@ const HEADER_MIN_HEIGHT = 56;
 const TITLE_MAX_OPACITY = 1;
 const TITLE_MIN_OPACITY = 0;
 const LARGE_TITLE_MAX_SIZE = 32;
-const LARGE_TITLE_MIN_SIZE = 18;
 
 interface PremiumHeaderProps {
   /** Screen title */
@@ -67,7 +66,7 @@ export const PremiumHeader = memo(function PremiumHeader({
   headerStyle,
 }: PremiumHeaderProps) {
   const router = useRouter();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isScrolled] = useState(false);
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   // Use provided scrollY or local value

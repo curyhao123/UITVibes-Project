@@ -17,7 +17,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -65,7 +64,7 @@ export function TabBarVisibilityProvider({ children }: { children: React.ReactNo
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('state', (e: { data: { state?: { routes: Array<{ name: string; state?: unknown }>; index?: number } } }) => {
+    const unsubscribe = navigation.addListener('state', (e: { data: { state?: { routes: { name: string; state?: unknown }[]; index?: number } } }) => {
       const state = e.data.state;
       if (!state) return;
 

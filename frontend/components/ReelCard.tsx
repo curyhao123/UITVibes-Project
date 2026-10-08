@@ -36,7 +36,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPRING_BOUNCE, SPRING_SOFT } from '../animations/spring';
 import { AppColors } from '../constants/theme';
 import { User } from '../data/mockData';
@@ -448,7 +447,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onTogglePaused,
   isCurrentUser = false,
 }) => {
-  const insets = useSafeAreaInsets();
   const [showHeart, setShowHeart] = useState(false);
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [showPlayPause, setShowPlayPause] = useState(false);
