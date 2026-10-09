@@ -28,6 +28,7 @@ interface AppContextType {
   isNewUser: boolean;
   markUserActive: () => void;
   login: (email: string, password: string) => Promise<User | null>;
+  loginWithGoogle: () => Promise<User | null>;
   register: (email: string, password: string, username: string) => Promise<boolean>;
   confirmPendingAuth: (user: User) => void;
   logout: () => Promise<void>;
@@ -368,6 +369,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     isNewUser: auth.isNewUser,
     markUserActive: auth.markUserActive,
     login: auth.login,
+    loginWithGoogle: auth.loginWithGoogle,
     register: auth.register,
     confirmPendingAuth: auth.confirmPendingAuth,
     logout,

@@ -22,6 +22,11 @@ namespace AuthService.Models
         public int OtpResendCount { get; set; } = 0;      // chống spam gửi lại
         public DateTime? LastOtpSentAt { get; set; }
 
+        // ─── OAuth / External login providers (Google, Apple, Facebook, ...) ─────
+        public string? Provider { get; set; }                  // "Google" | "Apple" | null = password account
+        public string? ProviderUserId { get; set; }            // Google `sub` / Apple `sub`
+        public string? ProfilePictureUrl { get; set; }         // từ Google `picture` claim
+
         public List<RefreshToken> RefreshTokens { get; set; } = new();
     }
 }

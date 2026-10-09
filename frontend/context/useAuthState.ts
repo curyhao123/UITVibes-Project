@@ -77,6 +77,40 @@ export const useAuthState = () => {
     [],
   );
 
+  /**
+   * Google OAuth sign-in. On success, returns the provisioned User.
+   * Throws Error with `errorCode === "USER_CANCELLED"` if user cancels.
+   * Throws Error with `errorCode === "GOOGLE_LOGIN_FAILED"` (or backend code) on other failures.
+   */
+  const loginWithGoogle = useCallback(async (): Promise<User | null> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const { user, isNewUser } = await api.loginWithGoogle();
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setIsNewUser(isNewUser);
+      return user;
+    } catch (error: any) {
+      console.error('Google login failed:', error);
+      const errorCode = (error as any)?.errorCode;
+      if (errorCode === 'USER_CANCELLED') {
+        // Silent — user dismissed the Google sheet, no toast needed
+        return null;
+      }
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Google sign-in failed. Please try again.';
+      setAuthError(message);
+      const err = new Error(message) as Error & { errorCode: string };
+      err.errorCode = errorCode || 'GOOGLE_LOGIN_FAILED';
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const register = useCallback(
     async (email: string, password: string, username: string): Promise<boolean> => {
       setIsLoading(true);
@@ -180,6 +214,7 @@ export const useAuthState = () => {
     isNewUser,
     markUserActive,
     login,
+    loginWithGoogle,
     register,
     confirmPendingAuth,
     logout,

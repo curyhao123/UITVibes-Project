@@ -6,6 +6,13 @@ export interface BE_RegisterRequest {
   password: string;
 }
 
+export interface BE_GoogleLoginRequest {
+  /** Google ID token (JWT) from expo-auth-session. */
+  idToken: string;
+  /** "web" | "ios" | "android" — used by backend for audience (aud) validation. */
+  platform: "web" | "ios" | "android";
+}
+
 export interface BE_LoginRequest {
   email: string;
   password: string;
