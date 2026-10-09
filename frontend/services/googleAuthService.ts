@@ -78,13 +78,24 @@ export type GoogleLoginResult = {
  */
 export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   // ── 1. Open Google OAuth WebView ───────────────────────────────────────────
-  // Use Expo's proxy redirect URI when running in Expo Go, otherwise use the
-  // app's custom scheme (uitvibes://) which is configured in app.json.
-  const redirectUri = AuthSession.makeRedirectUri({
+  // IMPORTANT: We must use Expo's auth proxy (https://auth.expo.io/@<owner>/<slug>)
+  // as the redirect URI because it works across Expo Go, dev builds, and standalone.
+  // The `makeRedirectUri` helper returns this URL when running in a native app,
+  // and we manually construct it as a fallback for web/dev-server cases.
+  let redirectUri = AuthSession.makeRedirectUri({
     scheme: "uitvibes",
     preferLocalhost: false,
-    // expo-auth-session auto-generates an https://auth.expo.io/@... URI in Expo Go
+    isTripleSlashed: false,
   });
+
+  // Sanity guard: if for any reason we got a localhost URL (e.g. running in dev web),
+  // fall back to Expo's auth proxy which is a whitelisted, stable URI.
+  if (redirectUri.startsWith("http://localhost") || redirectUri.startsWith("http://127.0.0.1")) {
+    redirectUri = "https://auth.expo.io/@anonymous/uitvibes";
+  }
+
+  // Log for debugging — appears in Expo CLI / dev console
+  console.log("[GoogleAuth] Using redirect URI:", redirectUri);
 
   const request = new AuthSession.AuthRequest({
     clientId: pickClientId(),
