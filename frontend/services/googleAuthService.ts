@@ -76,6 +76,30 @@ export type GoogleLoginResult = {
 };
 
 /**
+ * Resolves the redirect URI based on the current runtime.
+ *
+ * The redirect URI MUST be a URI that the runtime can actually receive a
+ * response on, AND that is registered in Google Cloud Console.
+ *
+ * - Native (Expo Go, dev build, standalone): use the Expo auth proxy
+ *   `https://auth.expo.io/@anonymous/uitvibes` — the proxy holds the
+ *   code and re-opens the app via the dev server's exp:// URL.
+ *   (Google only sees the proxy URL; the proxy handles the round trip.)
+ *
+ * - Web (browser): we cannot use the proxy because the proxy has no way
+ *   to "re-open" a browser tab. We use the dev server's HTTP URL directly
+ *   so the browser does a full page navigation back to our app, which
+ *   expo-auth-session's web polyfill catches via the URL hash.
+ */
+function pickRedirectUri(): string {
+  if (Platform.OS === "web") {
+    return "http://localhost:8081";
+  }
+  // iOS, Android (Expo Go, dev build, or standalone)
+  return "https://auth.expo.io/@anonymous/uitvibes";
+}
+
+/**
  * Triggers the Google Sign-In flow and returns a fully-provisioned User.
  * On success, tokens are saved and the user object mirrors what `login()` returns.
  *
@@ -83,13 +107,9 @@ export type GoogleLoginResult = {
  */
 export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   // ── 1. Resolve redirect URI (must match a URI registered in Google Console) ──
-  // Strategy: try Expo's auth proxy first (works in dev/Expo Go/prod),
-  // and fall back to the native scheme for production standalone builds.
-  const proxyRedirectUri = "https://auth.expo.io/@anonymous/uitvibes";
-  const nativeRedirectUri = "uitvibes://";
-  const redirectUri = proxyRedirectUri;
+  const redirectUri = pickRedirectUri();
 
-  console.log("[GoogleAuth] Using redirect URI:", redirectUri);
+  console.log("[GoogleAuth] Platform:", Platform.OS, "→ redirect URI:", redirectUri);
 
   // Warm up the browser session — this pre-establishes the connection
   // so the auth callback can complete faster and more reliably.
