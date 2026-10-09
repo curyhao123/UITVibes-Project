@@ -1,67 +1,94 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  SectionList,
+  SectionListData,
+  SectionListRenderItem,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { formatDistanceToNow } from '../../utils/time';
 import { CompactHeader } from '../../components/StaticPremiumHeader';
 import { useTheme } from '../../context/ThemeContext';
+import { useApp } from '../../context/AppContext';
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   Notification,
-  getUnreadNotificationCount
+  getUnreadNotificationCount,
 } from '../../services/notificationService';
+import { useActorCache } from '../../hooks/useActorCache';
+import { useToast } from '../../components/EnhancedToast';
+import { borderRadius } from '../../constants/theme';
 
 const PAGE_SIZE = 20;
 
-const getNotificationIcon = (type: string, primaryColor: string, textMutedColor: string): { name: keyof typeof Feather.glyphMap; color: string } => {
-  switch (type) {
-    case 'NewFollower':
-      return { name: 'user-plus', color: primaryColor };
-    case 'PostLiked':
-      return { name: 'heart', color: '#e74c3c' };
-    case 'PostCommented':
-      return { name: 'message-circle', color: '#3498db' };
-    case 'Mentioned':
-    case 'Tagged':
-      return { name: 'at-sign', color: '#9b59b6' };
-    case 'NewMessage':
-      return { name: 'message-square', color: primaryColor };
-    case 'MessageRead':
-      return { name: 'check-circle', color: '#2ecc71' };
+// ─── Icon / Color Mapping (Instagram accent style) ──────────────────────────
+const TYPE_META: Record<
+  string,
+  { name: keyof typeof Feather.glyphMap; color: string }
+> = {
+  NewFollower: { name: 'user-plus', color: '#3B82F6' },
+  PostLiked: { name: 'heart', color: '#EF4444' },
+  PostCommented: { name: 'message-circle', color: '#3B82F6' },
+  Mentioned: { name: 'at-sign', color: '#A855F7' },
+  Tagged: { name: 'tag', color: '#A855F7' },
+  NewMessage: { name: 'message-square', color: '#10B981' },
+  MessageRead: { name: 'check-circle', color: '#10B981' },
+};
+
+const getTypeMeta = (type: string) =>
+  TYPE_META[type] ?? ({ name: 'bell', color: '#6B7280' } as const);
+
+// ─── Section grouping (Today / Earlier this week / Earlier this month / Older)
+const getSectionTitle = (date: Date): string => {
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const diffMs = startOfToday.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) return 'Today';
+  if (diffDays <= 6) return 'Earlier this week';
+  if (diffDays <= 29) return 'Earlier this month';
+  return 'Older';
+};
+
+const getSectionOrder = (title: string): number => {
+  switch (title) {
+    case 'Today':
+      return 0;
+    case 'Earlier this week':
+      return 1;
+    case 'Earlier this month':
+      return 2;
     default:
-      return { name: 'bell', color: textMutedColor };
+      return 3;
   }
 };
 
-// TODO: xác nhận route điều hướng theo entityId cho từng loại type.
-function getNavigationTarget(notif: Notification): string | null {
-  switch (notif.type) {
-    case 'NewFollower':
-      return `/profile/${notif.actorId}`;
-    case 'PostLiked':
-    case 'PostCommented':
-    case 'Tagged':
-    case 'Mentioned':
-      return `/post/${notif.entityId}`;
-    default:
-      return null;
-  }
+interface NotificationSection {
+  title: string;
+  data: Notification[];
 }
 
+// ─── Component ──────────────────────────────────────────────────────────────
 export default function NotificationsScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { refreshNotifications, toggleFollow } = useApp();
+  const toast = useToast();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [page, setPage] = useState(1);
@@ -70,13 +97,24 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Following status cache for follow-back buttons
+  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
+  const [pendingFollowIds, setPendingFollowIds] = useState<Set<string>>(new Set());
 
+  // Avatar cache
+  const actorIds = useMemo(
+    () => notifications.map((n) => n.actorId).filter(Boolean),
+    [notifications],
+  );
+  const { getActor } = useActorCache(actorIds);
+
+  // ─── Data loading ────────────────────────────────────────────────────────
   const fetchUnreadCount = useCallback(async () => {
     try {
       const count = await getUnreadNotificationCount();
       setUnreadCount(count);
     } catch {
-      // im lặng — không critical cho màn hình này
+      // ignore
     }
   }, []);
 
@@ -118,95 +156,298 @@ export default function NotificationsScreen() {
       setPage(result.page);
       setHasNext(result.hasNext);
       await fetchUnreadCount();
+      await refreshNotifications();
     } finally {
       setRefreshing(false);
     }
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, refreshNotifications]);
 
   useEffect(() => {
     loadFirstPage();
     fetchUnreadCount();
   }, [loadFirstPage, fetchUnreadCount]);
 
-  const handleNotificationPress = async (notif: Notification) => {
-    if (!notif.isRead) {
-      // optimistic update
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+  // ─── Auto mark-all-read when opening history screen ────────────────────────
+  // After loading first page, if any notification is unread
+  // mark all as read + update badge.
+  const autoMarkAllReadRef = useRef(false);
+  useEffect(() => {
+    if (autoMarkAllReadRef.current) return;
+    if (loading) return; // chờ load xong
+    if (notifications.length === 0) return;
+    if (unreadCount === 0) return;
+
+    autoMarkAllReadRef.current = true;
+    (async () => {
       try {
-        await markNotificationRead(notif.id);
+        // Optimistic update to avoid UI flicker
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        await markAllNotificationsRead();
+        // Re-sync context (badge on Home bell)
+        await refreshNotifications();
       } catch (err) {
-        console.warn('[Notifications] mark read failed', err);
+        console.warn('[Notifications] auto mark-all-read failed', err);
+        // Rollback: refresh from server
+        await loadFirstPage();
+        await fetchUnreadCount();
       }
-    }
+    })();
+  }, [loading, notifications, unreadCount, refreshNotifications, loadFirstPage, fetchUnreadCount]);
 
-    const target = getNavigationTarget(notif);
-    if (target) router.push(target as any);
-  };
-
-  const handleMarkAllRead = async () => {
-    const prevNotifications = notifications;
-    const prevUnread = unreadCount;
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
+  // ─── Interactions ────────────────────────────────────────────────────────
+  const markAsRead = useCallback(async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
     try {
-      await markAllNotificationsRead();
+      await markNotificationRead(id);
     } catch (err) {
-      console.warn('[Notifications] mark all read failed', err);
-      setNotifications(prevNotifications);
-      setUnreadCount(prevUnread);
+      console.warn('[Notifications] mark read failed', err);
     }
-  };
+  }, []);
 
-  const renderItem = ({ item }: { item: Notification }) => {
-    const icon = getNotificationIcon(item.type, colors.primary, colors.textMuted);
+  const getNavigationTarget = useCallback(
+    (notif: Notification): string | null => {
+      switch (notif.type) {
+        case 'NewFollower':
+          return `/profile/${notif.actorId}`;
+        case 'PostLiked':
+        case 'PostCommented':
+        case 'Tagged':
+        case 'Mentioned':
+          return `/post/${notif.entityId}`;
+        case 'NewMessage':
+          // No conversationId on the DTO yet — fall through
+          return null;
+        default:
+          return null;
+      }
+    },
+    [],
+  );
+
+  const handleNotificationPress = useCallback(
+    async (notif: Notification) => {
+      if (!notif.isRead) {
+        await markAsRead(notif.id);
+      }
+      const target = getNavigationTarget(notif);
+      if (target) router.push(target as any);
+    },
+    [markAsRead, getNavigationTarget, router],
+  );
+
+  const handleFollowBack = useCallback(
+    async (notif: Notification) => {
+      if (pendingFollowIds.has(notif.actorId)) return;
+      if (followingMap[notif.actorId]) return;
+      setPendingFollowIds((prev) => new Set(prev).add(notif.actorId));
+      const actorName = getActor(notif.actorId)?.username ?? 'user';
+      setFollowingMap((prev) => ({ ...prev, [notif.actorId]: true }));
+      try {
+        await toggleFollow(notif.actorId);
+        toast.success(`Following ${actorName}`);
+      } catch (err) {
+        console.warn('[Notifications] follow-back failed', err);
+        setFollowingMap((prev) => ({ ...prev, [notif.actorId]: false }));
+        toast.error('Could not follow. Please try again.');
+      } finally {
+        setPendingFollowIds((prev) => {
+          const next = new Set(prev);
+          next.delete(notif.actorId);
+          return next;
+        });
+      }
+    },
+    [pendingFollowIds, followingMap, toggleFollow, toast, getActor],
+  );
+
+  // ─── Build sections ──────────────────────────────────────────────────────
+  const sections: NotificationSection[] = useMemo(() => {
+    const buckets = new Map<string, Notification[]>();
+    for (const n of notifications) {
+      const title = getSectionTitle(new Date(n.createdAt));
+      if (!buckets.has(title)) buckets.set(title, []);
+      buckets.get(title)!.push(n);
+    }
+    return Array.from(buckets.entries())
+      .map(([title, data]) => ({ title, data }))
+      .sort((a, b) => getSectionOrder(a.title) - getSectionOrder(b.title));
+  }, [notifications]);
+
+  // ─── Render helpers ─────────────────────────────────────────────────────
+  const renderItem: SectionListRenderItem<Notification, NotificationSection> = ({
+    item,
+    index,
+    section,
+  }) => {
+    const meta = getTypeMeta(item.type);
+    const actor = getActor(item.actorId);
+    const isFirstInSection = index === 0;
+    const isLastInSection = index === section.data.length - 1;
+    const isFollowed = followingMap[item.actorId] === true;
+    const isFollowPending = pendingFollowIds.has(item.actorId);
 
     return (
       <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => handleNotificationPress(item)}
         style={[
-          styles.notifItem,
+          styles.row,
           {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.borderLight,
-          },
-          !item.isRead && {
-            backgroundColor: isDark ? `${colors.primary}15` : `${colors.primary}08`,
+            backgroundColor: item.isRead
+              ? colors.background
+              : isDark
+                ? 'rgba(217, 119, 87, 0.08)'
+                : 'rgba(217, 119, 87, 0.05)',
+            borderTopWidth: isFirstInSection ? 1 : 0,
+            borderBottomWidth: isLastInSection ? 1 : 0,
+            borderColor: colors.borderLight,
           },
         ]}
-        onPress={() => handleNotificationPress(item)}
       >
-        <View style={styles.iconWrap}>
-          <View style={[styles.iconBadge, { backgroundColor: icon.color }]}>
-            <Feather name={icon.name} size={16} color="white" />
+        {/* Avatar with type badge */}
+        <View style={styles.avatarWrap}>
+          {actor?.avatar ? (
+            <Image
+              source={{ uri: actor.avatar }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          ) : (
+            <View
+              style={[
+                styles.avatar,
+                styles.avatarFallback,
+                { backgroundColor: colors.surfaceElevated },
+              ]}
+            >
+              <Feather name="user" size={20} color={colors.iconMuted} />
+            </View>
+          )}
+          <View style={[styles.typeBadge, { backgroundColor: meta.color }]}>
+            <Feather name={meta.name} size={10} color="#FFFFFF" />
           </View>
         </View>
 
-        <View style={styles.content}>
-          <Text style={[styles.notifText, { color: colors.text }]}>{item.content}</Text>
+        {/* Content */}
+        <View style={styles.contentWrap}>
+          {item.type === 'NewMessage' ? (
+            // For NewMessage, server already renders full content like
+            // "A sent you 5 messages." — just show it directly
+            <Text
+              style={[
+                styles.message,
+                { color: colors.text },
+                !item.isRead && styles.messageUnread,
+              ]}
+              numberOfLines={2}
+            >
+              {item.content}
+            </Text>
+          ) : (
+            <Text
+              style={[
+                styles.message,
+                { color: colors.text },
+                !item.isRead && styles.messageUnread,
+              ]}
+              numberOfLines={2}
+            >
+              <Text style={styles.actorName}>
+                {actor?.username ?? 'Someone'}
+              </Text>
+              <Text>{' '}</Text>
+              <Text>{item.content}</Text>
+            </Text>
+          )}
           <Text style={[styles.time, { color: colors.textMuted }]}>
             {formatDistanceToNow(new Date(item.createdAt))}
           </Text>
         </View>
 
-        {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
+        {/* Trailing element */}
+        {item.type === 'NewFollower' ? (
+          <TouchableOpacity
+            style={[
+              styles.followBackBtn,
+              {
+                backgroundColor: isFollowed
+                  ? colors.surfaceElevated
+                  : colors.primary,
+                borderColor: isFollowed ? colors.border : 'transparent',
+              },
+            ]}
+            onPress={() => {
+              if (!isFollowed) handleFollowBack(item);
+            }}
+            disabled={isFollowed || isFollowPending}
+            activeOpacity={0.8}
+          >
+            {isFollowPending ? (
+              <ActivityIndicator
+                size="small"
+                color={isFollowed ? colors.text : '#FFFFFF'}
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.followBackText,
+                  { color: isFollowed ? colors.text : '#FFFFFF' },
+                ]}
+              >
+                {isFollowed ? 'Following' : 'Follow'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : item.type === 'PostLiked' || item.type === 'PostCommented' ? (
+          <View
+            style={[
+              styles.thumbPlaceholder,
+              { backgroundColor: colors.surfaceElevated },
+            ]}
+          >
+            <Feather name="image" size={16} color={colors.iconMuted} />
+          </View>
+        ) : !item.isRead ? (
+          <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
+        ) : null}
       </TouchableOpacity>
     );
   };
 
+  const renderSectionHeader = ({
+    section,
+  }: {
+    section: SectionListData<Notification, NotificationSection>;
+  }) => (
+    <View
+      style={[
+        styles.sectionHeader,
+        { backgroundColor: colors.background, borderBottomColor: colors.borderLight },
+      ]}
+    >
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        {section.title}
+      </Text>
+    </View>
+  );
+
+  // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top']}
+    >
       <CompactHeader
         title="Notifications"
         showBack
         onBack={() => router.back()}
         rightAction={
-          unreadCount > 0 ? (
-            <TouchableOpacity onPress={handleMarkAllRead} activeOpacity={0.7}>
-              <Text style={[styles.markAllText, { color: colors.primary }]}>Mark all read</Text>
-            </TouchableOpacity>
-          ) : undefined
+          // Auto mark-all-read on open — no manual button needed
+          <Feather name="check-circle" size={18} color={colors.textMuted} />
         }
       />
 
@@ -215,30 +456,45 @@ export default function NotificationsScreen() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={notifications}
+        <SectionList<Notification, NotificationSection>
+          sections={sections}
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          stickySectionHeadersEnabled={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator style={{ marginVertical: 16 }} color={colors.primary} />
+              <ActivityIndicator
+                style={{ marginVertical: 16 }}
+                color={colors.primary}
+              />
             ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Feather name="bell" size={48} color={colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No notifications yet</Text>
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  { backgroundColor: colors.surfaceElevated },
+                ]}
+              >
+                <Feather name="bell-off" size={36} color={colors.iconMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                No notifications yet
+              </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 When someone interacts with your posts, you&apos;ll see it here.
               </Text>
@@ -251,53 +507,103 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  markAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  list: {
-    paddingBottom: 100,
-  },
+  container: { flex: 1 },
+  list: { paddingBottom: 100 },
   loadingState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notifItem: {
+
+  // Section header
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+
+  // Item row
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    minHeight: 76,
   },
-  iconWrap: {
-    width: 44,
-    height: 44,
+  avatarWrap: {
+    width: 48,
+    height: 48,
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E0E0E0',
+  },
+  avatarFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  typeBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  content: {
+  contentWrap: {
     flex: 1,
-    marginLeft: 12,
     marginRight: 8,
   },
-  notifText: {
+  message: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
+  },
+  messageUnread: {
+    fontWeight: '600',
+  },
+  actorName: {
+    fontWeight: '700',
   },
   time: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 3,
+  },
+
+  // Trailing elements
+  followBackBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    minWidth: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  followBackText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  thumbPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   unreadDot: {
     width: 8,
@@ -305,15 +611,25 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginLeft: 6,
   },
+
+  // Empty state
   emptyState: {
     alignItems: 'center',
     paddingTop: 80,
     paddingHorizontal: 40,
   },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
+    fontWeight: '700',
+    marginTop: 4,
   },
   emptySubtitle: {
     fontSize: 14,

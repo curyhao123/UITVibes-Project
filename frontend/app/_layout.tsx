@@ -9,6 +9,7 @@ import { AppProvider, useApp } from '@/context/AppContext';
 import { AppThemeProvider, useTheme } from '@/context/ThemeContext';
 import { LightThemeColors, DarkThemeColors } from '@/constants/theme';
 import { ToastProvider } from '@/components/EnhancedToast';
+import { InAppNotificationToast } from '@/components/InAppNotificationToast';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -55,7 +56,7 @@ function AuthGuard() {
       return;
     }
 
-    // Đã đăng nhập nhưng vào auth pages → home hoặc admin dashboard
+    // Already logged in but on auth pages → home or admin dashboard
     // Allow onboarding pages for new users (isNewUser=true means onboarding not complete)
     if (isAuthenticated && inAuthGroup && !isNewUser) {
       if (currentUser?.role === 'Admin') {
@@ -66,14 +67,14 @@ function AuthGuard() {
       return;
     }
 
-    // Đã đăng nhập và vào trang chủ → nếu là Admin thì redirect sang admin dashboard
+    // Already on home → if Admin, redirect to admin dashboard
     const inTabsGroup = segments[0] === '(tabs)';
     if (isAuthenticated && inTabsGroup && currentUser?.role === 'Admin') {
       router.replace('/admin/dashboard');
       return;
     }
 
-    // Vào admin route nhưng không phải Admin → home
+    // On admin route but not Admin → home
     if (inAdminGroup && currentUser?.role !== 'Admin') {
       router.replace('/(tabs)/home');
     }
@@ -125,6 +126,8 @@ function AppLayoutInner() {
             <Stack.Screen name="admin/reports" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style={isDark ? 'light' : 'dark'} />
+          {/* In-app notification banner (Instagram-style) — subscribes to SignalR */}
+          <InAppNotificationToast />
         </ToastProvider>
       </AppProvider>
     </ThemeProvider>

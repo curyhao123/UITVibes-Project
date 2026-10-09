@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using NotificationService.Hubs;
 using NotificationService.Messaging;
 using NotificationService.Models;
 using NotificationService.ServiceLayer.Implementation;
@@ -23,6 +24,10 @@ builder.Services.AddScoped<IUserNotificationSettingService, UserNotificationSett
 builder.Services.AddScoped<OutboxService>();
 builder.Services.AddHostedService<OutboxService>();
 builder.Services.AddScoped<IDeviceTokenService, DeviceTokenService>();
+
+// SignalR — real-time notification push
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationHubClient, NotificationHubClient>();
 
 //message event
 builder.Services.AddHostedService<MessageSentConsumer>();
@@ -74,6 +79,12 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
+// SignalR requires WebSockets
+app.UseWebSockets();
+
 app.MapControllers();
+
+// Map SignalR hub for real-time notifications
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();
