@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AuthService.DTOs;
 using AuthService.Messaging;
 using AuthService.Models;
@@ -18,8 +20,8 @@ namespace AuthService.ServiceLayer.Implementation
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<GoogleAuthService> _logger;
 
-        // Google tokeninfo endpoint — public, no API key required.
-        // We use this (instead of Google's client library) to keep the surface minimal.
+        // Google OAuth 2.0 endpoints
+        private const string GoogleTokenEndpoint = "https://oauth2.googleapis.com/token";
         private const string GoogleTokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo";
 
         public GoogleAuthService(
@@ -38,22 +40,36 @@ namespace AuthService.ServiceLayer.Implementation
             _logger = logger;
         }
 
-        public async Task<AuthResponse> LoginWithGoogleAsync(string idToken, string platform)
+        public async Task<AuthResponse> LoginWithGoogleAsync(
+            string code,
+            string codeVerifier,
+            string redirectUri,
+            string platform)
         {
-            if (string.IsNullOrWhiteSpace(idToken))
-                throw new ArgumentException("idToken is required");
+            if (string.IsNullOrWhiteSpace(code))
+                throw new ArgumentException("code is required");
+            if (string.IsNullOrWhiteSpace(codeVerifier))
+                throw new ArgumentException("codeVerifier is required (PKCE)");
+            if (string.IsNullOrWhiteSpace(redirectUri))
+                throw new ArgumentException("redirectUri is required");
 
-            // ── 1. Verify id_token with Google ───────────────────────────────
+            // ── 1. Resolve client credentials for the platform ─────────────────
+            var (clientId, clientSecret) = GetClientCredentialsForPlatform(platform);
+
+            // ── 2. Exchange code → id_token (server-side, uses ClientSecret) ───
+            var idToken = await ExchangeCodeForIdTokenAsync(
+                code, codeVerifier, redirectUri, clientId, clientSecret);
+
+            // ── 3. Verify id_token against Google's tokeninfo endpoint ─────────
             var googleUser = await VerifyGoogleIdTokenAsync(idToken, platform);
 
-            // ── 2. Find existing user by ProviderUserId, or by Email ────────
+            // ── 4. Find existing user by (Provider, ProviderUserId), else by email ─
             var user = await _context.Users.FirstOrDefaultAsync(u =>
                 u.Provider == "Google" && u.ProviderUserId == googleUser.Sub);
 
             if (user == null && !string.IsNullOrEmpty(googleUser.Email))
             {
-                // Account linking: if a password account with same email exists,
-                // attach the Google provider to it instead of creating a duplicate.
+                // Account linking: attach Google provider to existing password account
                 user = await _context.Users.FirstOrDefaultAsync(u => u.Email == googleUser.Email);
                 if (user != null)
                 {
@@ -65,18 +81,18 @@ namespace AuthService.ServiceLayer.Implementation
                 }
             }
 
-            // ── 3. Create new user if no match found ─────────────────────────
+            // ── 5. Create new user if no match found ────────────────────────────
             if (user == null)
             {
                 user = await CreateUserFromGoogleAsync(googleUser);
             }
 
-            // ── 4. Always mark verified + update picture on Google login ────
-            user.IsVerified = true; // Google already verified the email
+            // ── 6. Always mark verified + update picture on Google login ────────
+            user.IsVerified = true;
             if (!string.IsNullOrEmpty(googleUser.Picture))
                 user.ProfilePictureUrl = googleUser.Picture;
 
-            // ── 5. Issue access + refresh tokens (same as password login) ──
+            // ── 7. Issue access + refresh tokens (same as password login) ──────
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
@@ -117,11 +133,95 @@ namespace AuthService.ServiceLayer.Implementation
 
         // ─── Helpers ────────────────────────────────────────────────────────
 
+        private (string ClientId, string ClientSecret) GetClientCredentialsForPlatform(string platform)
+        {
+            string? clientId;
+            string? clientSecret;
+
+            // iOS and Android use the platform-specific ClientId.
+            // Web (and Expo Go / dev) use the Web ClientId.
+            // All of them share the same ClientSecret.
+            if (string.Equals(platform, "ios", StringComparison.OrdinalIgnoreCase))
+            {
+                clientId = _configuration["GoogleAuth:iOSClientId"];
+            }
+            else if (string.Equals(platform, "android", StringComparison.OrdinalIgnoreCase))
+            {
+                clientId = _configuration["GoogleAuth:AndroidClientId"];
+            }
+            else
+            {
+                clientId = _configuration["GoogleAuth:WebClientId"];
+            }
+
+            clientSecret = _configuration["GoogleAuth:ClientSecret"];
+
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            {
+                _logger.LogError(
+                    "Google client credentials missing for platform={Platform}. ClientId={HasId}, ClientSecret={HasSecret}",
+                    platform, !string.IsNullOrEmpty(clientId), !string.IsNullOrEmpty(clientSecret));
+                throw new Exception("Google authentication is not configured on the server");
+            }
+
+            return (clientId!, clientSecret!);
+        }
+
+        private async Task<string> ExchangeCodeForIdTokenAsync(
+            string code,
+            string codeVerifier,
+            string redirectUri,
+            string clientId,
+            string clientSecret)
+        {
+            // OAuth 2.0 Token Request (RFC 6749 §4.1.3) + PKCE (RFC 7636)
+            // POST https://oauth2.googleapis.com/token
+            // application/x-www-form-urlencoded body
+            var form = new Dictionary<string, string>
+            {
+                ["code"] = code,
+                ["client_id"] = clientId,
+                ["client_secret"] = clientSecret,
+                ["redirect_uri"] = redirectUri,
+                ["grant_type"] = "authorization_code",
+                ["code_verifier"] = codeVerifier,
+            };
+
+            var http = _httpClientFactory.CreateClient("Google");
+            var response = await http.PostAsync(
+                GoogleTokenEndpoint,
+                new FormUrlEncodedContent(form));
+
+            var raw = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Google token exchange failed: {Status} {Body}",
+                    response.StatusCode, raw);
+                throw new Exception(
+                    "Failed to exchange authorization code with Google. " +
+                    "Check that the redirect URI matches the one registered in Google Cloud Console.");
+            }
+
+            var token = JsonSerializer.Deserialize<GoogleTokenResponse>(raw,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (token == null || string.IsNullOrEmpty(token.IdToken))
+            {
+                _logger.LogWarning("Google token response missing id_token: {Body}", raw);
+                throw new Exception("Google token response did not contain an id_token");
+            }
+
+            return token.IdToken;
+        }
+
         private async Task<GoogleUserInfo> VerifyGoogleIdTokenAsync(string idToken, string platform)
         {
-            // 1. Fetch Google's verification endpoint
+            // Fetch Google's verification endpoint
             var http = _httpClientFactory.CreateClient("Google");
-            var response = await http.GetAsync($"{GoogleTokenInfoUrl}?id_token={Uri.EscapeDataString(idToken)}");
+            var response = await http.GetAsync(
+                $"{GoogleTokenInfoUrl}?id_token={Uri.EscapeDataString(idToken)}");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -136,11 +236,11 @@ namespace AuthService.ServiceLayer.Implementation
             if (info == null || string.IsNullOrEmpty(info.Sub))
                 throw new Exception("Invalid Google id_token payload");
 
-            // 2. Validate issuer
+            // Validate issuer
             if (info.Iss != "https://accounts.google.com" && info.Iss != "accounts.google.com")
                 throw new Exception("Invalid Google id_token issuer");
 
-            // 3. Validate audience (aud) — must match one of our configured ClientIds
+            // Validate audience (aud) — must match one of our configured ClientIds
             var validAudiences = new List<string>();
             var webId = _configuration["GoogleAuth:WebClientId"];
             var iosId = _configuration["GoogleAuth:iOSClientId"];
@@ -148,12 +248,6 @@ namespace AuthService.ServiceLayer.Implementation
             if (!string.IsNullOrEmpty(webId)) validAudiences.Add(webId);
             if (!string.IsNullOrEmpty(iosId)) validAudiences.Add(iosId);
             if (!string.IsNullOrEmpty(androidId)) validAudiences.Add(androidId);
-
-            if (validAudiences.Count == 0)
-            {
-                _logger.LogError("No Google ClientIds configured in GoogleAuth:* settings");
-                throw new Exception("Google authentication is not configured on the server");
-            }
 
             if (!validAudiences.Contains(info.Aud))
             {
@@ -163,12 +257,12 @@ namespace AuthService.ServiceLayer.Implementation
                 throw new Exception("Google id_token was not issued for this application");
             }
 
-            // 4. Validate expiration (Google returns exp as Unix seconds)
+            // Validate expiration
             var expTime = DateTimeOffset.FromUnixTimeSeconds(info.Exp);
             if (expTime < DateTimeOffset.UtcNow)
                 throw new Exception("Google id_token has expired");
 
-            // 5. Require verified email
+            // Require verified email
             if (!info.EmailVerified)
                 throw new Exception("Google account email is not verified");
 
@@ -191,7 +285,6 @@ namespace AuthService.ServiceLayer.Implementation
             while (await _context.Users.AnyAsync(u => u.Username == username))
             {
                 attempts++;
-                // Append 4 random hex chars (up to 10 attempts to keep things bounded)
                 if (attempts > 10)
                 {
                     username = $"u_{Guid.NewGuid():N}".Substring(0, 16);
@@ -206,21 +299,20 @@ namespace AuthService.ServiceLayer.Implementation
                 Id = Guid.NewGuid(),
                 Email = info.Email,
                 Username = username,
-                // OAuth users have no password — store a non-null random hash so DB constraint
-                // (`PasswordHash` is NOT NULL) is satisfied. They cannot log in via /auth/login.
+                // OAuth users have no password — random hash so DB NOT NULL constraint is satisfied.
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
                 Provider = "Google",
                 ProviderUserId = info.Sub,
                 ProfilePictureUrl = info.Picture,
                 IsActive = true,
-                IsVerified = true, // Google already verified
+                IsVerified = true,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // Publish user.created so UserService provisions the UserProfile (same as password register)
+            // Publish user.created so UserService provisions the UserProfile
             try
             {
                 await _messagePublisher.PublishUserCreatedAsync(user.Id, user.Email, user.Username);

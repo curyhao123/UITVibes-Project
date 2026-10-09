@@ -7,9 +7,13 @@ export interface BE_RegisterRequest {
 }
 
 export interface BE_GoogleLoginRequest {
-  /** Google ID token (JWT) from expo-auth-session. */
-  idToken: string;
-  /** "web" | "ios" | "android" — used by backend for audience (aud) validation. */
+  /** Authorization code returned by Google in the OAuth callback. */
+  code: string;
+  /** PKCE code_verifier that was used to mint the auth request. */
+  codeVerifier: string;
+  /** The exact redirectUri used to start the OAuth flow. Must match the one sent to Google's token endpoint. */
+  redirectUri: string;
+  /** "web" | "ios" | "android" — used by backend to pick the right ClientId. */
   platform: "web" | "ios" | "android";
 }
 

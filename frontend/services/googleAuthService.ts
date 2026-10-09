@@ -1,13 +1,19 @@
 /**
  * Google OAuth Sign-In service.
  *
- * Uses expo-auth-session to obtain a Google id_token via the Web-based OAuth flow
- * (works on iOS, Android, and Web — including Expo Go, without native config).
+ * Uses expo-auth-session with the modern Authorization Code Flow + PKCE
+ * (the only flow Google supports for new Web/OAuth integrations as of 2025).
  *
- * The id_token is then sent to the backend (POST /api/googleauth/login) for
- * verification and account provisioning. Backend returns the same AuthResponse
- * shape as password login, so the rest of the app treats Google and password
- * users identically.
+ * Flow:
+ * 1. App opens Google OAuth in a WebView via expo-auth-session
+ * 2. Google redirects back with an authorization `code`
+ * 3. App sends `{ code, codeVerifier, redirectUri, platform }` to backend
+ * 4. Backend exchanges the code for an `id_token` using the configured
+ *    ClientSecret (server-side, secure — secret never reaches the client)
+ * 5. Backend verifies id_token, provisions user, returns AuthResponse
+ *
+ * The response shape matches password login, so the rest of the app
+ * treats Google and password users identically.
  */
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -37,11 +43,9 @@ import { User } from "../data/mockData";
 // Required by expo-auth-session to complete the auth code flow on iOS/Android.
 WebBrowser.maybeCompleteAuthSession();
 
+// Google OAuth 2.0 discovery endpoints
 const GOOGLE_DISCOVERY = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  // We use the implicit response_type=token so we receive id_token directly,
-  // no need to exchange an authorization code for tokens (no client secret
-  // required on the client side). The id_token is then verified by the backend.
   tokenEndpoint: "https://oauth2.googleapis.com/token",
 };
 
@@ -77,37 +81,40 @@ export type GoogleLoginResult = {
  * @throws Error with a `.errorCode` property on failure (e.g. USER_CANCELLED, NETWORK, INVALID_GOOGLE_TOKEN).
  */
 export async function loginWithGoogle(): Promise<GoogleLoginResult> {
-  // ── 1. Open Google OAuth WebView ───────────────────────────────────────────
-  // IMPORTANT: We must use Expo's auth proxy (https://auth.expo.io/@<owner>/<slug>)
-  // as the redirect URI because it works across Expo Go, dev builds, and standalone.
-  // The `makeRedirectUri` helper returns this URL when running in a native app,
-  // and we manually construct it as a fallback for web/dev-server cases.
+  // ── 1. Resolve redirect URI (must match a URI registered in Google Console) ──
+  // We use Expo's auth proxy (https://auth.expo.io/@<owner>/<slug>) because it
+  // works across Expo Go, dev builds, and standalone native builds without
+  // requiring platform-specific configuration.
   let redirectUri = AuthSession.makeRedirectUri({
     scheme: "uitvibes",
     preferLocalhost: false,
     isTripleSlashed: false,
   });
 
-  // Sanity guard: if for any reason we got a localhost URL (e.g. running in dev web),
-  // fall back to Expo's auth proxy which is a whitelisted, stable URI.
-  if (redirectUri.startsWith("http://localhost") || redirectUri.startsWith("http://127.0.0.1")) {
+  // Sanity guard: dev web mode sometimes returns localhost — fall back to proxy
+  if (
+    redirectUri.startsWith("http://localhost") ||
+    redirectUri.startsWith("http://127.0.0.1")
+  ) {
     redirectUri = "https://auth.expo.io/@anonymous/uitvibes";
   }
 
-  // Log for debugging — appears in Expo CLI / dev console
   console.log("[GoogleAuth] Using redirect URI:", redirectUri);
 
+  // ── 2. Build authorization request (Code Flow + PKCE) ──────────────────────
+  // expo-auth-session's AuthRequest generates the PKCE code_verifier and
+  // code_challenge automatically when usePKCE is true.
   const request = new AuthSession.AuthRequest({
     clientId: pickClientId(),
     scopes: ["openid", "profile", "email"],
-    responseType: AuthSession.ResponseType.IdToken, // returns id_token directly
+    responseType: AuthSession.ResponseType.Code, // Code Flow (not implicit!)
     redirectUri,
-    usePKCE: false,
+    usePKCE: true,
   });
 
+  // ── 3. Prompt the user ────────────────────────────────────────────────────
   const result = await request.promptAsync(GOOGLE_DISCOVERY);
 
-  // ── 2. Handle result ───────────────────────────────────────────────────────
   if (result.type !== "success") {
     // 'cancel' | 'dismiss' | 'locked' | 'error'
     const err = new Error("Google sign-in was cancelled") as Error & {
@@ -117,21 +124,37 @@ export async function loginWithGoogle(): Promise<GoogleLoginResult> {
     throw err;
   }
 
-  const idToken = (result.params as Record<string, string> | null)?.id_token;
-  if (!idToken) {
-    const err = new Error("Google did not return an id_token") as Error & {
+  const code = (result.params as Record<string, string> | null)?.code;
+  if (!code) {
+    const err = new Error("Google did not return an authorization code") as Error & {
       errorCode: string;
     };
-    err.errorCode = "NO_ID_TOKEN";
+    err.errorCode = "NO_CODE";
     throw err;
   }
 
-  // ── 3. Send id_token to backend for verification ───────────────────────────
-  return await verifyAndProvisionOnBackend(idToken);
+  // request.codeVerifier is the PKCE verifier we must send to the backend
+  // so it can complete the code exchange with Google.
+  if (!request.codeVerifier) {
+    const err = new Error("PKCE code_verifier was not generated") as Error & {
+      errorCode: string;
+    };
+    err.errorCode = "NO_CODE_VERIFIER";
+    throw err;
+  }
+
+  // ── 4. Send code + verifier to backend for token exchange ──────────────────
+  return await verifyAndProvisionOnBackend(
+    code,
+    request.codeVerifier,
+    redirectUri,
+  );
 }
 
 async function verifyAndProvisionOnBackend(
-  idToken: string,
+  code: string,
+  codeVerifier: string,
+  redirectUri: string,
 ): Promise<GoogleLoginResult> {
   const platform: BE_GoogleLoginRequest["platform"] =
     Platform.OS === "ios"
@@ -140,7 +163,12 @@ async function verifyAndProvisionOnBackend(
         ? "android"
         : "web";
 
-  const body: BE_GoogleLoginRequest = { idToken, platform };
+  const body: BE_GoogleLoginRequest = {
+    code,
+    codeVerifier,
+    redirectUri,
+    platform,
+  };
 
   let data: BE_AuthResponse;
   try {
@@ -161,13 +189,13 @@ async function verifyAndProvisionOnBackend(
     throw err;
   }
 
-  // ── 4. Save tokens (same as password login) ───────────────────────────────
+  // ── 5. Save tokens (same as password login) ───────────────────────────────
   await saveTokens(data.accessToken, data.refreshToken);
 
   const authHeaders = { Authorization: `Bearer ${data.accessToken}` };
   const userId = data.user.id;
 
-  // ── 5. Best-effort fetch profile + stats (same pattern as password login) ─
+  // ── 6. Best-effort fetch profile + stats ─────────────────────────────────
   const [profileRes, statsRes] = await Promise.allSettled([
     apiClient.get<BE_UserProfile>("/user/userprofile/me", { headers: authHeaders }),
     apiClient.get<BE_FollowStats>(`/user/follow/${userId}/stats`, {
@@ -179,7 +207,7 @@ async function verifyAndProvisionOnBackend(
     profileRes.status === "fulfilled" ? profileRes.value.data : null;
   const stats = statsRes.status === "fulfilled" ? statsRes.value.data : null;
 
-  // ── 6. Build User domain object ───────────────────────────────────────────
+  // ── 7. Build User domain object ───────────────────────────────────────────
   let user: User = {
     id: data.user.id,
     username: data.user.username,
@@ -200,7 +228,7 @@ async function verifyAndProvisionOnBackend(
   user = await mergePersistedAvatarIfMissing(user);
   if (user.avatar?.trim()) await persistUserAvatarUrl(user.id, user.avatar);
 
-  // ── 7. Persist session (mirrors password `login()`) ────────────────────────
+  // ── 8. Persist session (mirrors password `login()`) ────────────────────────
   setCurrentUserId(data.user.id);
   setCurrentUser(user);
   await setCurrentUserEmail(data.user.email);

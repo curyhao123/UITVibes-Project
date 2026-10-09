@@ -34,17 +34,31 @@ namespace AuthService.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] GoogleLoginRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.IdToken))
+            if (request == null || string.IsNullOrWhiteSpace(request.Code))
                 return BadRequest(new ErrorResponse
                 {
                     ErrorCode = "INVALID_REQUEST",
-                    Message = "idToken is required"
+                    Message = "code is required"
+                });
+            if (string.IsNullOrWhiteSpace(request.CodeVerifier))
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorCode = "INVALID_REQUEST",
+                    Message = "codeVerifier is required (PKCE)"
+                });
+            if (string.IsNullOrWhiteSpace(request.RedirectUri))
+                return BadRequest(new ErrorResponse
+                {
+                    ErrorCode = "INVALID_REQUEST",
+                    Message = "redirectUri is required"
                 });
 
             try
             {
                 var response = await _googleAuthService.LoginWithGoogleAsync(
-                    request.IdToken,
+                    request.Code,
+                    request.CodeVerifier,
+                    request.RedirectUri,
                     string.IsNullOrWhiteSpace(request.Platform) ? "web" : request.Platform);
                 return Ok(response);
             }
@@ -52,13 +66,14 @@ namespace AuthService.Controllers
             {
                 _logger.LogError(ex, "Google login failed (platform={Platform})", request.Platform);
 
-                // Treat any token verification failure as 401 (semantic match — bad credentials)
                 var msg = ex.Message ?? "Google login failed";
                 if (msg.Contains("id_token", StringComparison.OrdinalIgnoreCase) ||
                     msg.Contains("expired", StringComparison.OrdinalIgnoreCase) ||
                     msg.Contains("issuer", StringComparison.OrdinalIgnoreCase) ||
                     msg.Contains("audience", StringComparison.OrdinalIgnoreCase) ||
-                    msg.Contains("not configured", StringComparison.OrdinalIgnoreCase))
+                    msg.Contains("not configured", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("redirect_uri", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("code", StringComparison.OrdinalIgnoreCase))
                 {
                     return Unauthorized(new ErrorResponse
                     {
