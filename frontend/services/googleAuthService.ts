@@ -41,7 +41,6 @@ import {
 import { User } from "../data/mockData";
 
 // Required by expo-auth-session to complete the auth code flow on iOS/Android.
-// This MUST be called at module scope (top-level, not inside a function).
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth 2.0 discovery endpoints
@@ -76,30 +75,6 @@ export type GoogleLoginResult = {
 };
 
 /**
- * Resolves the redirect URI based on the current runtime.
- *
- * The redirect URI MUST be a URI that the runtime can actually receive a
- * response on, AND that is registered in Google Cloud Console.
- *
- * - Native (Expo Go, dev build, standalone): use the Expo auth proxy
- *   `https://auth.expo.io/@anonymous/uitvibes` — the proxy holds the
- *   code and re-opens the app via the dev server's exp:// URL.
- *   (Google only sees the proxy URL; the proxy handles the round trip.)
- *
- * - Web (browser): we cannot use the proxy because the proxy has no way
- *   to "re-open" a browser tab. We use the dev server's HTTP URL directly
- *   so the browser does a full page navigation back to our app, which
- *   expo-auth-session's web polyfill catches via the URL hash.
- */
-function pickRedirectUri(): string {
-  if (Platform.OS === "web") {
-    return "http://localhost:8081";
-  }
-  // iOS, Android (Expo Go, dev build, or standalone)
-  return "https://auth.expo.io/@anonymous/uitvibes";
-}
-
-/**
  * Triggers the Google Sign-In flow and returns a fully-provisioned User.
  * On success, tokens are saved and the user object mirrors what `login()` returns.
  *
@@ -107,19 +82,41 @@ function pickRedirectUri(): string {
  */
 export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   // ── 1. Resolve redirect URI (must match a URI registered in Google Console) ──
-  const redirectUri = pickRedirectUri();
+  // Platform-specific behavior:
+  // - Native (iOS/Android, Expo Go): use Expo's auth proxy URL
+  //   (https://auth.expo.io/@<owner>/<slug>) — works in dev and prod without
+  //   needing platform-specific native config.
+  // - Web: the auth proxy doesn't work in a browser tab. Use Expo's
+  //   `useProxy: false` + a public HTTPS URL OR a localhost URL.
+  let redirectUri: string;
 
-  console.log("[GoogleAuth] Platform:", Platform.OS, "→ redirect URI:", redirectUri);
+  if (Platform.OS === "web") {
+    // For web, prefer localhost during dev (set in Google Console).
+    // In production, this should be your deployed HTTPS URL.
+    redirectUri = AuthSession.makeRedirectUri({
+      scheme: "uitvibes",
+      preferLocalhost: true,
+      isTripleSlashed: false,
+    });
+  } else {
+    // Native platforms (iOS, Android) — use Expo's auth proxy
+    redirectUri = AuthSession.makeRedirectUri({
+      scheme: "uitvibes",
+      preferLocalhost: false,
+      isTripleSlashed: false,
+    });
 
-  // Warm up the browser session — this pre-establishes the connection
-  // so the auth callback can complete faster and more reliably.
-  // Particularly important on Android where the first openAuthSessionAsync
-  // can race with the result-handling.
-  try {
-    await WebBrowser.warmUpAsync();
-  } catch (e) {
-    console.warn("[GoogleAuth] warmUpAsync failed (non-fatal):", e);
+    // Sanity guard: dev web mode sometimes returns localhost — fall back to proxy
+    if (
+      redirectUri.startsWith("http://localhost") ||
+      redirectUri.startsWith("http://127.0.0.1")
+    ) {
+      redirectUri = "https://auth.expo.io/@anonymous/uitvibes";
+    }
   }
+
+  console.log("[GoogleAuth] Platform:", Platform.OS);
+  console.log("[GoogleAuth] Using redirect URI:", redirectUri);
 
   // ── 2. Build authorization request (Code Flow + PKCE) ──────────────────────
   // expo-auth-session's AuthRequest generates the PKCE code_verifier and
@@ -133,74 +130,14 @@ export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   });
 
   // ── 3. Prompt the user ────────────────────────────────────────────────────
-  // promptAsync handles the full OAuth dance:
-  //   - Opens WebView / browser with Google's auth URL
-  //   - User signs in
-  //   - Google redirects to `redirectUri` with `?code=...`
-  //   - For Expo Go, the auth.expo.io proxy forwards the redirect back
-  //     to the Expo dev server, which hands it back to the app.
-  let result: AuthSession.AuthSessionResult;
-  try {
-    result = await request.promptAsync(GOOGLE_DISCOVERY);
-  } catch (err: any) {
-    console.error("[GoogleAuth] promptAsync threw:", err);
-    const e = new Error(
-      "Google sign-in failed to start. Please check your network and try again.",
-    ) as Error & { errorCode: string };
-    e.errorCode = "NETWORK";
-    throw e;
-  } finally {
-    // Cool down the browser session to free resources
-    try {
-      await WebBrowser.coolDownAsync();
-    } catch {
-      /* ignore */
-    }
-  }
+  const result = await request.promptAsync(GOOGLE_DISCOVERY);
 
-  // ── 4. Handle result ──────────────────────────────────────────────────────
   if (result.type !== "success") {
-    // Log full result for debugging
-    console.warn("[GoogleAuth] Non-success result:", JSON.stringify(result, null, 2));
-
-    if (result.type === "cancel" || result.type === "dismiss") {
-      const err = new Error("Google sign-in was cancelled") as Error & {
-        errorCode: string;
-      };
-      err.errorCode = "USER_CANCELLED";
-      throw err;
-    }
-
-    if (result.type === "error") {
-      // The error message comes from Expo's auth proxy or Google.
-      // Common messages:
-      //   - "Something went wrong trying to finish signing in"  → proxy handshake failed
-      //   - "Network request failed"                              → offline
-      //   - "redirect_uri_mismatch"                                → not in Google Console
-      const params = ((result as any).params ?? {}) as Record<string, string>;
-      const errorFromServer =
-        params.error_description || params.error || "Unknown error";
-      const errorCode = params.error || "OAUTH_ERROR";
-
-      console.error(
-        "[GoogleAuth] Server returned error:",
-        errorFromServer,
-        "code:",
-        errorCode,
-      );
-
-      const err = new Error(
-        `Google sign-in failed: ${errorFromServer}`,
-      ) as Error & { errorCode: string };
-      err.errorCode = errorCode;
-      throw err;
-    }
-
-    // 'locked' or unknown type
-    const err = new Error(
-      `Google sign-in ended unexpectedly (${result.type})`,
-    ) as Error & { errorCode: string };
-    err.errorCode = "OAUTH_ERROR";
+    // 'cancel' | 'dismiss' | 'locked' | 'error'
+    const err = new Error("Google sign-in was cancelled") as Error & {
+      errorCode: string;
+    };
+    err.errorCode = "USER_CANCELLED";
     throw err;
   }
 
@@ -223,7 +160,7 @@ export async function loginWithGoogle(): Promise<GoogleLoginResult> {
     throw err;
   }
 
-  // ── 5. Send code + verifier to backend for token exchange ──────────────────
+  // ── 4. Send code + verifier to backend for token exchange ──────────────────
   return await verifyAndProvisionOnBackend(
     code,
     request.codeVerifier,

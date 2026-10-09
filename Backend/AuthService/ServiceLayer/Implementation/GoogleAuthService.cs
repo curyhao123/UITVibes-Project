@@ -56,9 +56,13 @@ namespace AuthService.ServiceLayer.Implementation
             // ── 1. Resolve client credentials for the platform ─────────────────
             var (clientId, clientSecret) = GetClientCredentialsForPlatform(platform);
 
-            // ── 2. Exchange code → id_token (server-side, uses ClientSecret) ───
+            // ── 2. Exchange code → id_token (server-side) ──────────────────────
+            // For public clients (SPAs, native mobile apps using PKCE), the
+            // client_secret is optional. We only include it if configured.
+            var clientSecret = _configuration["GoogleAuth:ClientSecret"];
             var idToken = await ExchangeCodeForIdTokenAsync(
-                code, codeVerifier, redirectUri, clientId, clientSecret);
+                code, codeVerifier, redirectUri, clientId,
+                string.IsNullOrEmpty(clientSecret) ? null : clientSecret);
 
             // ── 3. Verify id_token against Google's tokeninfo endpoint ─────────
             var googleUser = await VerifyGoogleIdTokenAsync(idToken, platform);
@@ -156,15 +160,18 @@ namespace AuthService.ServiceLayer.Implementation
 
             clientSecret = _configuration["GoogleAuth:ClientSecret"];
 
-            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            if (string.IsNullOrEmpty(clientId))
             {
                 _logger.LogError(
-                    "Google client credentials missing for platform={Platform}. ClientId={HasId}, ClientSecret={HasSecret}",
-                    platform, !string.IsNullOrEmpty(clientId), !string.IsNullOrEmpty(clientSecret));
+                    "Google client ID missing for platform={Platform}",
+                    platform);
                 throw new Exception("Google authentication is not configured on the server");
             }
 
-            return (clientId!, clientSecret!);
+            // client_secret is optional for public clients using PKCE.
+            // Only required for confidential server-side clients.
+
+            return (clientId!, clientSecret);
         }
 
         private async Task<string> ExchangeCodeForIdTokenAsync(
@@ -172,20 +179,30 @@ namespace AuthService.ServiceLayer.Implementation
             string codeVerifier,
             string redirectUri,
             string clientId,
-            string clientSecret)
+            string? clientSecret)
         {
             // OAuth 2.0 Token Request (RFC 6749 §4.1.3) + PKCE (RFC 7636)
             // POST https://oauth2.googleapis.com/token
             // application/x-www-form-urlencoded body
+            //
+            // NOTE: client_secret is optional for public clients (SPAs, native mobile
+            // apps) that use PKCE. The PKCE code_verifier is the proof-of-possession
+            // instead. See: https://developers.google.com/identity/oauth2/web/guides/use-code-model
             var form = new Dictionary<string, string>
             {
                 ["code"] = code,
                 ["client_id"] = clientId,
-                ["client_secret"] = clientSecret,
                 ["redirect_uri"] = redirectUri,
                 ["grant_type"] = "authorization_code",
                 ["code_verifier"] = codeVerifier,
             };
+
+            // Only include client_secret if configured (for confidential clients like
+            // server-side web apps). Native/SPA clients should NOT include it.
+            if (!string.IsNullOrEmpty(clientSecret))
+            {
+                form["client_secret"] = clientSecret;
+            }
 
             var http = _httpClientFactory.CreateClient("Google");
             var response = await http.PostAsync(
