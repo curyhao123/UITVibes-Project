@@ -59,7 +59,6 @@ namespace AuthService.ServiceLayer.Implementation
             // ── 2. Exchange code → id_token (server-side) ──────────────────────
             // For public clients (SPAs, native mobile apps using PKCE), the
             // client_secret is optional. We only include it if configured.
-            var clientSecret = _configuration["GoogleAuth:ClientSecret"];
             var idToken = await ExchangeCodeForIdTokenAsync(
                 code, codeVerifier, redirectUri, clientId,
                 string.IsNullOrEmpty(clientSecret) ? null : clientSecret);
@@ -137,7 +136,7 @@ namespace AuthService.ServiceLayer.Implementation
 
         // ─── Helpers ────────────────────────────────────────────────────────
 
-        private (string ClientId, string ClientSecret) GetClientCredentialsForPlatform(string platform)
+        private (string ClientId, string? ClientSecret) GetClientCredentialsForPlatform(string platform)
         {
             string? clientId;
             string? clientSecret;
