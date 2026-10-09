@@ -41,6 +41,7 @@ import {
 import { User } from "../data/mockData";
 
 // Required by expo-auth-session to complete the auth code flow on iOS/Android.
+// This MUST be called at module scope (top-level, not inside a function).
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth 2.0 discovery endpoints
@@ -82,24 +83,23 @@ export type GoogleLoginResult = {
  */
 export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   // ── 1. Resolve redirect URI (must match a URI registered in Google Console) ──
-  // We use Expo's auth proxy (https://auth.expo.io/@<owner>/<slug>) because it
-  // works across Expo Go, dev builds, and standalone native builds without
-  // requiring platform-specific configuration.
-  let redirectUri = AuthSession.makeRedirectUri({
-    scheme: "uitvibes",
-    preferLocalhost: false,
-    isTripleSlashed: false,
-  });
-
-  // Sanity guard: dev web mode sometimes returns localhost — fall back to proxy
-  if (
-    redirectUri.startsWith("http://localhost") ||
-    redirectUri.startsWith("http://127.0.0.1")
-  ) {
-    redirectUri = "https://auth.expo.io/@anonymous/uitvibes";
-  }
+  // Strategy: try Expo's auth proxy first (works in dev/Expo Go/prod),
+  // and fall back to the native scheme for production standalone builds.
+  const proxyRedirectUri = "https://auth.expo.io/@anonymous/uitvibes";
+  const nativeRedirectUri = "uitvibes://";
+  const redirectUri = proxyRedirectUri;
 
   console.log("[GoogleAuth] Using redirect URI:", redirectUri);
+
+  // Warm up the browser session — this pre-establishes the connection
+  // so the auth callback can complete faster and more reliably.
+  // Particularly important on Android where the first openAuthSessionAsync
+  // can race with the result-handling.
+  try {
+    await WebBrowser.warmUpAsync();
+  } catch (e) {
+    console.warn("[GoogleAuth] warmUpAsync failed (non-fatal):", e);
+  }
 
   // ── 2. Build authorization request (Code Flow + PKCE) ──────────────────────
   // expo-auth-session's AuthRequest generates the PKCE code_verifier and
@@ -113,14 +113,74 @@ export async function loginWithGoogle(): Promise<GoogleLoginResult> {
   });
 
   // ── 3. Prompt the user ────────────────────────────────────────────────────
-  const result = await request.promptAsync(GOOGLE_DISCOVERY);
+  // promptAsync handles the full OAuth dance:
+  //   - Opens WebView / browser with Google's auth URL
+  //   - User signs in
+  //   - Google redirects to `redirectUri` with `?code=...`
+  //   - For Expo Go, the auth.expo.io proxy forwards the redirect back
+  //     to the Expo dev server, which hands it back to the app.
+  let result: AuthSession.AuthSessionResult;
+  try {
+    result = await request.promptAsync(GOOGLE_DISCOVERY);
+  } catch (err: any) {
+    console.error("[GoogleAuth] promptAsync threw:", err);
+    const e = new Error(
+      "Google sign-in failed to start. Please check your network and try again.",
+    ) as Error & { errorCode: string };
+    e.errorCode = "NETWORK";
+    throw e;
+  } finally {
+    // Cool down the browser session to free resources
+    try {
+      await WebBrowser.coolDownAsync();
+    } catch {
+      /* ignore */
+    }
+  }
 
+  // ── 4. Handle result ──────────────────────────────────────────────────────
   if (result.type !== "success") {
-    // 'cancel' | 'dismiss' | 'locked' | 'error'
-    const err = new Error("Google sign-in was cancelled") as Error & {
-      errorCode: string;
-    };
-    err.errorCode = "USER_CANCELLED";
+    // Log full result for debugging
+    console.warn("[GoogleAuth] Non-success result:", JSON.stringify(result, null, 2));
+
+    if (result.type === "cancel" || result.type === "dismiss") {
+      const err = new Error("Google sign-in was cancelled") as Error & {
+        errorCode: string;
+      };
+      err.errorCode = "USER_CANCELLED";
+      throw err;
+    }
+
+    if (result.type === "error") {
+      // The error message comes from Expo's auth proxy or Google.
+      // Common messages:
+      //   - "Something went wrong trying to finish signing in"  → proxy handshake failed
+      //   - "Network request failed"                              → offline
+      //   - "redirect_uri_mismatch"                                → not in Google Console
+      const params = ((result as any).params ?? {}) as Record<string, string>;
+      const errorFromServer =
+        params.error_description || params.error || "Unknown error";
+      const errorCode = params.error || "OAUTH_ERROR";
+
+      console.error(
+        "[GoogleAuth] Server returned error:",
+        errorFromServer,
+        "code:",
+        errorCode,
+      );
+
+      const err = new Error(
+        `Google sign-in failed: ${errorFromServer}`,
+      ) as Error & { errorCode: string };
+      err.errorCode = errorCode;
+      throw err;
+    }
+
+    // 'locked' or unknown type
+    const err = new Error(
+      `Google sign-in ended unexpectedly (${result.type})`,
+    ) as Error & { errorCode: string };
+    err.errorCode = "OAUTH_ERROR";
     throw err;
   }
 
@@ -143,7 +203,7 @@ export async function loginWithGoogle(): Promise<GoogleLoginResult> {
     throw err;
   }
 
-  // ── 4. Send code + verifier to backend for token exchange ──────────────────
+  // ── 5. Send code + verifier to backend for token exchange ──────────────────
   return await verifyAndProvisionOnBackend(
     code,
     request.codeVerifier,
