@@ -174,7 +174,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const feed = useFeedState();
   const { isOnline, isConnected: onlineSignalRConnected } = useOnlineUsers(auth.isAuthenticated);
   const chat = useChatState(auth.currentUser, onlineSignalRConnected);
-  const notifications = useNotificationState();
+  const notifications = useNotificationState(auth.currentUser?.id);
 
   const refreshUser = useCallback(async () => {
     try {

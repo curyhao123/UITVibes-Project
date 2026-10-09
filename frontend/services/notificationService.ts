@@ -22,6 +22,12 @@ export interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  /**
+   * Aggregation count — only applies to NewMessage.
+   * e.g. aggregateCount=5 → "... sent you 5 messages."
+   * Defaults to 1 for other types (BE fallback).
+   */
+  aggregateCount?: number;
 }
 
 export interface PagedResult<T> {

@@ -11,7 +11,12 @@ namespace NotificationService.Models
         public Guid EntityId { get; init; }    // post/message/conversation liên quan
 
         public NotificationType Type { get; init; }
-        public string Content { get; init; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Số lần đã gộp — dùng cho NewMessage để hiển thị "... đã gửi N tin nhắn".
+        /// </summary>
+        public int AggregateCount { get; private set; } = 1;
 
         public bool IsRead { get; private set; } = false;
         public DateTime? ReadAt { get; private set; }
@@ -24,6 +29,16 @@ namespace NotificationService.Models
             IsRead = true;
             ReadAt = DateTime.UtcNow;
         }
+
+        /// <summary>
+        /// Gộp thêm một notification cùng loại (dùng cho NewMessage).
+        /// Cập nhật Content + tăng AggregateCount + làm mới CreatedAt.
+        /// </summary>
+        public void MergeWith(string newContent, int incrementBy = 1)
+        {
+            Content = newContent;
+            AggregateCount += incrementBy;
+            CreatedAt = DateTime.UtcNow;
+        }
     }
 }
-

@@ -77,6 +77,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 {
                     context.Token = accessToken;
                 }
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/notification"))
+                {
+                    context.Token = accessToken;
+                }
                 return Task.CompletedTask;
             },
 

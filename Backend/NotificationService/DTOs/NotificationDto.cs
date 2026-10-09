@@ -10,7 +10,12 @@ namespace NotificationService.DTOs
         string Type,
         string Content,
         bool IsRead,
-        DateTime CreatedAt)
+        DateTime CreatedAt,
+        /// <summary>
+        /// Số lần đã gộp — dùng cho NewMessage để hiển thị "... đã gửi N tin nhắn".
+        /// Mặc định 1 cho các loại không gộp.
+        /// </summary>
+        int AggregateCount = 1)
     {
         public static NotificationDto From(Notification n) => new(
             n.Id,
@@ -19,6 +24,7 @@ namespace NotificationService.DTOs
             n.Type.ToString(),
             n.Content,
             n.IsRead,
-            n.CreatedAt);
+            n.CreatedAt,
+            n.AggregateCount);
     }
 }
