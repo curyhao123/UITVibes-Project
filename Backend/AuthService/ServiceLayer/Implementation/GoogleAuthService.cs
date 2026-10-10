@@ -246,8 +246,22 @@ namespace AuthService.ServiceLayer.Implementation
                 throw new Exception("Invalid Google id_token");
             }
 
+            // Google tokeninfo returns snake_case keys: `sub`, `email_verified`,
+            // `family_name`, `given_name`, `picture`. Map them to PascalCase
+            // properties on GoogleUserInfo. PropertyNameCaseInsensitive is also
+            // enabled in case Google ever flips to camelCase.
+            // GoogleUserInfo has explicit [JsonPropertyName("snake_case")] on every
+            // property, so the JSON contract is fully determined by attributes.
+            // Don't set PropertyNamingPolicy here — combining a naming policy
+            // with [JsonPropertyName] can override the attribute on some fields
+            // and cause the wrong property to receive the value (we've seen
+            // this in earlier rounds: `email_verified` ending up on a bool
+            // property and `exp` on a long property). Attribute wins, no policy.
             var info = await response.Content.ReadFromJsonAsync<GoogleUserInfo>(
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                });
 
             if (info == null || string.IsNullOrEmpty(info.Sub))
                 throw new Exception("Invalid Google id_token payload");
@@ -273,8 +287,14 @@ namespace AuthService.ServiceLayer.Implementation
                 throw new Exception("Google id_token was not issued for this application");
             }
 
-            // Validate expiration
-            var expTime = DateTimeOffset.FromUnixTimeSeconds(info.Exp);
+            // Validate expiration. Google sometimes serializes `exp` as a
+            // string ("1234567890") instead of a number, so parse defensively.
+            if (!long.TryParse(info.Exp, out var expSeconds))
+            {
+                _logger.LogWarning("Google id_token has invalid exp value: {Exp}", info.Exp);
+                throw new Exception("Google id_token has invalid expiration claim");
+            }
+            var expTime = DateTimeOffset.FromUnixTimeSeconds(expSeconds);
             if (expTime < DateTimeOffset.UtcNow)
                 throw new Exception("Google id_token has expired");
 

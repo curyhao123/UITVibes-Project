@@ -1,7 +1,7 @@
 # PowerShell script to add authorized redirect URIs to Google OAuth Web Client
 # Run this ONLY if you have gcloud CLI installed and authenticated
 
-$CLIENT_ID = "REDACTED-OLD-WEB-CLIENT-ID.apps.googleusercontent.com"
+$CLIENT_ID = "REDACTED-WEB-CLIENT-ID.apps.googleusercontent.com"
 $PROJECT_ID = gcloud config get-value project 2>$null
 $URIS = @(
     "https://auth.expo.io/@anonymous/uitvibes",

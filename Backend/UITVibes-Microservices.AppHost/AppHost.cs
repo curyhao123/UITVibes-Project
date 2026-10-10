@@ -106,7 +106,11 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
 
 // ===== API GATEWAY WITH JWT =====
 var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>("apiservice")
-    .WithExternalHttpEndpoints()
+    // Pin the gateway to 5512 so frontend EXPO_PUBLIC_API_URL stays stable
+    // across restarts. We use a unique endpoint name ("gateway") to avoid
+    // collision with the default 'http' endpoint Aspire creates for the
+    // project automatically.
+    .WithHttpEndpoint(port: 5512, name: "gateway")
     .WithHttpHealthCheck("/health")
     .WithReference(cache)
     .WaitFor(cache)

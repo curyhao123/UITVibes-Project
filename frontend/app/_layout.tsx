@@ -116,6 +116,7 @@ function AppLayoutInner() {
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="auth/email-verification" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/google-callback" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-fullname" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />

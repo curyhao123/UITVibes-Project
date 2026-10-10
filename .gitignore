@@ -6,3 +6,12 @@
 /.vs
 /Backend/.idea
 /.vscode
+# ── Secrets & credentials (NEVER commit these) ───────────────────────────
+# JWT tokens, refresh tokens, API keys, etc. are dangerous in git history
+# because git log -p exposes them forever. Use env vars or a password
+# manager instead.
+token.txt
+*.token
+*.jwt
+secrets/
+.env.local

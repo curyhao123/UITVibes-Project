@@ -282,4 +282,42 @@ public class FollowService : IFollowService
 
         return friends;
     }
+
+    public async Task<List<SuggestedUserDto>> GetSuggestedUsersAsync(Guid currentUserId, int limit = 6)
+    {
+        if (limit <= 0) limit = 6;
+        if (limit > 50) limit = 50;
+
+        // IDs the current user already follows.
+        var alreadyFollowingIds = _context.Follows
+            .Where(f => f.FollowerId == currentUserId)
+            .Select(f => f.FollowingId);
+
+        // Block relationships (either direction).
+        var blockedIds = _context.Blocks
+            .Where(b => b.BlockerId == currentUserId || b.BlockedId == currentUserId)
+            .Select(b => b.BlockerId == currentUserId ? b.BlockedId : b.BlockerId);
+
+        // Exclude self + already-followed + blocked, then rank by popularity
+        // (followers count) and recency.
+        var suggestions = await _context.UserProfiles
+            .Where(p => p.UserId != currentUserId
+                        && !p.IsBanned
+                        && !alreadyFollowingIds.Contains(p.UserId)
+                        && !blockedIds.Contains(p.UserId))
+            .OrderByDescending(p => p.FollowersCount)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(limit)
+            .Select(p => new SuggestedUserDto
+            {
+                UserId = p.UserId,
+                DisplayName = p.DisplayName,
+                AvatarUrl = p.AvatarUrl,
+                FollowersCount = p.FollowersCount,
+                IsFollowing = false
+            })
+            .ToListAsync();
+
+        return suggestions;
+    }
 }

@@ -26,23 +26,30 @@ namespace AuthService.Controllers
                 iosClientId = _configuration["GoogleAuth:iOSClientId"],
                 androidClientId = _configuration["GoogleAuth:AndroidClientId"],
                 hasClientSecret = !string.IsNullOrEmpty(_configuration["GoogleAuth:ClientSecret"]),
+
                 // The URIs that the app will try to use.
-                // Make sure these are added in Google Cloud Console!
+                // Make sure these are added in Google Cloud Console under
+                // the Web OAuth Client → "Authorized redirect URIs".
+                //
+                // NOTE: "UITVibes" is the Expo slug from app.json — case-sensitive.
                 expectedRedirectUris = new[]
                 {
-                    "https://auth.expo.io/@anonymous/uitvibes",
-                    "https://auth.expo.io/@anonymous/uitvibes/",
-                    "uitvibes://",
-                    "http://localhost:8081",
-                    "http://localhost:19006"
+                    "https://auth.expo.io/@anonymous/UITVibes",
+                    "https://auth.expo.io/@anonymous/UITVibes/",
+
+                    // Web: same-origin callback page. Google will redirect the
+                    // browser here directly after consent. The exact origin
+                    // (localhost:8081, your-prod.com, …) must also be added.
+                    $"{GetOriginHint()}/auth/google-callback",
                 },
+
                 // Step-by-step instructions
                 instructions = new[]
                 {
                     "1. Open https://console.cloud.google.com",
                     "2. Select your UITVibes project",
                     "3. APIs & Services → Credentials",
-                    "4. Find the OAuth 2.0 Client ID: REDACTED-OLD-WEB-CLIENT-ID",
+                    $"4. Find the OAuth 2.0 Web Client ID: {_configuration["GoogleAuth:WebClientId"]}",
                     "5. Click on it to edit",
                     "6. Scroll to 'Authorized redirect URIs'",
                     "7. Click '+ ADD URI' for each of the expectedRedirectUris above",
@@ -50,6 +57,16 @@ namespace AuthService.Controllers
                     "9. Wait 2-5 minutes for Google to propagate the change"
                 }
             });
+        }
+
+        private string GetOriginHint()
+        {
+            // Prefer the X-Forwarded-Origin header if YARP / the dev server
+            // forwarded it; otherwise fall back to a generic hint so the
+            // developer at least sees the callback path.
+            var forwarded = Request?.Headers["X-Forwarded-Origin"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(forwarded)) return forwarded;
+            return "https://your-production-domain.com";
         }
     }
 }

@@ -437,7 +437,8 @@ app.MapGet("/gateway/routes", (IServiceDiscovery discovery) =>
                 new { gateway = "/user/follow/{userId}", proxiedTo = "/api/follow/{userId}", auth = "Required (POST/DELETE)" },
                 new { gateway = "/user/follow/{userId}/stats", proxiedTo = "/api/follow/{userId}/stats", auth = "Public" },
                 new { gateway = "/user/follow/{userId}/followers", proxiedTo = "/api/follow/{userId}/followers", auth = "Public" },
-                new { gateway = "/user/follow/{userId}/following", proxiedTo = "/api/follow/{userId}/following", auth = "Public" }
+                new { gateway = "/user/follow/{userId}/following", proxiedTo = "/api/follow/{userId}/following", auth = "Public" },
+                new { gateway = "/user/suggested", proxiedTo = "/api/follow/suggested", auth = "Required (GET)" }
             }
         },
 
