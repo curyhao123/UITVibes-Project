@@ -21,10 +21,11 @@ import { ForgotPasswordModal } from "../../components/ForgotPasswordModal";
 import { BannedAccountModal } from "../../components/BannedAccountModal";
 import { useApp } from "../../context/AppContext";
 import { AppColors, borderRadius } from "../../constants/theme";
+import { GoogleIcon } from "../../components/GoogleIcon";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useApp();
+  const { login, loginWithGoogle } = useApp();
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [email, setEmail] = useState("");
@@ -111,6 +112,29 @@ export default function LoginScreen() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // ── Google sign-in handler ───────────────────────────────────────────────
+  const handleGoogleLogin = async () => {
+    setGeneralError("");
+    try {
+      const result = await loginWithGoogle();
+      if (result) {
+        // Route on whether the account has completed onboarding (no displayName),
+        // NOT on post count — a 0-post user who finished onboarding goes home.
+        const target = !result.displayName?.trim()
+          ? "/auth/onboarding-username"
+          : result.role === "Admin" ? "/admin/dashboard" : "/(tabs)/home";
+        router.replace(target as any);
+      }
+      // null result = user cancelled, no error toast
+    } catch (err: any) {
+      const errorMsg = err?.message ?? "Google sign-in failed. Please try again.";
+      setGeneralError(errorMsg);
+      setToastType("error");
+      setToastMessage(errorMsg);
+      setToastVisible(true);
     }
   };
 
@@ -278,6 +302,15 @@ export default function LoginScreen() {
 
           {/* ── Social logins ── */}
           <View style={styles.socialSection}>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              activeOpacity={0.7}
+              onPress={handleGoogleLogin}
+              disabled={isLoading}
+            >
+              <GoogleIcon size={20} />
+              <Text style={styles.socialBtnText}>Continue with Google</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7} disabled>
               <Feather name="facebook" size={20} color={AppColors.text} />
               <Text style={styles.socialBtnText}>Continue with Facebook</Text>

@@ -11,17 +11,17 @@ namespace NotificationService.Models
             NotificationType.NewMessage => ("New Message",
                                                $"{actorName} sent you a message."),
             NotificationType.MessageRead => ("Message Read",
-                                               $"{actorName} read your message"),
+                                               $"{actorName} read your message."),
             NotificationType.PostLiked => ("Liked Your Post",
-                                               $"{actorName} liked your post"),
+                                               $"{actorName} liked your post."),
             NotificationType.PostCommented => ("New Comment",
-                                               $"{actorName} commented on your post"),
+                                               $"{actorName} commented on your post."),
             NotificationType.NewFollower => ("New Follower",
-                                               $"{actorName} started following you"),
+                                               $"{actorName} started following you."),
             NotificationType.Mentioned => ("You Were Mentioned",
-                                               $"{actorName} mentioned you in a comment"),
+                                               $"{actorName} mentioned you in a comment."),
             NotificationType.Tagged => ("You Were Tagged",
-                                               $"{actorName} tagged you in a post"),
+                                               $"{actorName} tagged you in a post."),
             _ => ("New Notification", actorName)
         };
     }

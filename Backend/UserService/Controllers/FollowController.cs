@@ -176,4 +176,34 @@ public class FollowController : ControllerBase
         var friends = await _followService.GetFriendListsAsync(userId, skip, take);
         return Ok(friends);
     }
+
+    /// <summary>
+    /// Instagram-style "Suggested users" list for the home screen.
+    /// Excludes self, already-followed, and blocked users.
+    /// </summary>
+    /// <remarks>
+    /// GET /api/follow/suggested?limit=6
+    /// Auth: required (caller is taken from the X-User-Id header set by the gateway).
+    /// </remarks>
+    [HttpGet("suggested")]
+    public async Task<ActionResult<List<SuggestedUserDto>>> GetSuggestedUsers(
+        [FromQuery] int limit = 6)
+    {
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
+        {
+            return Unauthorized(new { message = "User ID not found in request headers" });
+        }
+
+        try
+        {
+            var suggestions = await _followService.GetSuggestedUsersAsync(currentUserId, limit);
+            return Ok(suggestions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting suggested users for {UserId}", currentUserId);
+            return StatusCode(500, new { message = "An error occurred while fetching suggested users" });
+        }
+    }
 }

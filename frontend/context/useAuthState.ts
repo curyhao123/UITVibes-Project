@@ -54,7 +54,9 @@ export const useAuthState = () => {
         const user = await api.login(email, password);
         setCurrentUser(user);
         setIsAuthenticated(true);
-        setIsNewUser(user.posts === 0);
+        // Onboarding is about identity, not activity: a returning user with 0
+        // posts must not be pushed back through onboarding.
+        setIsNewUser(!user.displayName?.trim());
         return user;
       } catch (error) {
         console.error('Login failed:', error);
@@ -76,6 +78,40 @@ export const useAuthState = () => {
     },
     [],
   );
+
+  /**
+   * Google OAuth sign-in. On success, returns the provisioned User.
+   * Throws Error with `errorCode === "USER_CANCELLED"` if user cancels.
+   * Throws Error with `errorCode === "GOOGLE_LOGIN_FAILED"` (or backend code) on other failures.
+   */
+  const loginWithGoogle = useCallback(async (): Promise<User | null> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const { user, isNewUser } = await api.loginWithGoogle();
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setIsNewUser(isNewUser);
+      return user;
+    } catch (error: any) {
+      console.error('Google login failed:', error);
+      const errorCode = (error as any)?.errorCode;
+      if (errorCode === 'USER_CANCELLED') {
+        // Silent — user dismissed the Google sheet, no toast needed
+        return null;
+      }
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Google sign-in failed. Please try again.';
+      setAuthError(message);
+      const err = new Error(message) as Error & { errorCode: string };
+      err.errorCode = errorCode || 'GOOGLE_LOGIN_FAILED';
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const register = useCallback(
     async (email: string, password: string, username: string): Promise<boolean> => {
@@ -107,6 +143,20 @@ export const useAuthState = () => {
     setCurrentUser(user);
     setIsAuthenticated(true);
     setIsNewUser(true);
+  }, []);
+
+  /**
+   * Adopts a session that was already provisioned outside of this hook — the web
+   * Google redirect flow calls googleAuthService.loginWithGoogleBackend() directly
+   * (it handles the PKCE exchange), so this hook never sees the tokens.
+   * Without this, the app keeps `isAuthenticated === false` and every API call
+   * goes out without an Authorization header → 401.
+   */
+  const adoptGoogleSession = useCallback((user: User, isNewUser: boolean) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsNewUser(isNewUser);
+    setAuthError(null);
   }, []);
 
   const resetSessionAfterSignOut = useCallback(() => {
@@ -167,6 +217,16 @@ export const useAuthState = () => {
     setOnboardingStep((prev) => prev + 1);
   }, []);
 
+  /**
+   * Marks onboarding as finished. Must be called once the profile has been
+   * persisted, otherwise AuthGuard keeps the user inside the auth group and
+   * the redirect to /(tabs)/home is ignored.
+   */
+  const finishOnboarding = useCallback(() => {
+    setIsNewUser(false);
+    setOnboardingStep(4);
+  }, []);
+
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
@@ -180,8 +240,10 @@ export const useAuthState = () => {
     isNewUser,
     markUserActive,
     login,
+    loginWithGoogle,
     register,
     confirmPendingAuth,
+    adoptGoogleSession,
     logout,
     deleteAccount,
     isAuthenticated,
@@ -190,6 +252,7 @@ export const useAuthState = () => {
     onboardingData,
     saveOnboardingData,
     completeOnboardingStep,
+    finishOnboarding,
     resetOnboarding,
     suggestedUsers,
     fetchSuggestedUsers,

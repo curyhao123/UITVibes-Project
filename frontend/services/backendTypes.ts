@@ -6,6 +6,17 @@ export interface BE_RegisterRequest {
   password: string;
 }
 
+export interface BE_GoogleLoginRequest {
+  /** Authorization code returned by Google in the OAuth callback. */
+  code: string;
+  /** PKCE code_verifier that was used to mint the auth request. */
+  codeVerifier: string;
+  /** The exact redirectUri used to start the OAuth flow. Must match the one sent to Google's token endpoint. */
+  redirectUri: string;
+  /** "web" | "ios" | "android" — used by backend to pick the right ClientId. */
+  platform: "web" | "ios" | "android";
+}
+
 export interface BE_LoginRequest {
   email: string;
   password: string;

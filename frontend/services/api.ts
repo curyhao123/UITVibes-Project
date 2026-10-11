@@ -1,6 +1,7 @@
 import apiClient from "./httpClient";
 
 export * from "./authService";
+export * from "./googleAuthService";
 export * from "./userService";
 export * from "./postService";
 export * from "./adminService";

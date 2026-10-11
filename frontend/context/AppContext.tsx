@@ -28,8 +28,10 @@ interface AppContextType {
   isNewUser: boolean;
   markUserActive: () => void;
   login: (email: string, password: string) => Promise<User | null>;
+  loginWithGoogle: () => Promise<User | null>;
   register: (email: string, password: string, username: string) => Promise<boolean>;
   confirmPendingAuth: (user: User) => void;
+    adoptGoogleSession: (user: User, isNewUser: boolean) => void;
   logout: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
   isAuthenticated: boolean;
@@ -46,6 +48,7 @@ interface AppContextType {
   };
   saveOnboardingData: (data: Partial<AppContextType['onboardingData']>) => void;
   completeOnboardingStep: () => void;
+    finishOnboarding: () => void;
   resetOnboarding: () => void;
 
   suggestedUsers: User[];
@@ -305,7 +308,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         if (restoredUser) {
           auth.setCurrentUser(restoredUser);
           auth.setIsAuthenticated(true);
-          auth.setIsNewUser(restoredUser.posts === 0);
+          // Same rule as every other entry point: onboarding is gated on identity
+          // fields, not on activity. A 0-post user who finished onboarding is
+          // an established user and must not be sent back through onboarding.
+          auth.setIsNewUser(!restoredUser.displayName?.trim());
 
           await Promise.all([
             feed.refreshPosts(),
@@ -368,8 +374,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     isNewUser: auth.isNewUser,
     markUserActive: auth.markUserActive,
     login: auth.login,
+    loginWithGoogle: auth.loginWithGoogle,
     register: auth.register,
     confirmPendingAuth: auth.confirmPendingAuth,
+    adoptGoogleSession: auth.adoptGoogleSession,
     logout,
     deleteAccount,
     isAuthenticated: auth.isAuthenticated,
@@ -378,6 +386,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     onboardingData: auth.onboardingData,
     saveOnboardingData: auth.saveOnboardingData,
     completeOnboardingStep: auth.completeOnboardingStep,
+    finishOnboarding: auth.finishOnboarding,
     resetOnboarding: auth.resetOnboarding,
     suggestedUsers: auth.suggestedUsers,
     fetchSuggestedUsers: auth.fetchSuggestedUsers,

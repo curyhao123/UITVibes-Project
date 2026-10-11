@@ -56,9 +56,20 @@ function AuthGuard() {
       return;
     }
 
-    // Already logged in but on auth pages → home or admin dashboard
-    // Allow onboarding pages for new users (isNewUser=true means onboarding not complete)
-    if (isAuthenticated && inAuthGroup && !isNewUser) {
+    // Onboarding pages are the only auth screens a new user may reach.
+    // Once onboarding is finished (isNewUser=false), leave the auth group —
+    // otherwise router.replace('/(tabs)/home') from the last onboarding step is
+    // immediately undone and the user stays stuck in the auth group.
+    const ONBOARDING_ROUTES = [
+      'auth/onboarding-fullname',
+      'auth/onboarding-username',
+      'auth/onboarding-avatar-bio',
+      'auth/onboarding-find-friends',
+    ];
+    const onOnboardingRoute = ONBOARDING_ROUTES.includes(String(segments[0]));
+
+    // A logged-in user who never started onboarding must not be left on login/register.
+    if (isAuthenticated && !isNewUser && inAuthGroup && !onOnboardingRoute) {
       if (currentUser?.role === 'Admin') {
         router.replace('/admin/dashboard');
       } else {
@@ -116,6 +127,7 @@ function AppLayoutInner() {
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="auth/email-verification" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/google-callback" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-fullname" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-username" options={{ headerShown: false }} />
             <Stack.Screen name="auth/onboarding-avatar-bio" options={{ headerShown: false }} />

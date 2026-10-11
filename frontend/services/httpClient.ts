@@ -124,7 +124,8 @@ apiClient.interceptors.response.use(
       originalRequest?.url?.includes("/auth/send-otp") ||
       originalRequest?.url?.includes("/auth/verify-otp") ||
       originalRequest?.url?.includes("/auth/forgot-password") ||
-      originalRequest?.url?.includes("/auth/refresh-token");
+      originalRequest?.url?.includes("/auth/refresh-token") ||
+      originalRequest?.url?.includes("/auth/googleauth/login");
 
     if (
       error.response?.status === 401 &&

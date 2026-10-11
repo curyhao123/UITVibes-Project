@@ -43,6 +43,14 @@ builder.Services.AddScoped<IAuthService, AuthService.ServiceLayer.Implementation
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMessagePublisher, RabbitMQPublisher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
+// HttpClient for Google tokeninfo verification
+builder.Services.AddHttpClient("Google", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Add("User-Agent", "UITVibes-AuthService/1.0");
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

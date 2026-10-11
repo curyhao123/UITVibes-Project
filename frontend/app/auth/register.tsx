@@ -15,12 +15,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { FormInput } from "../../components/FormInput";
-import { AppColors } from "../../constants/theme";
+import { GoogleIcon } from "../../components/GoogleIcon";
+import { AppColors, borderRadius } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, authError } = useApp();
+  const { register, loginWithGoogle, authError } = useApp();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,6 +98,21 @@ export default function RegisterScreen() {
     setIsLoading(false);
     if (success) {
       router.replace(`/auth/email-verification?email=${encodeURIComponent(email)}`);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      const result = await loginWithGoogle();
+      if (result) {
+        // Google user is already verified → skip email-verification screen
+        // Send to onboarding so they can pick a real username
+        router.replace("/auth/onboarding-username" as any);
+      }
+      // User-cancelled or error already surfaced via context.authError
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -222,6 +238,24 @@ export default function RegisterScreen() {
             style={styles.registerBtn}
           />
 
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Continue with Google */}
+          <TouchableOpacity
+            style={styles.googleBtn}
+            activeOpacity={0.7}
+            onPress={handleGoogleSignUp}
+            disabled={isLoading}
+          >
+            <GoogleIcon size={20} />
+            <Text style={styles.googleBtnText}>Continue with Google</Text>
+          </TouchableOpacity>
+
           {/* Terms */}
           <Text style={styles.termsText}>
             By creating an account, you agree to our{" "}
@@ -342,5 +376,39 @@ const styles = StyleSheet.create({
   logInLink: {
     color: AppColors.primary,
     fontWeight: "700",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: AppColors.border,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    color: AppColors.textMuted,
+    fontWeight: "500",
+  },
+  googleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    height: 50,
+    backgroundColor: AppColors.surface,
+    borderWidth: 1.5,
+    borderColor: AppColors.border,
+    borderRadius: borderRadius.md,
+    marginBottom: 16,
+  },
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: AppColors.text,
+    letterSpacing: -0.1,
   },
 });

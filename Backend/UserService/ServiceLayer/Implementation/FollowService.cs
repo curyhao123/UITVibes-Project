@@ -163,7 +163,27 @@ public class FollowService : IFollowService
 
         if (profile == null)
         {
-            throw new KeyNotFoundException("User not found");
+            // A profile that has not been provisioned yet still has well-defined
+            // (all-zero) stats. Returning them keeps the client boot sequence working
+            // instead of failing the whole login on a 404.
+            _logger.LogWarning(
+                "No UserProfile for user {UserId}; returning zeroed follow stats", userId);
+
+            var emptyStats = new UserFollowStatsDto
+            {
+                UserId = userId,
+                PostsCount = await GetPostsCountAsync(userId),
+                IsFollowing = false,
+                IsFollowedBy = false
+            };
+
+            if (currentUserId.HasValue && currentUserId.Value != userId)
+            {
+                emptyStats.IsFollowing = await IsFollowingAsync(currentUserId.Value, userId);
+                emptyStats.IsFollowedBy = await IsFollowingAsync(userId, currentUserId.Value);
+            }
+
+            return emptyStats;
         }
 
         var stats = new UserFollowStatsDto
@@ -281,5 +301,43 @@ public class FollowService : IFollowService
         .ToListAsync();
 
         return friends;
+    }
+
+    public async Task<List<SuggestedUserDto>> GetSuggestedUsersAsync(Guid currentUserId, int limit = 6)
+    {
+        if (limit <= 0) limit = 6;
+        if (limit > 50) limit = 50;
+
+        // IDs the current user already follows.
+        var alreadyFollowingIds = _context.Follows
+            .Where(f => f.FollowerId == currentUserId)
+            .Select(f => f.FollowingId);
+
+        // Block relationships (either direction).
+        var blockedIds = _context.Blocks
+            .Where(b => b.BlockerId == currentUserId || b.BlockedId == currentUserId)
+            .Select(b => b.BlockerId == currentUserId ? b.BlockedId : b.BlockerId);
+
+        // Exclude self + already-followed + blocked, then rank by popularity
+        // (followers count) and recency.
+        var suggestions = await _context.UserProfiles
+            .Where(p => p.UserId != currentUserId
+                        && !p.IsBanned
+                        && !alreadyFollowingIds.Contains(p.UserId)
+                        && !blockedIds.Contains(p.UserId))
+            .OrderByDescending(p => p.FollowersCount)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(limit)
+            .Select(p => new SuggestedUserDto
+            {
+                UserId = p.UserId,
+                DisplayName = p.DisplayName,
+                AvatarUrl = p.AvatarUrl,
+                FollowersCount = p.FollowersCount,
+                IsFollowing = false
+            })
+            .ToListAsync();
+
+        return suggestions;
     }
 }

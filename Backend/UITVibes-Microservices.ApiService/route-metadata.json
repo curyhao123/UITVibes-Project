@@ -330,6 +330,15 @@
             "skip": 0,
             "take": 50
           }
+        },
+        {
+          "method": "GET",
+          "path": "/user/suggested",
+          "description": "Get suggested users to follow (Instagram-style). Excludes self, already-followed, blocked, and banned users. Ordered by follower count desc, then recency.",
+          "requiresAuth": true,
+          "queryParameters": {
+            "limit": 6
+          }
         }
       ]
     },
