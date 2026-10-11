@@ -16,6 +16,11 @@ var notificationDb = postgres.AddDatabase("notificationdb");
 // Add RabbitMQ for inter-service messaging
 var messaging = builder.AddRabbitMQ("messaging");
 
+// Google OAuth credentials for AuthService
+var googleWebClientId = builder.AddParameter("google-webclientid");
+var googleIosClientId = builder.AddParameter("google-iosclientid");
+var googleClientSecret = builder.AddParameter("google-clientsecret", secret: true);
+
 // ===== CENTRALIZED SECRETS =====
 // Define secrets once, use everywhere
 var jwtKey = builder.AddParameter("jwt-key", secret: true);
@@ -42,6 +47,9 @@ var authService = builder.AddProject<Projects.AuthService>("authservice")
     .WithReference(messaging)
     .WaitFor(messaging)
     .WithEnvironment("Jwt__Key", jwtKey)
+    .WithEnvironment("GoogleAuth__WebClientId", googleWebClientId)
+    .WithEnvironment("GoogleAuth__iOSClientId", googleIosClientId)
+    .WithEnvironment("GoogleAuth__ClientSecret", googleClientSecret)
     .WithEnvironment("SmtpSettings__Server", smtpServer)
     .WithEnvironment("SmtpSettings__Port", smtpPort)
     .WithEnvironment("SmtpSettings__Username", smtpUsername)

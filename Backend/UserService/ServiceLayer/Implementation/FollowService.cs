@@ -163,7 +163,27 @@ public class FollowService : IFollowService
 
         if (profile == null)
         {
-            throw new KeyNotFoundException("User not found");
+            // A profile that has not been provisioned yet still has well-defined
+            // (all-zero) stats. Returning them keeps the client boot sequence working
+            // instead of failing the whole login on a 404.
+            _logger.LogWarning(
+                "No UserProfile for user {UserId}; returning zeroed follow stats", userId);
+
+            var emptyStats = new UserFollowStatsDto
+            {
+                UserId = userId,
+                PostsCount = await GetPostsCountAsync(userId),
+                IsFollowing = false,
+                IsFollowedBy = false
+            };
+
+            if (currentUserId.HasValue && currentUserId.Value != userId)
+            {
+                emptyStats.IsFollowing = await IsFollowingAsync(currentUserId.Value, userId);
+                emptyStats.IsFollowedBy = await IsFollowingAsync(userId, currentUserId.Value);
+            }
+
+            return emptyStats;
         }
 
         var stats = new UserFollowStatsDto

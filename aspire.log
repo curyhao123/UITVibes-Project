@@ -1,0 +1,24 @@
+Using launch settings from D:\UITVibes-Project\Backend\UITVibes-Microservices.AppHost\Properties\launchSettings.json...
+Building...
+D:\UITVibes-Project\Backend\UITVibes-Microservices.ServiceDefaults\UITVibes-Microservices.ServiceDefaults.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.9.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9 [D:\UITVibes-Project\Backend\UITVibes-Microservices.AppHost\UITVibes-Microservices.AppHost.csproj]
+D:\UITVibes-Project\Backend\UITVibes-Microservices.ServiceDefaults\UITVibes-Microservices.ServiceDefaults.csproj : warning NU1902: Package 'OpenTelemetry.Exporter.OpenTelemetryProtocol' 1.9.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-4625-4j76-fww9
+D:\UITVibes-Project\Backend\AuthService\ServiceLayer\Implementation\EmailService.cs(20,75): warning CS8604: Possible null reference argument for parameter 's' in 'int int.Parse(string s)'. [D:\UITVibes-Project\Backend\AuthService\AuthService.csproj]
+D:\UITVibes-Project\Backend\AuthService\ServiceLayer\Implementation\EmailService.cs(28,40): warning CS8604: Possible null reference argument for parameter 'address' in 'MailAddress.MailAddress(string address, string? displayName)'. [D:\UITVibes-Project\Backend\AuthService\AuthService.csproj]
+D:\UITVibes-Project\Backend\PostService\Messaging\PostCountRpcConsumer.cs(92,33): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+D:\UITVibes-Project\Backend\PostService\ServiceLayer\Implementation\ReelService.cs(221,29): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+D:\UITVibes-Project\Backend\PostService\ServiceLayer\Implementation\PostService.cs(462,25): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+D:\UITVibes-Project\Backend\PostService\ServiceLayer\Implementation\PostService.cs(652,35): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+D:\UITVibes-Project\Backend\PostService\ServiceLayer\Implementation\PostService.cs(698,35): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+D:\UITVibes-Project\Backend\PostService\ServiceLayer\Implementation\PostService.cs(741,35): warning CS8602: Dereference of a possibly null reference. [D:\UITVibes-Project\Backend\PostService\PostService.csproj]
+info: Aspire.Hosting.DistributedApplication[0]
+      Aspire version: 13.1.0+8a4db1775c3fbae1c602022b636299cb04971fde
+info: Aspire.Hosting.DistributedApplication[0]
+      Distributed application starting.
+info: Aspire.Hosting.DistributedApplication[0]
+      Application host directory is: D:\UITVibes-Project\Backend\UITVibes-Microservices.AppHost
+info: Aspire.Hosting.DistributedApplication[0]
+      Now listening on: http://localhost:15144
+info: Aspire.Hosting.DistributedApplication[0]
+      Login to the dashboard at http://localhost:15144/login?t=272795140bd3ba62f5e74602c5920a64
+info: Aspire.Hosting.DistributedApplication[0]
+      Distributed application started. Press Ctrl+C to shut down.

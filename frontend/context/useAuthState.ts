@@ -54,7 +54,9 @@ export const useAuthState = () => {
         const user = await api.login(email, password);
         setCurrentUser(user);
         setIsAuthenticated(true);
-        setIsNewUser(user.posts === 0);
+        // Onboarding is about identity, not activity: a returning user with 0
+        // posts must not be pushed back through onboarding.
+        setIsNewUser(!user.displayName?.trim());
         return user;
       } catch (error) {
         console.error('Login failed:', error);
@@ -143,6 +145,20 @@ export const useAuthState = () => {
     setIsNewUser(true);
   }, []);
 
+  /**
+   * Adopts a session that was already provisioned outside of this hook — the web
+   * Google redirect flow calls googleAuthService.loginWithGoogleBackend() directly
+   * (it handles the PKCE exchange), so this hook never sees the tokens.
+   * Without this, the app keeps `isAuthenticated === false` and every API call
+   * goes out without an Authorization header → 401.
+   */
+  const adoptGoogleSession = useCallback((user: User, isNewUser: boolean) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsNewUser(isNewUser);
+    setAuthError(null);
+  }, []);
+
   const resetSessionAfterSignOut = useCallback(() => {
     setCurrentUser(null);
     setIsAuthenticated(false);
@@ -201,6 +217,16 @@ export const useAuthState = () => {
     setOnboardingStep((prev) => prev + 1);
   }, []);
 
+  /**
+   * Marks onboarding as finished. Must be called once the profile has been
+   * persisted, otherwise AuthGuard keeps the user inside the auth group and
+   * the redirect to /(tabs)/home is ignored.
+   */
+  const finishOnboarding = useCallback(() => {
+    setIsNewUser(false);
+    setOnboardingStep(4);
+  }, []);
+
   const resetOnboarding = useCallback(() => {
     setOnboardingStep(0);
     setIsNewUser(false);
@@ -217,6 +243,7 @@ export const useAuthState = () => {
     loginWithGoogle,
     register,
     confirmPendingAuth,
+    adoptGoogleSession,
     logout,
     deleteAccount,
     isAuthenticated,
@@ -225,6 +252,7 @@ export const useAuthState = () => {
     onboardingData,
     saveOnboardingData,
     completeOnboardingStep,
+    finishOnboarding,
     resetOnboarding,
     suggestedUsers,
     fetchSuggestedUsers,

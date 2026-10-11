@@ -15,3 +15,8 @@ token.txt
 *.jwt
 secrets/
 .env.local
+
+# ── .NET local overrides (real values live in `dotnet user-secrets`) ──────
+# These files are per-developer; committing them leaks API keys.
+Backend/**/appsettings.Development.json
+Backend/**/appsettings.Local.json

@@ -57,7 +57,23 @@ public class UserProfileService : IUserProfileService
 
         if (profile == null)
         {
-            throw new KeyNotFoundException("User profile not found");
+            // Self-heal: the user row exists in AuthService but its UserProfile was
+            // never provisioned (lost user.created event, downtime at signup).
+            // Return an empty profile so the client can still render and onboarding
+            // can fill in the real values, instead of a 500 that breaks the login flow.
+            _logger.LogWarning(
+                "No UserProfile for user {UserId}; returning placeholder profile", userId);
+
+            var placeholder = new UserProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                DisplayName = null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            return MapToDto(placeholder);
         }
 
         return await MapToDtoWithPostCountAsync(profile);
@@ -65,13 +81,16 @@ public class UserProfileService : IUserProfileService
 
     public async Task<UserProfileDto> CreateProfileAsync(Guid userId, string username)
     {
-        // Check if profile already exists
+        // Idempotent: re-delivery of user.created must not fail the consumer.
+        // Instead return the existing profile so the message can be acked.
         var existingProfile = await _context.UserProfiles
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (existingProfile != null)
         {
-            throw new InvalidOperationException("Profile already exists for this user");
+            _logger.LogInformation(
+                "Profile already exists for user {UserId}; skipping creation", userId);
+            return await MapToDtoWithPostCountAsync(existingProfile);
         }
 
         var profile = new UserProfile
@@ -99,10 +118,36 @@ public class UserProfileService : IUserProfileService
 
         if (profile == null)
         {
-            throw new KeyNotFoundException("Profile not found");
+            // Self-heal: the user row exists in AuthService but its UserProfile was
+            // never provisioned (lost user.created event, service downtime at signup).
+            // Provision it now and apply the update in one pass instead of 404-ing.
+            _logger.LogWarning(
+                "No UserProfile for user {UserId}; provisioning on-the-fly during profile update", userId);
+
+            await CreateProfileAsync(
+                userId,
+                request.DisplayName?.Trim() is { Length: > 0 } dn ? dn : $"user_{userId:N}");
+
+            profile = await _context.UserProfiles
+                .Include(p => p.SocialLinks)
+                .FirstAsync(p => p.UserId == userId);
         }
 
-        // Update basic fields
+        await ApplyUpdateAsync(profile, request);
+
+        _logger.LogInformation("Updated profile for user {UserId}", userId);
+
+        return await MapToDtoWithPostCountAsync(profile);
+    }
+
+    /// <summary>
+    /// Applies the mutable fields of <paramref name="request"/> onto an existing profile
+    /// and persists them. Assumes the profile row already exists.
+    /// </summary>
+    private async Task ApplyUpdateAsync(UserProfile profile, UpdateProfileRequest request)
+    {
+        var userId = profile.UserId;
+
         if (request.DisplayName != null)
         {
             var trimmedDisplayName = request.DisplayName.Trim();
@@ -178,10 +223,6 @@ public class UserProfileService : IUserProfileService
 
         profile.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Updated profile for user {UserId}", userId);
-
-        return await MapToDtoWithPostCountAsync(profile);
     }
 
     public async Task DeleteProfileAsync(Guid userId)

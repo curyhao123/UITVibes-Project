@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -76,7 +77,7 @@ const SuggestedUserItem: React.FC<SuggestedUserItemProps> = ({ user, onFollow, o
 
 export default function OnboardingFindFriendsScreen() {
   const router = useRouter();
-  const { onboardingData, fetchSuggestedUsers, suggestedUsers, followSuggestedUser, completeOnboardingStep } = useApp();
+  const { onboardingData, fetchSuggestedUsers, suggestedUsers, followSuggestedUser, finishOnboarding } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [localSuggested, setLocalSuggested] = useState<User[]>([]);
 
@@ -112,15 +113,20 @@ export default function OnboardingFindFriendsScreen() {
       });
     } catch (err: any) {
       console.error("[Onboarding] Failed to save profile:", err?.response?.data ?? err);
-    } finally {
-      completeOnboardingStep();
+      Alert.alert("Could not save profile", "Please try again.");
       setIsLoading(false);
-      router.replace('/(tabs)/home');
+      return;
     }
+
+    // Only mark onboarding complete once the profile is persisted, otherwise
+    // AuthGuard treats the user as new and keeps them inside the auth group.
+    finishOnboarding();
+    setIsLoading(false);
+    router.replace('/(tabs)/home');
   };
 
-  const handleSkip = async () => {
-    completeOnboardingStep();
+  const handleSkip = () => {
+    finishOnboarding();
     router.replace('/(tabs)/home');
   };
 

@@ -46,12 +46,11 @@ type Status = "loading" | "success" | "error";
 export default function GoogleCallbackScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ code?: string; error?: string }>();
-  const { loginWithGoogle: _hookLogin } = useApp();
-  // We don't actually use the context method here because the heavy lifting
-  // (popup, redirect, code extraction) already happened in loginWithGoogle().
-  // We just need to land the user in the app and let AppContext pick up the
-  // new session via the natural refresh path (or via the next call site).
-  void _hookLogin;
+  const { adoptGoogleSession } = useApp();
+  // loginWithGoogleBackend() performs the PKCE exchange itself and stores the
+  // tokens, so this hook never sees them. We must therefore push the resulting
+  // user into the context explicitly — otherwise isAuthenticated stays false and
+  // every subsequent API call is sent without a token → 401.
 
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -70,8 +69,8 @@ export default function GoogleCallbackScreen() {
       setStatus("error");
       setErrorMessage(
         params.error === "access_denied"
-          ? "Bạn đã huỷ đăng nhập bằng Google."
-          : `Google trả về lỗi: ${params.error}`,
+          ? "You cancelled Google sign-in."
+          : `Google returned an error: ${params.error}`,
       );
       return;
     }
@@ -80,7 +79,7 @@ export default function GoogleCallbackScreen() {
     if (!code) {
       setStatus("error");
       setErrorMessage(
-        "Không tìm thấy authorization code trong URL. Vui lòng thử lại.",
+        "No authorization code found in the URL. Please try again.",
       );
       return;
     }
@@ -105,8 +104,8 @@ export default function GoogleCallbackScreen() {
     if (!codeVerifier) {
       setStatus("error");
       setErrorMessage(
-        "Không tìm thấy PKCE code_verifier trong localStorage. " +
-          "Có thể bạn đã mở link callback trong tab/incognito khác. Vui lòng thử đăng nhập lại.",
+        "PKCE code_verifier was not found in localStorage. " +
+          "You may have opened the callback link in a different tab or incognito window. Please sign in again.",
       );
       return;
     }
@@ -129,25 +128,29 @@ export default function GoogleCallbackScreen() {
       );
       if (!result) {
         setStatus("error");
-        setErrorMessage("Đăng nhập Google thất bại. Vui lòng thử lại.");
+        setErrorMessage("Google sign-in failed. Please try again.");
         return;
       }
       setStatus("success");
+      // Push the freshly provisioned user into context BEFORE routing, so the
+      // screens rendered on /(tabs) already have auth state and a token.
+      adoptGoogleSession(result.user, result.isNewUser);
       // Brief delay so the user sees the success state before we route away.
       await new Promise((r) => setTimeout(r, 400));
-      const target =
-        result.isNewUser || result.user.posts === 0
-          ? "/auth/onboarding-username"
-          : result.user.role === "Admin"
-            ? "/admin/dashboard"
-            : "/(tabs)/home";
+      // Route on isNewUser only — post count says nothing about onboarding state,
+      // and a user with 0 posts who already finished onboarding must land on home.
+      const target = result.isNewUser
+        ? "/auth/onboarding-username"
+        : result.user.role === "Admin"
+          ? "/admin/dashboard"
+          : "/(tabs)/home";
       router.replace(target as any);
     } catch (err: any) {
       console.error("[GoogleCallback] backend error", err);
       setStatus("error");
       setErrorMessage(
         err?.message ??
-          "Đăng nhập Google thất bại. Vui lòng thử lại.",
+          "Google sign-in failed. Please try again.",
       );
     }
   };
@@ -162,9 +165,9 @@ export default function GoogleCallbackScreen() {
         {status === "loading" && (
           <>
             <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={styles.title}>Đang hoàn tất đăng nhập…</Text>
+            <Text style={styles.title}>Completing sign-in…</Text>
             <Text style={styles.subtitle}>
-              Đang trao đổi authorization code với Google và tạo phiên của bạn.
+              Exchanging the authorization code with Google and creating your session.
             </Text>
           </>
         )}
@@ -174,8 +177,8 @@ export default function GoogleCallbackScreen() {
             <View style={styles.iconWrap}>
               <Feather name="check-circle" size={48} color="#22C55E" />
             </View>
-            <Text style={styles.title}>Đăng nhập thành công!</Text>
-            <Text style={styles.subtitle}>Đang chuyển hướng…</Text>
+            <Text style={styles.title}>Signed in successfully!</Text>
+            <Text style={styles.subtitle}>Redirecting…</Text>
           </>
         )}
 
@@ -184,16 +187,16 @@ export default function GoogleCallbackScreen() {
             <View style={[styles.iconWrap, styles.iconWrapError]}>
               <Feather name="alert-circle" size={48} color={AppColors.error} />
             </View>
-            <Text style={styles.title}>Đăng nhập thất bại</Text>
+            <Text style={styles.title}>Sign-in failed</Text>
             <Text style={styles.subtitle}>
-              {errorMessage ?? "Đã có lỗi xảy ra. Vui lòng thử lại."}
+              {errorMessage ?? "Something went wrong. Please try again."}
             </Text>
             <TouchableOpacity
               style={styles.retryBtn}
               onPress={handleRetry}
               activeOpacity={0.8}
             >
-              <Text style={styles.retryBtnText}>Quay lại trang đăng nhập</Text>
+              <Text style={styles.retryBtnText}>Back to sign-in</Text>
             </TouchableOpacity>
           </>
         )}

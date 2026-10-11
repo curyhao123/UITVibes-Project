@@ -121,8 +121,9 @@ export default function LoginScreen() {
     try {
       const result = await loginWithGoogle();
       if (result) {
-        // New Google user → onboarding (pick username). Returning user → home.
-        const target = result.posts === 0
+        // Route on whether the account has completed onboarding (no displayName),
+        // NOT on post count — a 0-post user who finished onboarding goes home.
+        const target = !result.displayName?.trim()
           ? "/auth/onboarding-username"
           : result.role === "Admin" ? "/admin/dashboard" : "/(tabs)/home";
         router.replace(target as any);

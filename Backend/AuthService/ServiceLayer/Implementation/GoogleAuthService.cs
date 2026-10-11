@@ -113,6 +113,22 @@ namespace AuthService.ServiceLayer.Implementation
             _context.RefreshTokens.Add(refreshTokenEntity);
             await _context.SaveChangesAsync();
 
+            // ── 8. Ensure a UserProfile exists for this user ───────────────────
+            // Published on EVERY login (not just signup) so we self-heal users
+            // whose user.created event was lost (publisher down, queue drained,
+            // account linking path). UserService.CreateProfileAsync is idempotent,
+            // so duplicate deliveries are a no-op.
+            try
+            {
+                await _messagePublisher.PublishUserCreatedAsync(
+                    user.Id, user.Email, user.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex, "Failed to publish UserCreated event for Google login {UserId}", user.Id);
+            }
+
             _logger.LogInformation(
                 "Google login successful for user {UserId} (provider={Provider}, sub={Sub})",
                 user.Id, user.Provider, googleUser.Sub);
@@ -213,11 +229,12 @@ namespace AuthService.ServiceLayer.Implementation
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "Google token exchange failed: {Status} {Body}",
-                    response.StatusCode, raw);
+                    "Google token exchange failed. Status: {Status}, Body: {Body}, RedirectUri: {RedirectUri}, ClientId: {ClientId}",
+                    response.StatusCode, raw, redirectUri, clientId);
+                // Surface Google's actual error message (often includes
+                // the exact mismatch detail) so the frontend can log it.
                 throw new Exception(
-                    "Failed to exchange authorization code with Google. " +
-                    "Check that the redirect URI matches the one registered in Google Cloud Console.");
+                    $"Google token exchange failed (HTTP {(int)response.StatusCode}): {raw}");
             }
 
             var token = JsonSerializer.Deserialize<GoogleTokenResponse>(raw,
@@ -348,15 +365,8 @@ namespace AuthService.ServiceLayer.Implementation
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // Publish user.created so UserService provisions the UserProfile
-            try
-            {
-                await _messagePublisher.PublishUserCreatedAsync(user.Id, user.Email, user.Username);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to publish UserCreated event for Google signup {UserId}", user.Id);
-            }
+            // NOTE: user.created is published by LoginWithGoogleAsync after the user is
+            // persisted, on every login. Publishing here too would send a duplicate event.
 
             _logger.LogInformation("Created new user {UserId} from Google (sub={Sub})", user.Id, info.Sub);
             return user;

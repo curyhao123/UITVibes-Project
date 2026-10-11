@@ -360,7 +360,13 @@ async function verifyAndProvisionOnBackend(
   await setPersistedUserRole(user.role ?? null);
   setCurrentAccount("activeUser");
 
-  const isNewUser = !profile || (stats?.postsCount ?? 0) === 0;
+  // Onboarding completion is determined by the profile having a displayName set,
+  // NOT by post count. A user can finish onboarding and still have 0 posts, and
+  // must not be pushed back into onboarding on every subsequent login.
+  const hasCompletedOnboarding =
+    !!profile && !!profile.displayName && profile.displayName.trim().length > 0;
+
+  const isNewUser = !hasCompletedOnboarding;
 
   return { user, isNewUser };
 }
