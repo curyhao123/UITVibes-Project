@@ -428,7 +428,7 @@ public class PostService : IPostService
             // Ưu tiên lý do từ admin; nếu không có thì dùng lý do do AI sinh.
             dto.ModerationReason = moderation?.AdminNote ?? moderation?.AuthorReason;
         }
-        
+
         if (post.OriginalPost != null && (post.OriginalPost.UserId == currentUserId || post.OriginalPost.ModerationStatus == ModerationStatus.Approved))
         {
             dto.OriginalPost = await MapToDto(post.OriginalPost, currentUserId);
