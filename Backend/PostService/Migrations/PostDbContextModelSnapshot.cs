@@ -285,6 +285,10 @@ namespace PostService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");    
+
                     b.Property<int>("AttemptCount")
                         .HasColumnType("integer");
 
@@ -311,6 +315,12 @@ namespace PostService.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
+                        
                     b.Property<int?>("Severity")
                         .HasColumnType("integer");
 

@@ -402,7 +402,7 @@ public class PostDbContext : DbContext
             entity.Property(e => e.Categories).HasMaxLength(200);
             entity.Property(e => e.AuthorReason).HasMaxLength(300);
             entity.Property(e => e.InternalReasonCode).IsRequired().HasMaxLength(100);
-
+            entity.Property(e => e.AdminNote).HasMaxLength(500);
             // Mỗi content chỉ có đúng 1 bản ghi moderation — thay thế FK integrity bị mất
             entity.HasIndex(e => new { e.TargetId, e.TargetType }).IsUnique();
 

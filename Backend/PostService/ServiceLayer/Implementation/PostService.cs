@@ -388,6 +388,7 @@ public class PostService : IPostService
             ViewsCount = post.ViewsCount,
             RepostCount = post.RepostCount,
             OriginalPostId = post.OriginalPostId,
+            ModerationStatus = post.ModerationStatus,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
             Media = post.Media.OrderBy(m => m.DisplayOrder).Select(m => new PostMediaDto
@@ -417,6 +418,17 @@ public class PostService : IPostService
             dto.IsRepostedByCurrentUser = await _repostService.HasRepostedAsync(post.Id, currentUserId.Value);
         }
 
+        // Lý do kiểm duyệt chỉ có ý nghĩa với chính tác giả, và chỉ khi bài chưa được duyệt.
+        // Bài Approved thì không cần query — tránh N+1 trong các list lớn (feed, my-posts).
+        if (post.UserId == currentUserId && post.ModerationStatus != ModerationStatus.Approved)
+        {
+            var moderation = await _context.ModerationResults
+                .FirstOrDefaultAsync(m => m.TargetId == post.Id && m.TargetType == ModerationTargetType.Post);
+
+            // Ưu tiên lý do từ admin; nếu không có thì dùng lý do do AI sinh.
+            dto.ModerationReason = moderation?.AdminNote ?? moderation?.AuthorReason;
+        }
+        
         if (post.OriginalPost != null && (post.OriginalPost.UserId == currentUserId || post.OriginalPost.ModerationStatus == ModerationStatus.Approved))
         {
             dto.OriginalPost = await MapToDto(post.OriginalPost, currentUserId);

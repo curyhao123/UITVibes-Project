@@ -59,6 +59,11 @@ export interface Post {
   postType?: number;          // 0 = Original, 1 = Repost
   originalPostId?: string;
   originalPost?: Post;        // nested bài gốc (khi là repost)
+  // ── Moderation fields (chỉ có ý nghĩa với chính tác giả) ──
+  /** "Pending" | "Approved" | "Rejected" | "NeedsReview" */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét. */
+  moderationReason?: string;
 }
 
 export interface Conversation {

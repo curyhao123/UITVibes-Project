@@ -45,6 +45,19 @@ public class ModerationResult
     /// Số lần đã thử gọi LLM 
     public int AttemptCount { get; set; }
 
+    // ===== Quyết định của admin =====
+    // Các field dưới đây được set khi admin xử lý một nội dung đang chờ duyệt
+    // (ModerationStatus.NeedsReview). Chúng tách biệt hoàn toàn với quyết định
+    // của LLM ở trên — LLM không bao giờ được phép ghi vào các field này.
+
+    /// Ghi chú của admin khi xử lý (tuỳ chọn).
+    public string? AdminNote { get; set; }
+
+    /// Id của admin đã xử lý nội dung này.
+    public Guid? ReviewedBy { get; set; }
+
+    /// Thời điểm admin xử lý.
+    public DateTime? ReviewedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 
     /// Thời điểm cập nhật gần nhất (sau mỗi lần retry hoặc khi có kết quả).

@@ -24,6 +24,7 @@ import { Avatar } from './Avatar';
 import { ImageCarousel } from './ImageCarousel';
 import { MentionText } from './MentionText';
 import { PostActionsSheet } from './PostActionsSheet';
+import { PostModerationBadge } from './PostModerationBadge';
 import { ReportPostSheet } from './ReportPostSheet';
 import { SwipeableRow } from './SwipeableRow';
 import { TextPostCard } from './TextPostCard';
@@ -318,6 +319,12 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
             </View>
           </GestureDetector>
 
+          {/* Trạng thái kiểm duyệt (chỉ tác giả thấy) */}
+          <PostModerationBadge
+            status={post.moderationStatus}
+            reason={post.moderationReason}
+          />
+          
           {/* Action buttons */}
           <View style={[styles.actionsRow, { borderTopColor: colors.borderLight }]}>
             <TouchableOpacity

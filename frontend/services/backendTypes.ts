@@ -170,6 +170,10 @@ export interface BE_PostResponse {
   isBookmarkedByCurrentUser: boolean;
   isRepostedByCurrentUser: boolean;
   originalPost: BE_PostResponse | null;
+  /** Trạng thái kiểm duyệt — chỉ tác giả thấy. */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
 }
 
 export interface BE_CommentResponse {

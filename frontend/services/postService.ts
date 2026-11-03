@@ -183,6 +183,8 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     commentsCount: post.commentsCount ?? 0,
     repostCount: post.repostCount ?? 0,
     isReposted: post.isRepostedByCurrentUser ?? false,
+    moderationStatus: post.moderationStatus ?? "Approved",
+    moderationReason: post.moderationReason ?? undefined,
   };
 }
 
