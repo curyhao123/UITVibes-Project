@@ -7,6 +7,7 @@ import {
   getUserReports,
 } from "@/services/adminService";
 import type { BE_PostReport, BE_UserReport } from "@/services/backendTypes";
+import { getModerationStats } from "@/services/moderationService";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -35,6 +36,7 @@ interface Stats {
   postReports: number;
   userReportsByStatus: StatusBreakdown;
   postReportsByStatus: StatusBreakdown;
+  moderationNeedsReview: number;
 }
 
 const STATUS_COLORS = {
@@ -279,6 +281,7 @@ export default function DashboardScreen() {
     postReports: 0,
     userReportsByStatus: { pending: 0, resolved: 0, dismissed: 0 },
     postReportsByStatus: { pending: 0, resolved: 0, dismissed: 0 },
+    moderationNeedsReview: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -318,11 +321,12 @@ export default function DashboardScreen() {
   const fetchStats = async () => {
     try {
       // Fetch all data once
-      const [allUsers, allUserReports, allPostReports] =
+      const [allUsers, allUserReports, allPostReports, moderationStats] =
         await Promise.all([
           getAllUsers(0, 1000),
           getUserReports(0, 1000),
           getPostReports(0, 1000),
+          getModerationStats(),
         ]);
 
       setStats({
@@ -331,6 +335,7 @@ export default function DashboardScreen() {
         postReports: allPostReports.length,
         userReportsByStatus: countStatus(allUserReports as BE_UserReport[]),
         postReportsByStatus: countStatus(allPostReports as BE_PostReport[]),
+        moderationNeedsReview: moderationStats?.needsReview ?? 0,
       });
     } catch (err) {
       console.error(
@@ -429,6 +434,15 @@ export default function DashboardScreen() {
             color="#EF4444"
             onPress={() => router.push("/admin/reports")}
           />
+
+          <StatCard
+            title="AI Moderation"
+            value={stats.moderationNeedsReview}
+            icon="shield"
+            color="#8B5CF6"
+            onPress={() => router.push("/admin/moderation")}
+          />
+          
         </View>
 
         {/* Report Analytics / Pie Charts (Side by Side) */}

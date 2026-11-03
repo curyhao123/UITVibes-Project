@@ -48,7 +48,7 @@ builder.Services.AddSingleton<IModerationResponseParser, ModerationResponseParse
 builder.Services.AddSingleton<IModerationPromptBuilder, ModerationPromptBuilder>();
 builder.Services.AddScoped<IModerationDecisionEvaluator, ModerationDecisionEvaluator>();
 builder.Services.AddScoped<ILlmModerationService, LlmModerationService>();
-
+builder.Services.AddScoped<IModerationAdminService, ModerationAdminService>();
 // DeepSeek API config
 builder.Services.AddOptions<DeepSeekOptions>()
     .Bind(builder.Configuration.GetSection(DeepSeekOptions.SectionName))

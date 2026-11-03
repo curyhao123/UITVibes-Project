@@ -30,6 +30,18 @@ public class PostDto
     public Guid? OriginalPostId { get; set; }
     public PostDto? OriginalPost { get; set; }
 
+    /// <summary>
+    /// Trạng thái kiểm duyệt của bài: 0=Pending, 1=Approved, 2=Rejected, 3=NeedsReview.
+    /// Chỉ có ý nghĩa với chính tác giả — với người khác, bài đã Approved mới hiển thị.
+    /// </summary>
+    public ModerationStatus ModerationStatus { get; set; }
+
+    /// <summary>
+    /// Lý do bị từ chối / cần xem xét (do AI hoặc admin cung cấp). Chỉ tác giả thấy.
+    /// Null khi bài được duyệt.
+    /// </summary>
+
+    public string? ModerationReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

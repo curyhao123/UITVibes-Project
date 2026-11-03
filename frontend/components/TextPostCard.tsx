@@ -23,6 +23,7 @@ import { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHe
 import { Avatar } from './Avatar';
 import { MentionText } from './MentionText';
 import { PostActionsSheet } from './PostActionsSheet';
+import { PostModerationBadge } from './PostModerationBadge';
 import { ReportPostSheet } from './ReportPostSheet';
 import { SwipeableRow } from './SwipeableRow';
 
@@ -311,6 +312,12 @@ export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
           </View>
         </GestureDetector>
 
+        {/* Trạng thái kiểm duyệt (chỉ tác giả thấy) */}
+        <PostModerationBadge
+          status={post.moderationStatus}
+          reason={post.moderationReason}
+        />
+        
         {/* Action buttons */}
         <View style={[styles.actionsRow, { borderTopColor: colors.borderLight }]}>
           <TouchableOpacity
