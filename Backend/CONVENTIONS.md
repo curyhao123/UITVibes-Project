@@ -29,6 +29,7 @@ Backend/
 ├── PostService/                  # Posts, comments, likes, stories, reels, hashtags
 ├── MessageService/               # Real-time chat via SignalR, conversations
 ├── NotificationService/          # Push notifications (FCM), in-app notifications
+├── SearchService/                # Semantic search / RAG (embedding + rerank via Hugging Face TEI)
 │
 ├── UITVibes-Microservices.AppHost/      # .NET Aspire orchestration entry point
 ├── UITVibes-Microservices.ApiService/   # Shared API/gateway entry point
@@ -145,6 +146,12 @@ app.MapDefaultEndpoints();
 | Constants            | `PascalCase`            | `QueueName = "user.created"`        |
 | Local variables      | `camelCase`             | `var accessToken`, `var userId`     |
 | Properties (models)  | `PascalCase`            | `PasswordHash`, `CreatedAt`         |
+
+### Comments
+
+Keep comments short (one line where possible). No comments or XML docs on fields, properties,
+variables, constants or DTOs. A one-line `/// <summary>` on a class/interface/public method only
+when its name isn't self-explanatory; inline comments only for non-obvious "why".
 
 ### Routes
 

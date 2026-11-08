@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main, "dev/**"]
   pull_request:
     branches: [main, "dev/**"]
   workflow_dispatch:
@@ -59,6 +57,14 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       - name: Restore dependencies
         run: dotnet restore
 
@@ -67,15 +73,6 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
-        
+
       - name: Test
-        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-results
-          path: Backend/TestResults/*.trx
-
-
+        run: dotnet test --no-build --configuration Release
