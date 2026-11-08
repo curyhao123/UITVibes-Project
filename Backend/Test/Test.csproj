@@ -29,6 +29,7 @@
       <ProjectReference Include="..\AuthService\AuthService.csproj" />
       <ProjectReference Include="..\PostService\PostService.csproj" />
       <ProjectReference Include="..\NotificationService\NotificationService.csproj" />
+      <ProjectReference Include="..\SearchService\SearchService.csproj" />
     </ItemGroup>
 
 </Project>

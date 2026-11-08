@@ -15,6 +15,7 @@
     <ProjectReference Include="..\MessageService\MessageService.csproj" />
     <ProjectReference Include="..\NotificationService\NotificationService.csproj" />
     <ProjectReference Include="..\PostService\PostService.csproj" />
+    <ProjectReference Include="..\SearchService\SearchService.csproj" />
     <ProjectReference Include="..\UITVibes-Microservices.ApiService\UITVibes-Microservices.ApiService.csproj" />
     <ProjectReference Include="..\UserService\UserService.csproj" />
   </ItemGroup>

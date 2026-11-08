@@ -113,6 +113,35 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
     .WithHttpHealthCheck("/health");
 
 
+// ===== SEARCH / RAG =====
+// TEI tải model (~2.2 GB) vào volume ở lần chạy đầu; image cpu-* không cần GPU.
+// max-batch-tokens mặc định 16384 làm warmup trên CPU tốn ~16 GB RAM (bị OOM); auto-truncate bắt buộc khi nó < 8192.
+string[] teiArgs = ["--max-batch-tokens", "4096", "--max-client-batch-size", "32", "--auto-truncate"];
+const string teiImage = "ghcr.io/huggingface/text-embeddings-inference";
+const string teiTag = "cpu-1.8";
+
+var teiEmbed = builder.AddContainer("tei-embed", teiImage, teiTag)
+    .WithArgs(["--model-id", "BAAI/bge-m3", .. teiArgs])
+    .WithVolume("tei-embed-data", "/data")
+    .WithHttpEndpoint(targetPort: 80, name: "http")
+    .WithHttpHealthCheck("/health");
+
+var teiRerank = builder.AddContainer("tei-rerank", teiImage, teiTag)
+    .WithArgs(["--model-id", "BAAI/bge-reranker-v2-m3", .. teiArgs])
+    .WithVolume("tei-rerank-data", "/data")
+    .WithHttpEndpoint(targetPort: 80, name: "http")
+    .WithHttpHealthCheck("/health");
+
+// SearchService gọi TEI qua service discovery: "http://tei-embed", "http://tei-rerank".
+var searchService = builder.AddProject<Projects.SearchService>("searchservice")
+    .WithExternalHttpEndpoints()
+    .WithReference(teiEmbed.GetEndpoint("http"))
+    .WaitFor(teiEmbed)
+    .WithReference(teiRerank.GetEndpoint("http"))
+    .WaitFor(teiRerank)
+    .WithHttpHealthCheck("/health");
+
+
 // ===== API GATEWAY WITH JWT =====
 var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>("apiservice")
     // Pin the gateway to 5512 so frontend EXPO_PUBLIC_API_URL stays stable
