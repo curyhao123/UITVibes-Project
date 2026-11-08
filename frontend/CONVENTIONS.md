@@ -117,6 +117,7 @@ To resolve code inconsistencies across legacy files, enforce the following stand
 - **TypeScript**: Strict typing is enabled. Avoid using `any` where possible. Create typed interfaces in `services/backendTypes.ts` or local type files.
 - **Component Exports**: Use named exports or default exports consistently. Standard UI components export default or named components with TypeScript interfaces for props (`interface PostCardProps`).
 - **Styles**: Use `StyleSheet.create({...})` at the bottom of the file or use shared constant themes from `constants/theme.ts`.
+- **Comments**: Keep them short (one line where possible). Don't comment variables, props, state or types; only comment non-obvious intent ("why").
 
 ---
 
