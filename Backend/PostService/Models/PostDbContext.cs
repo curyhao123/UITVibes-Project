@@ -37,6 +37,13 @@ public class PostDbContext : DbContext
 
     public DbSet<ModerationResult> ModerationResults { get; set; }
 
+    /// Nhật ký append-only mọi quyết định kiểm duyệt (3.2) — dùng để đo độ
+    /// chính xác của AI và đề xuất lại ngưỡng.
+    public DbSet<ModerationDecisionLog> ModerationDecisionLogs { get; set; }
+
+    /// Lịch sử vi phạm + tự động khoá tài khoản (3.5).
+    public DbSet<UserStrike> UserStrikes { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,6 +118,11 @@ public class PostDbContext : DbContext
             entity.HasIndex(e => e.IsDeleted);
 
             entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
+
+            entity.Property(e => e.ModerationStatus).HasConversion<int>();
+
+            // Query "bình luận đã duyệt của bài X" — index phủ vừa filter vừa sort.
+            entity.HasIndex(e => new { e.PostId, e.ModerationStatus });
 
             // Self-referencing for nested comments
             entity.HasOne(e => e.ParentComment)
@@ -239,6 +251,10 @@ public class PostDbContext : DbContext
             entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
             entity.Property(e => e.PublicId).HasMaxLength(500);
             entity.Property(e => e.ThumbnailUrl).HasMaxLength(500);
+            entity.Property(e => e.ModerationStatus).HasConversion<int>();
+
+            // Query "story item đã duyệt của group X" — index phủ vừa filter vừa sort.
+            entity.HasIndex(e => new { e.StoryGroupId, e.ModerationStatus });
 
             entity.HasMany(e => e.Views)
                 .WithOne(v => v.StoryItem)
@@ -307,6 +323,11 @@ public class PostDbContext : DbContext
             entity.Property(e => e.ThumbnailUrl).HasMaxLength(500);
             entity.Property(e => e.ThumbnailPublicId).HasMaxLength(500);
 
+            entity.Property(e => e.ModerationStatus).HasConversion<int>();
+
+            // Query "reel đã duyệt" cho feed discover.
+            entity.HasIndex(e => e.ModerationStatus);
+
             entity.HasMany(e => e.Likes)
                 .WithOne(l => l.Reel)
                 .HasForeignKey(l => l.ReelId)
@@ -348,6 +369,13 @@ public class PostDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
 
             entity.Property(e => e.Content).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.ModerationStatus).HasConversion<int>();
+
+            // Query "bình luận đã duyệt của reel X" — index phủ vừa filter vừa sort.
+            entity.HasIndex(e => new { e.ReelId, e.ModerationStatus });
+
+            // Query danh sách bình luận đã duyệt, sắp xếp theo thời gian.
+            entity.HasIndex(e => new { e.ModerationStatus, e.CreatedAt });
 
             // Self-referencing for nested comments
             entity.HasOne(e => e.ParentComment)
@@ -403,11 +431,75 @@ public class PostDbContext : DbContext
             entity.Property(e => e.AuthorReason).HasMaxLength(300);
             entity.Property(e => e.InternalReasonCode).IsRequired().HasMaxLength(100);
             entity.Property(e => e.AdminNote).HasMaxLength(500);
-            // Mỗi content chỉ có đúng 1 bản ghi moderation — thay thế FK integrity bị mất
+            entity.Property(e => e.WorkerId).HasMaxLength(100);
+            entity.Property(e => e.AppealStatus).HasConversion<int>();
+            entity.Property(e => e.AppealReason).HasMaxLength(500);
+
+            // ===== Versioning + observability (3.3 / 3.4) =====
+            entity.Property(e => e.PromptVersion).HasMaxLength(20);
+            entity.Property(e => e.ModelName).HasMaxLength(60);
+            entity.Property(e => e.ShadowDecision).HasMaxLength(20);
+            entity.Property(e => e.ShadowModel).HasMaxLength(60);
+            entity.Property(e => e.ShadowPromptVersion).HasMaxLength(20);
+            entity.Property(e => e.ShadowStatus).HasConversion<int>();
+            // Raw response + snapshot media: giữ ở dạng text (không giới hạn) vì
+            // độ dài phụ thuộc nội dung; đã cắt ngắn ở tầng service trước khi ghi.
+            entity.Property(e => e.RawLlmResponse).HasColumnType("text");
+            entity.Property(e => e.TargetMediaUrlsSnapshot).HasColumnType("text");
+
             entity.HasIndex(e => new { e.TargetId, e.TargetType }).IsUnique();
 
             // Index cho worker: query "các bản ghi Pending của loại X chưa xử lý"
             entity.HasIndex(e => new { e.TargetType, e.Status, e.UpdatedAt });
+
+            // Index cho admin queue: lọc nhanh các bản ghi đang có khiếu nại.
+            entity.HasIndex(e => e.AppealStatus);
+
+            // Index cho worker: tìm bản ghi Pending mà lease đã hết hạn (để giành lại
+            // sau khi worker chết giữa chừng) — phục vụ cơ chế chống xử lý trùng.
+            entity.HasIndex(e => new { e.Status, e.LeaseExpiresAt });
+        });
+
+        // ===== MODERATION DECISION LOG CONFIGURATION =====
+        // Bảng append-only: ghi mọi quyết định, không bao giờ sửa/xoá lịch sử.
+        modelBuilder.Entity<ModerationDecisionLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.TargetType).HasConversion<int>();
+            entity.Property(e => e.Decision).HasConversion<int>();
+            entity.Property(e => e.Source).HasConversion<int>();
+
+            entity.Property(e => e.Stage).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.InternalReasonCode).HasMaxLength(100);
+            entity.Property(e => e.LlmDecision).HasMaxLength(20);
+            entity.Property(e => e.Categories).HasMaxLength(200);
+            entity.Property(e => e.ActorRole).HasMaxLength(30);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.PromptVersion).HasMaxLength(20);
+            entity.Property(e => e.ModelName).HasMaxLength(60);
+
+            // Query thống kê đồng thuận: lọc theo thời gian + loại nội dung.
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.TargetType, e.CreatedAt });
+
+            // Truy vết toàn bộ lịch sử của một nội dung.
+            entity.HasIndex(e => new { e.ModerationResultId, e.CreatedAt });
+        });
+
+        // ===== USER STRIKE CONFIGURATION =====
+        // Lịch sử vi phạm dùng để tự động khoá tài khoản (3.5).
+        modelBuilder.Entity<UserStrike>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => new { e.UserId, e.IsRevoked });
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.ModerationResultId);
+
+            entity.Property(e => e.ReasonCode).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IssuedBy).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.RevokedReason).HasMaxLength(500);
         });
     }
 }

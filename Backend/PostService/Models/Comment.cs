@@ -1,3 +1,5 @@
+using PostService.Enums;
+
 namespace PostService.Models;
 
 public class Comment
@@ -7,16 +9,13 @@ public class Comment
 
     public Guid UserId { get; set; }
 
-
     public string Content { get; set; } = string.Empty;
 
     /// Parent comment for nested replies
-
     public Guid? ParentCommentId { get; set; }
     public Comment? ParentComment { get; set; }
 
     /// Engagement counts
-
     public int LikesCount { get; set; }
     public int RepliesCount { get; set; }
 
@@ -29,9 +28,14 @@ public class Comment
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    // ── Moderation ──────────────────────────────────────────────────────────
+    // Bình luận cũng đi qua hàng đợi kiểm duyệt. Tác giả luôn thấy bình luận
+    // của mình ở mọi trạng thái; người khác chỉ thấy bình luận Approved.
+    public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+    public DateTime? ModeratedAt { get; set; }
+
     // Navigation properties
     public Post Post { get; set; } = null!;
     public ICollection<Comment> Replies { get; set; } = new List<Comment>();
     public ICollection<CommentLike> Likes { get; set; } = new List<CommentLike>();
-    public ModerationResult? ModerationResult { get; set; } = null;
 }

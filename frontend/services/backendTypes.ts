@@ -174,6 +174,8 @@ export interface BE_PostResponse {
   moderationStatus?: string;
   /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
   moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export interface BE_CommentResponse {
@@ -190,6 +192,12 @@ export interface BE_CommentResponse {
   parentCommentId: string | null; // PascalCase from backend
   postId?: string;
   isDeleted?: boolean;
+  /** Trạng thái kiểm duyệt — chỉ tác giả thấy. */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export interface BE_CommentLikeResponse {

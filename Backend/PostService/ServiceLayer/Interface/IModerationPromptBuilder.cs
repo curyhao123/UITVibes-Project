@@ -15,4 +15,10 @@ public interface IModerationPromptBuilder
     /// sẵn sàng để truyền thẳng vào LLM API call.
     /// </returns>
     ModerationPrompt Build(string content, ModerationTargetType targetType);
+
+    /// <summary>
+    /// Build prompt theo một phiên bản cụ thể (dùng cho A/B routing và shadow mode).
+    /// Phiên bản không tồn tại sẽ fallback về phiên bản hiện hành.
+    /// </summary>
+    ModerationPrompt Build(string content, ModerationTargetType targetType, string? promptVersion);
 }

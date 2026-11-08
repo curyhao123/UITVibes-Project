@@ -42,6 +42,13 @@ public class PostDto
     /// </summary>
 
     public string? ModerationReason { get; set; }
+
+    /// <summary>
+    /// Id của bản ghi kiểm duyệt — cần để tác giả gửi khiếu nại (appeal).
+    /// Chỉ trả về cho tác giả.
+    /// </summary>
+    public Guid? ModerationResultId { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

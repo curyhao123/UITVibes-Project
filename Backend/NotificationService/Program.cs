@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NotificationService.Hubs;
 using NotificationService.Messaging;
 using NotificationService.Models;
@@ -36,6 +36,7 @@ builder.Services.AddHostedService<PostCommentedConsumer>();
 builder.Services.AddHostedService<UserFollowedConsumer>();
 builder.Services.AddHostedService<PostMentionedConsumer>();
 builder.Services.AddHostedService<CommentMentionedConsumer>();
+builder.Services.AddHostedService<ContentModeratedConsumer>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

@@ -11,6 +11,7 @@ import { Comment } from '../data/mockData';
 import { Avatar } from './Avatar';
 import { CommentContextMenu } from './CommentContextMenu';
 import { MentionText } from './MentionText';
+import { PostModerationBadge } from './PostModerationBadge';
 import { useTheme } from '../context/ThemeContext';
 
 interface CommentItemProps {
@@ -20,6 +21,8 @@ interface CommentItemProps {
   onLike?: (commentId: string) => void;
   onEdit?: (commentId: string) => void;
   onDelete?: (commentId: string) => void;
+  /** Mở sheet khiếu nại cho bình luận bị từ chối (chỉ tác giả bình luận thấy). */
+  onAppeal?: (comment: Comment) => void;
   currentUserId?: string;
 }
 
@@ -30,6 +33,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onLike,
   onEdit,
   onDelete,
+  onAppeal,
   currentUserId,
 }) => {
   const { colors } = useTheme();
@@ -159,6 +163,23 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               />
             )}
 
+            {/* Trạng thái kiểm duyệt — chỉ tác giả bình luận thấy.
+                Bình luận bị từ chối thì tác giả có thể khiếu nại. */}
+            {isOwner && comment.moderationStatus ? (
+              <PostModerationBadge
+                status={comment.moderationStatus}
+                reason={comment.moderationReason ?? undefined}
+                contentType="comment"
+                isAuthor={isOwner}
+                edgeToEdge
+                onAppeal={
+                  comment.moderationStatus === 'Rejected' && comment.moderationResultId
+                    ? () => onAppeal?.(comment)
+                    : undefined
+                }
+              />
+            ) : null}
+
             {/* Meta row: time · likes · reply */}
             <View style={styles.meta}>
               <Text style={[styles.time, { color: colors.textMuted }]}>{formatTimeAgo(comment.createdAt)}</Text>
@@ -192,6 +213,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                     onLike={onLike}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onAppeal={onAppeal}
                     currentUserId={currentUserId}
                   />
                 ))}

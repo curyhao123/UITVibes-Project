@@ -1,4 +1,4 @@
-﻿using PostService.Enums;
+using PostService.Enums;
 
 namespace PostService.Models
 {
@@ -27,6 +27,14 @@ namespace PostService.Models
         public int? Duration { get; set; }
 
         public DateTime CreatedAt { get; set; }
+
+        // ===== Kiểm duyệt AI (Phase 3.0) =====
+        // Story trước đây chỉ có media nên không đi qua pipeline text.
+        // Sau khi bổ sung OCR, story cũng được kiểm duyệt như các loại nội dung khác.
+        public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+
+        /// Thời điểm story được kiểm duyệt xong.
+        public DateTime? ModeratedAt { get; set; }
 
         /// Navigation
         public StoryGroup StoryGroup { get; set; } = null!;

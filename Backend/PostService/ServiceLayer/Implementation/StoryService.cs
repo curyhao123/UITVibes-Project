@@ -12,6 +12,7 @@ public class StoryService : IStoryService
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly IUserFollowRpcClient _userFollowRpcClient;
+    private readonly IModerationEnqueuer _moderationEnqueuer;
     private readonly ILogger<StoryService> _logger;
 
     /// Thời gian story tồn tại trước khi hết hạn (24 giờ)
@@ -22,12 +23,14 @@ public class StoryService : IStoryService
         ICloudinaryService cloudinaryService,
         IUserProfileRpcClient userProfileRpcClient,
         IUserFollowRpcClient userFollowRpcClient,
+        IModerationEnqueuer moderationEnqueuer,
         ILogger<StoryService> logger)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
         _userProfileRpcClient = userProfileRpcClient;
         _userFollowRpcClient = userFollowRpcClient;
+        _moderationEnqueuer = moderationEnqueuer;
         _logger = logger;
     }
 
@@ -75,6 +78,17 @@ public class StoryService : IStoryService
             existingGroup.CreatedAt = now;
             await _context.SaveChangesAsync();
 
+            // Đưa các item mới vào hàng đợi kiểm duyệt (Phase 3.0).
+            // Story chỉ có media → worker sẽ OCR ảnh để trích text rồi kiểm duyệt.
+            foreach (var item in newItems)
+            {
+                await _moderationEnqueuer.EnqueueAsync(
+                    ModerationTargetType.Story,
+                    item.Id,
+                    null,
+                    status => item.ModerationStatus = status);
+            }
+
             _logger.LogInformation(
                 "Added {Count} items to existing story group {GroupId} for user {UserId}",
                 request.Media.Count, existingGroup.Id, userId);
@@ -106,6 +120,17 @@ public class StoryService : IStoryService
 
         _context.StoryGroups.Add(group);
         await _context.SaveChangesAsync();
+
+        // Đưa từng item vào hàng đợi kiểm duyệt (Phase 3.0).
+        // Story chỉ có media → worker sẽ OCR ảnh để trích text rồi kiểm duyệt.
+        foreach (var item in group.Items)
+        {
+            await _moderationEnqueuer.EnqueueAsync(
+                ModerationTargetType.Story,
+                item.Id,
+                null,
+                status => item.ModerationStatus = status);
+        }
 
         _logger.LogInformation(
             "Created new story group {GroupId} with {Count} items for user {UserId}",
@@ -162,10 +187,13 @@ public class StoryService : IStoryService
         // Always include own stories
         followingIds.Add(currentUserId);
 
-        // Only return active stories from followed users + self
+        // Chỉ lấy story đã được duyệt (người khác không thấy story vi phạm).
+        // Chủ story luôn thấy story của mình ở mọi trạng thái.
         var groups = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .Where(g => g.ExpiresAt > now && followingIds.Contains(g.UserId))
+            .Where(g => g.ExpiresAt > now
+                     && followingIds.Contains(g.UserId)
+                     && g.Items.All(i => i.ModerationStatus == ModerationStatus.Approved))
             .OrderByDescending(g => g.CreatedAt)
             .Take(limit)
             .ToListAsync();
@@ -205,7 +233,9 @@ public class StoryService : IStoryService
         // Lấy story groups của user đó (chỉ lấy story chưa hết hạn)
         var groups = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .Where(g => g.UserId == userId && g.ExpiresAt > now)
+            .Where(g => g.UserId == userId
+                     && g.ExpiresAt > now
+                     && g.Items.All(i => i.ModerationStatus == ModerationStatus.Approved))
             .OrderByDescending(g => g.CreatedAt)
             .Take(limit)
             .ToListAsync();
@@ -237,7 +267,8 @@ public class StoryService : IStoryService
     public async Task<List<StoryItemDto>> GetStoryGroupItemsAsync(Guid storyGroupId)
     {
         var items = await _context.StoryItems
-            .Where(i => i.StoryGroupId == storyGroupId)
+            .Where(i => i.StoryGroupId == storyGroupId
+                     && i.ModerationStatus == ModerationStatus.Approved)
             .OrderBy(i => i.DisplayOrder)
             .Select(i => new StoryItemDto
             {
@@ -257,7 +288,9 @@ public class StoryService : IStoryService
     {
         var group = await _context.StoryGroups
             .Include(g => g.Items.OrderBy(i => i.DisplayOrder))
-            .FirstOrDefaultAsync(g => g.Id == storyGroupId && g.ExpiresAt > DateTime.UtcNow);
+            .FirstOrDefaultAsync(g => g.Id == storyGroupId
+                                    && g.ExpiresAt > DateTime.UtcNow
+                                    && g.Items.All(i => i.ModerationStatus == ModerationStatus.Approved));
 
         if (group == null) return null;
 

@@ -222,15 +222,32 @@ export const useFeedState = () => {
   );
 
   const updatePost = useCallback(
-    async (postId: string, caption: string) => {
+    async (
+      postId: string,
+      caption: string,
+      options?: { visibility?: number; location?: string },
+    ): Promise<Post | null> => {
       try {
-        await api.updatePost(postId, caption);
-        await refreshPosts();
+        const updated = await api.updatePost(postId, caption, options);
+        if (updated) {
+          // Cập nhật tại chỗ để UI phản ánh ngay trạng thái mới (bài sẽ quay về
+          // "Pending" nếu nội dung thay đổi) thay vì chờ refetch toàn bộ feed.
+          // Giữ lại `comments` đã load sẵn vì response của API không kèm comments.
+          const merge = (prev: Post): Post => ({
+            ...prev,
+            ...updated,
+            comments: prev.comments,
+          });
+          setPosts((prev) => prev.map((p) => (p.id === postId ? merge(p) : p)));
+          setMyPosts((prev) => prev.map((p) => (p.id === postId ? merge(p) : p)));
+        }
+        return updated;
       } catch (error) {
         console.error('Failed to update post:', error);
+        throw error;
       }
     },
-    [refreshPosts],
+    [],
   );
 
   const deletePost = useCallback(async (postId: string) => {

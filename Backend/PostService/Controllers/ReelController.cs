@@ -127,6 +127,58 @@ namespace PostService.Controllers
             }
         }
 
+        //PUT api/reel/{reelId}
+        [HttpPut("{reelId}")]
+        public async Task<IActionResult> UpdateReel(Guid reelId, [FromBody] UpdateReelRequest request)
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+            {
+                return Unauthorized(new { message = "User ID not found in request headers" });
+            }
+
+            try
+            {
+                var reel = await _reelService.UpdateReelAsync(reelId, userId, request);
+                return Ok(reel);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { message = "Reel not found" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while updating reel with ID: {ReelId}", reelId);
+                return StatusCode(500, new { message = "An error occurred while updating the reel" });
+            }
+        }
+
+        //GET api/reel/my-reels
+        [HttpGet("my-reels")]
+        public async Task<IActionResult> GetMyReels(int skip = 0, int take = 20)
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+            {
+                return Unauthorized(new { message = "User ID not found in request headers" });
+            }
+
+            try
+            {
+                var reels = await _reelService.GetMyReelsAsync(userId, skip, take);
+                return Ok(reels);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while fetching reels for user {UserId}", userId);
+                return StatusCode(500, new { message = "An error occurred while fetching your reels" });
+            }
+        }
+
         //DELETE api/reel/{reelId}
         [HttpDelete("{reelId}")]
         public async Task<IActionResult> DeleteReel(Guid reelId)
@@ -254,7 +306,8 @@ namespace PostService.Controllers
         {
             try
             {
-                var comments = await _reelService.GetCommentsAsync(reelId, skip, take);
+                var currentUserId = GetCurrentUserId();
+                var comments = await _reelService.GetCommentsAsync(reelId, currentUserId, skip, take);
                 return Ok(comments);
             }
             catch (Exception ex)
@@ -270,7 +323,8 @@ namespace PostService.Controllers
         {
             try
             {
-                var replies = await _reelService.GetRepliesAsync(commentId, skip, take);
+                var currentUserId = GetCurrentUserId();
+                var replies = await _reelService.GetRepliesAsync(commentId, currentUserId, skip, take);
                 return Ok(replies);
             }
             catch (Exception ex)
@@ -341,6 +395,20 @@ namespace PostService.Controllers
                 _logger.LogError(ex, $"Error occurred while unliking comment with ID: {commentId}");
                 return StatusCode(500, new { message = "An error occurred while unliking the comment" });
             }
+        }
+
+        /// <summary>
+        /// Lấy user id hiện tại từ header do gateway gửi xuống.
+        /// Trả về null nếu thiếu header — dùng cho các truy vấn lọc nội dung
+        /// theo quyền sở hữu (tác giả luôn thấy nội dung của mình).
+        /// </summary>
+        private Guid? GetCurrentUserId()
+        {
+            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var userId))
+                return null;
+
+            return userId;
         }
     }
 }

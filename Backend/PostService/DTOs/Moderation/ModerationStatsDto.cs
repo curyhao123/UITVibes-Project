@@ -26,4 +26,13 @@ public class ModerationStatsDto
 
     /// Records hidden because the author deleted the content before it could be reviewed.
     public int OrphanCount { get; set; }
+
+    /// Số khiếu nại đang chờ admin xử lý.
+    public int AppealPendingCount { get; set; }
+
+    /// Số ca đã quá hạn SLA (chờ xử lý quá 24 giờ).
+    public int SlaBreachedCount { get; set; }
+
+    /// Tuổi của ca chờ xử lý lâu nhất (giờ).
+    public double OldestPendingAgeHours { get; set; }
 }

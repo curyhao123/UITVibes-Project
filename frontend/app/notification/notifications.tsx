@@ -43,6 +43,9 @@ const TYPE_META: Record<
   Tagged: { name: 'tag', color: '#A855F7' },
   NewMessage: { name: 'message-square', color: '#10B981' },
   MessageRead: { name: 'check-circle', color: '#10B981' },
+  ContentRejected: { name: 'x-circle', color: '#EF4444' },
+  ContentNeedsReview: { name: 'eye', color: '#8B5CF6' },
+  AppealResolved: { name: 'flag', color: '#8B5CF6' },
 };
 
 const getTypeMeta = (type: string) =>
@@ -217,6 +220,11 @@ export default function NotificationsScreen() {
         case 'PostCommented':
         case 'Tagged':
         case 'Mentioned':
+          return `/post/${notif.entityId}`;
+        // Moderation: entityId là id nội dung bị kiểm duyệt.
+        case 'ContentRejected':
+        case 'ContentNeedsReview':
+        case 'AppealResolved':
           return `/post/${notif.entityId}`;
         case 'NewMessage':
           // No conversationId on the DTO yet — fall through

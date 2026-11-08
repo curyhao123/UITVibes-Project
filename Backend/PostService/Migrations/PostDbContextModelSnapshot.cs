@@ -98,8 +98,11 @@ namespace PostService.Migrations
                     b.Property<int>("LikesCount")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ModerationResultId")
-                        .HasColumnType("uuid");
+                    b.Property<DateTime?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ModerationStatus")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ParentCommentId")
                         .HasColumnType("uuid");
@@ -122,13 +125,13 @@ namespace PostService.Migrations
 
                     b.HasIndex("IsDeleted");
 
-                    b.HasIndex("ModerationResultId");
-
                     b.HasIndex("ParentCommentId");
 
                     b.HasIndex("PostId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("PostId", "ModerationStatus");
 
                     b.ToTable("Comments");
                 });
@@ -279,6 +282,83 @@ namespace PostService.Migrations
                     b.ToTable("Likes");
                 });
 
+            modelBuilder.Entity("PostService.Models.ModerationDecisionLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorRole")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Categories")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<double?>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("InternalReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LlmDecision")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ModelName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("ModerationResultId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("PromptVersion")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("Severity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ModerationResultId", "CreatedAt");
+
+                    b.HasIndex("TargetType", "CreatedAt");
+
+                    b.ToTable("ModerationDecisionLogs");
+                });
+
             modelBuilder.Entity("PostService.Models.ModerationResult", b =>
                 {
                     b.Property<Guid>("Id")
@@ -287,7 +367,20 @@ namespace PostService.Migrations
 
                     b.Property<string>("AdminNote")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");    
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("AppealReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("AppealResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("AppealStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("AppealSubmittedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("AttemptCount")
                         .HasColumnType("integer");
@@ -300,28 +393,87 @@ namespace PostService.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int?>("CompletionTokens")
+                        .HasColumnType("integer");
+
                     b.Property<double?>("Confidence")
                         .HasColumnType("double precision");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double?>("EstimatedCostUsd")
+                        .HasColumnType("double precision");
+
                     b.Property<string>("InternalReasonCode")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LlmDecision")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("LlmLatencyMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ModelName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("OcrText")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PromptTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PromptVersion")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("RawLlmResponse")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReportCount")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("ReviewedBy")
                         .HasColumnType("uuid");
-                        
+
                     b.Property<int?>("Severity")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("ShadowAgreesWithPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("ShadowConfidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ShadowDecision")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ShadowModel")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("ShadowPromptVersion")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("ShadowSeverity")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ShadowStatus")
                         .HasColumnType("integer");
 
                     b.Property<int>("Source")
@@ -333,13 +485,27 @@ namespace PostService.Migrations
                     b.Property<Guid>("TargetId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("TargetMediaUrlsSnapshot")
+                        .HasColumnType("text");
+
                     b.Property<int>("TargetType")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TotalTokens")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("WorkerId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AppealStatus");
+
+                    b.HasIndex("Status", "LeaseExpiresAt");
 
                     b.HasIndex("TargetId", "TargetType")
                         .IsUnique();
@@ -558,6 +724,12 @@ namespace PostService.Migrations
                     b.Property<int>("Duration")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ModerationStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ThumbnailPublicId")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -589,6 +761,8 @@ namespace PostService.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("ModerationStatus");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("UserId", "CreatedAt");
@@ -611,6 +785,12 @@ namespace PostService.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("LikeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ModerationStatus")
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("ParentCommentId")
@@ -637,6 +817,10 @@ namespace PostService.Migrations
                     b.HasIndex("ReelId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("ModerationStatus", "CreatedAt");
+
+                    b.HasIndex("ReelId", "ModerationStatus");
 
                     b.ToTable("ReelComments");
                 });
@@ -773,6 +957,12 @@ namespace PostService.Migrations
                     b.Property<int?>("Duration")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("ModeratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ModerationStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PublicId")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -797,6 +987,8 @@ namespace PostService.Migrations
                     b.HasIndex("StoryGroupId");
 
                     b.HasIndex("StoryGroupId", "DisplayOrder");
+
+                    b.HasIndex("StoryGroupId", "ModerationStatus");
 
                     b.ToTable("StoryItems");
                 });
@@ -824,6 +1016,64 @@ namespace PostService.Migrations
                         .IsUnique();
 
                     b.ToTable("StoryViews");
+                });
+
+            modelBuilder.Entity("PostService.Models.UserStrike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("IssuedBy")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("ModerationResultId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RevokedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ModerationResultId");
+
+                    b.HasIndex("UserId", "IsRevoked");
+
+                    b.ToTable("UserStrikes");
                 });
 
             modelBuilder.Entity("PostHashtag", b =>
@@ -858,10 +1108,6 @@ namespace PostService.Migrations
 
             modelBuilder.Entity("PostService.Models.Comment", b =>
                 {
-                    b.HasOne("PostService.Models.ModerationResult", "ModerationResult")
-                        .WithMany()
-                        .HasForeignKey("ModerationResultId");
-
                     b.HasOne("PostService.Models.Comment", "ParentComment")
                         .WithMany("Replies")
                         .HasForeignKey("ParentCommentId")
@@ -872,8 +1118,6 @@ namespace PostService.Migrations
                         .HasForeignKey("PostId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ModerationResult");
 
                     b.Navigation("ParentComment");
 

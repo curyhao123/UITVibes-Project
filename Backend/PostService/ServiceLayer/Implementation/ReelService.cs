@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using PostService.DTOs;
+using PostService.Enums;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Interface;
@@ -17,12 +18,14 @@ namespace PostService.ServiceLayer.Implementation
         private readonly IPostLikedPublisher _postLikedPublisher;
         private readonly IPostCommentedPublisher _postCommentedPublisher;
         private readonly ICommentMentionedPublisher _commentMentionedPublisher;
+        private readonly IModerationEnqueuer _moderationEnqueuer;
 
 
         public ReelService(PostDbContext context, ILogger<ReelService> logger,
             IUserProfileRpcClient userProfileRpcClient, ICloudinaryService cloudinaryService,
             IPostLikedPublisher postLikedPublisher, IPostCommentedPublisher postCommentedPublisher,
-            ICommentMentionedPublisher commentMentionedPublisher)
+            ICommentMentionedPublisher commentMentionedPublisher,
+            IModerationEnqueuer moderationEnqueuer)
         {
             _context = context;
             _logger = logger;
@@ -31,6 +34,7 @@ namespace PostService.ServiceLayer.Implementation
             _postLikedPublisher = postLikedPublisher;
             _postCommentedPublisher = postCommentedPublisher;
             _commentMentionedPublisher = commentMentionedPublisher;
+            _moderationEnqueuer = moderationEnqueuer;
         }
 
         // CRUD
@@ -70,11 +74,24 @@ namespace PostService.ServiceLayer.Implementation
                 ThumbnailPublicId = request.ThumbnailPublicId,
                 Caption = request.Caption,
                 Duration = request.Duration,
+                ModerationStatus = ModerationStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
             // Save to database
             _context.Reels.Add(reel);
             await _context.SaveChangesAsync();
+
+            // Caption của reel đi qua hàng đợi kiểm duyệt. Reel không có caption
+            // sẽ được duyệt thẳng (worker tự xử lý nội dung rỗng).
+            await _moderationEnqueuer.EnqueueAsync(
+                ModerationTargetType.Reel,
+                reel.Id,
+                reel.Caption,
+                status =>
+                {
+                    reel.ModerationStatus = status;
+                    reel.ModeratedAt = status == ModerationStatus.Pending ? null : DateTime.UtcNow;
+                });
 
 
             // Map to DTO
@@ -94,10 +111,64 @@ namespace PostService.ServiceLayer.Implementation
                 ViewCount = 0,
                 IsLiked = false,
                 IsOwner = true,
+                ModerationStatus = reel.ModerationStatus.ToString(),
                 CreatedAt = reel.CreatedAt
             };
             return reelDto;
         }
+        /// <summary>
+        /// Sửa caption của reel (tác giả) và resubmit để kiểm duyệt lại.
+        ///
+        /// Quy tắc giống bài viết (Phase 1):
+        ///   - Chỉ tác giả được sửa.
+        ///   - Chỉ khi caption THAY ĐỔI mới resubmit (kéo reel về Pending).
+        ///     Sửa metadata không ảnh hưởng trạng thái kiểm duyệt.
+        /// </summary>
+        public async Task<ReelDto> UpdateReelAsync(Guid reelId, Guid userId, UpdateReelRequest request)
+        {
+            var reel = await _context.Reels.FirstOrDefaultAsync(r => r.Id == reelId);
+
+            if (reel == null)
+                throw new KeyNotFoundException("Reel not found");
+
+            if (reel.UserId != userId)
+                throw new UnauthorizedAccessException("You are not the owner of this reel");
+
+            var newCaption = request.Caption?.Trim();
+            var oldCaption = reel.Caption?.Trim();
+
+            var contentChanged = !string.Equals(oldCaption, newCaption, StringComparison.Ordinal);
+
+            if (contentChanged)
+            {
+                reel.Caption = newCaption;
+                reel.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                // Resubmit — reel quay về Pending và chờ AI duyệt lại.
+                await _moderationEnqueuer.ResubmitAsync(
+                    ModerationTargetType.Reel,
+                    reel.Id,
+                    reel.Caption,
+                    status =>
+                    {
+                        reel.ModerationStatus = status;
+                        reel.ModeratedAt = status == ModerationStatus.Pending ? null : DateTime.UtcNow;
+                    });
+
+                _logger.LogInformation(
+                    "Reel {ReelId} resubmitted for moderation after caption change by user {UserId}.",
+                    reelId, userId);
+            }
+            else
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            return await GetReelByIdAsync(reelId, userId);
+        }
+
         // Xóa Reel — xóa cả video trên Cloudinary
         public async Task DeleteReelAsync(Guid reelId, Guid userId)
         {
@@ -133,6 +204,9 @@ namespace PostService.ServiceLayer.Implementation
             if (reel == null)
                 throw new KeyNotFoundException("Reel not found");
 
+            // Reel chưa được duyệt chỉ hiện với chính tác giả.
+            if (reel.ModerationStatus != ModerationStatus.Approved && reel.UserId != currentUserId)
+                throw new KeyNotFoundException("Reel not found");
 
             // Chạy song song để tăng hiệu năng
             var userProfileTask = _userProfileRpcClient.GetProfileAsync(reel.UserId);
@@ -166,15 +240,33 @@ namespace PostService.ServiceLayer.Implementation
                 ViewCount = reel.ViewCount,
                 IsLiked = isLikedTask.Result,
                 IsOwner = currentUserId.HasValue && currentUserId.Value == reel.UserId,
+                ModerationStatus = reel.ModerationStatus.ToString(),
                 CreatedAt = reel.CreatedAt
             };
+
+            // Lý do kiểm duyệt chỉ có ý nghĩa với chính tác giả, và chỉ khi reel
+            // chưa được duyệt.
+            if (currentUserId.HasValue
+                && reel.UserId == currentUserId.Value
+                && reel.ModerationStatus != ModerationStatus.Approved)
+            {
+                var moderation = await _context.ModerationResults
+                    .FirstOrDefaultAsync(m =>
+                        m.TargetId == reel.Id && m.TargetType == ModerationTargetType.Reel);
+
+                reelDto.ModerationReason = moderation?.AdminNote ?? moderation?.AuthorReason;
+                reelDto.ModerationResultId = moderation?.Id;
+            }
+
             return reelDto;
         }
 
         public async Task<List<ReelDto>> GetReelsAsync(int skip, int take, Guid? currentUserId)
         {
+            // Reel chưa được duyệt chỉ hiện với chính tác giả — người khác không thấy.
             var reels = await _context.Reels
                 .AsNoTracking()
+                .Where(r => r.ModerationStatus == ModerationStatus.Approved || r.UserId == currentUserId)
                 .OrderBy(r => Guid.NewGuid()) // Random order for discover feed
                 .Skip(skip)
                 .Take(take)
@@ -187,13 +279,32 @@ namespace PostService.ServiceLayer.Implementation
         {
             var reels = await _context.Reels
                 .AsNoTracking()
-                .Where(r => r.UserId == userId)
+                .Where(r => r.UserId == userId
+                         && (r.ModerationStatus == ModerationStatus.Approved || r.UserId == currentUserId))
                 .OrderByDescending(r => r.CreatedAt)
                 .Skip(skip)
                 .Take(take)
                 .ToListAsync();
 
             return await MapReelsAsync(reels, currentUserId);
+        }
+
+        /// <summary>
+        /// Danh sách reel của chính người dùng hiện tại — bao gồm cả reel đang
+        /// chờ duyệt / bị từ chối (tác giả luôn thấy nội dung của mình).
+        /// Dùng cho màn hình "Reels của tôi" để tác giả sửa caption rồi resubmit.
+        /// </summary>
+        public async Task<List<ReelDto>> GetMyReelsAsync(Guid userId, int skip, int take)
+        {
+            var reels = await _context.Reels
+                .AsNoTracking()
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Skip(Math.Max(0, skip))
+                .Take(Math.Clamp(take, 1, 100))
+                .ToListAsync();
+
+            return await MapReelsAsync(reels, userId);
         }
 
         // Tương tác
@@ -365,11 +476,20 @@ namespace PostService.ServiceLayer.Implementation
                 UserId = userId,
                 Content = request.Content,
                 ParentCommentId = rootCommentId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ModerationStatus = ModerationStatus.Pending
             };
 
             _context.ReelComments.Add(comment);
             await _context.SaveChangesAsync();
+
+            // Đưa bình luận reel vào hàng đợi kiểm duyệt (Phase 3.0).
+            await _moderationEnqueuer.EnqueueAsync(
+                ModerationTargetType.ReelComment,
+                comment.Id,
+                comment.Content,
+                status => comment.ModerationStatus = status);
+
             var isOwner = comment.UserId == userId ? true : false;
 
             var mentionedUsernames = ExtractMentions(comment.Content);
@@ -412,7 +532,7 @@ namespace PostService.ServiceLayer.Implementation
             };
         }
 
-        public async Task<List<ReelCommentDto>> GetCommentsAsync(Guid reelId, int skip, int take)
+        public async Task<List<ReelCommentDto>> GetCommentsAsync(Guid reelId, Guid? currentUserId, int skip, int take)
         {
             var reel = await _context.Reels
                 .AsNoTracking()
@@ -420,9 +540,12 @@ namespace PostService.ServiceLayer.Implementation
             if (reel == null)
                 throw new KeyNotFoundException("Reel not found");
 
+            // Bình luận chưa được duyệt chỉ hiện với chính tác giả (giống bình luận bài viết).
             var comments = await _context.ReelComments
                 .AsNoTracking()
-                .Where(c => c.ReelId == reelId && c.ParentCommentId == null) // Chỉ lấy comment gốc
+                .Where(c => c.ReelId == reelId
+                         && c.ParentCommentId == null // Chỉ lấy comment gốc
+                         && (c.ModerationStatus == ModerationStatus.Approved || c.UserId == currentUserId))
                 .OrderByDescending(c => c.CreatedAt)
                 .Skip(skip)
                 .Take(take)
@@ -450,7 +573,7 @@ namespace PostService.ServiceLayer.Implementation
             return commentDtos;
         }
 
-        public async Task<List<ReelCommentDto>> GetRepliesAsync(Guid commentId, int skip, int take)
+        public async Task<List<ReelCommentDto>> GetRepliesAsync(Guid commentId, Guid? currentUserId, int skip, int take)
         {
             var rootComment = await _context.ReelComments
                 .AsNoTracking()
@@ -460,7 +583,8 @@ namespace PostService.ServiceLayer.Implementation
 
             var replies = await _context.ReelComments
                 .AsNoTracking()
-                .Where(c => c.ParentCommentId == rootComment.Id) // Lấy tất cả comment có ParentCommentId trỏ đến root
+                .Where(c => c.ParentCommentId == rootComment.Id // Lấy tất cả comment có ParentCommentId trỏ đến root
+                         && (c.ModerationStatus == ModerationStatus.Approved || c.UserId == currentUserId))
                 .OrderByDescending(c => c.CreatedAt)
                 .Skip(skip)
                 .Take(take)
@@ -596,6 +720,24 @@ namespace PostService.ServiceLayer.Implementation
 
             var likedReelSet = likedReelIds.ToHashSet();
 
+            // Bản ghi kiểm duyệt của các reel chưa được duyệt — chỉ tác giả mới cần
+            // (để hiện lý do + gửi khiếu nại), nên lấy theo tập reel của tác giả.
+            var unapprovedReelIds = reels
+                .Where(r => r.ModerationStatus != ModerationStatus.Approved)
+                .Select(r => r.Id)
+                .ToList();
+
+            var moderationLookup = new Dictionary<Guid, ModerationResult>();
+            if (unapprovedReelIds.Count > 0)
+            {
+                var moderationResults = await _context.ModerationResults
+                    .Where(m => m.TargetType == ModerationTargetType.Reel
+                             && unapprovedReelIds.Contains(m.TargetId))
+                    .ToListAsync();
+
+                moderationLookup = moderationResults.ToDictionary(m => m.TargetId);
+            }
+
             var userIds = reels.Select(r => r.UserId).Distinct().ToList();
             var profileTasks = userIds.Select(async id => new
             {
@@ -614,7 +756,7 @@ namespace PostService.ServiceLayer.Implementation
                 var displayName = profile?.Found == true ? profile.DisplayName : "Someone";
                 var avatarUrl = profile?.Found == true ? profile.AvatarUrl : null;
 
-                reelDtos.Add(new ReelDto
+                var reelDto = new ReelDto
                 {
                     Id = reel.Id,
                     UserId = reel.UserId,
@@ -630,8 +772,20 @@ namespace PostService.ServiceLayer.Implementation
                     ViewCount = reel.ViewCount,
                     IsLiked = likedReelSet.Contains(reel.Id),
                     IsOwner = currentUserId.HasValue && currentUserId.Value == reel.UserId,
+                    ModerationStatus = reel.ModerationStatus.ToString(),
                     CreatedAt = reel.CreatedAt
-                });
+                };
+
+                // Lý do kiểm duyệt + id bản ghi chỉ có ý nghĩa với chính tác giả.
+                if (currentUserId.HasValue
+                    && reel.UserId == currentUserId.Value
+                    && moderationLookup.TryGetValue(reel.Id, out var moderation))
+                {
+                    reelDto.ModerationReason = moderation.AdminNote ?? moderation.AuthorReason;
+                    reelDto.ModerationResultId = moderation.Id;
+                }
+
+                reelDtos.Add(reelDto);
             }
 
             return reelDtos;

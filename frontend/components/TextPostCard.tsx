@@ -21,7 +21,9 @@ import { blockUser } from '../services/blockService';
 import { removeBookmark, repostPost, undoRepost } from '../services/postService';
 import { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 import { Avatar } from './Avatar';
+import { EditPostSheet } from './EditPostSheet';
 import { MentionText } from './MentionText';
+import { ModerationAppealSheet } from './ModerationAppealSheet';
 import { PostActionsSheet } from './PostActionsSheet';
 import { PostModerationBadge } from './PostModerationBadge';
 import { ReportPostSheet } from './ReportPostSheet';
@@ -34,12 +36,14 @@ interface TextPostCardProps {
 }
 
 export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
-  const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost } = useApp();
+  const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost, updatePost } = useApp();
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const [showActionsSheet, setShowActionsSheet] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showAppealSheet, setShowAppealSheet] = useState(false);
 
   // ── Heart animation state ──────────────────────────────────────────────
   const { scale: heartScale, opacity: heartOpacity, play: playHeart } = useAnimatedHeart();
@@ -162,6 +166,23 @@ export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
       await deletePost(post.id);
     } catch {
       Alert.alert('Error', 'Could not delete this post. Please try again.');
+    }
+  };
+
+  // Sửa nội dung → backend tự gửi lại bài cho AI kiểm duyệt (resubmit).
+  const handleSaveEdit = async (content: string) => {
+    try {
+      await updatePost(post.id, content);
+      Alert.alert(
+        'Post updated',
+        'Your post has been submitted for review again. It will stay hidden from others until it is approved.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Could not update this post. Please try again.',
+      );
+      throw error;
     }
   };
 
@@ -316,8 +337,14 @@ export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
         <PostModerationBadge
           status={post.moderationStatus}
           reason={post.moderationReason}
+          contentType="post"
+          isAuthor={isOwner}
+          onEdit={() => setShowEditSheet(true)}
+          onAppeal={
+            post.moderationResultId ? () => setShowAppealSheet(true) : undefined
+          }
         />
-        
+
         {/* Action buttons */}
         <View style={[styles.actionsRow, { borderTopColor: colors.borderLight }]}>
           <TouchableOpacity
@@ -398,6 +425,7 @@ export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
           onReportPost={() => setShowReportSheet(true)}
           onBlockUser={handleBlockUser}
           onDeletePost={handleDeletePost}
+          onEditPost={() => setShowEditSheet(true)}
           onClose={() => setShowActionsSheet(false)}
         />
 
@@ -407,6 +435,22 @@ export const TextPostCard: React.FC<TextPostCardProps> = ({ post }) => {
           postOwnerDisplayName={displayName}
           onClose={() => setShowReportSheet(false)}
           onReportSuccess={handleReportSuccess}
+        />
+
+        <EditPostSheet
+          visible={showEditSheet}
+          initialContent={post.caption}
+          moderationStatus={post.moderationStatus}
+          contentType="post"
+          onSave={handleSaveEdit}
+          onClose={() => setShowEditSheet(false)}
+        />
+
+        <ModerationAppealSheet
+          visible={showAppealSheet}
+          moderationResultId={post.moderationResultId ?? null}
+          targetContent={post.caption}
+          onClose={() => setShowAppealSheet(false)}
         />
       </View>
     </SwipeableRow>

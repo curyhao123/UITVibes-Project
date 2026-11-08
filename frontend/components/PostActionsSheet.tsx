@@ -6,6 +6,7 @@
  *  - Report Post        (all users)
  *  - Block User        (all users, non-self)
  *  - Delete Post       (post owner only)
+ *  - Edit Post         (post owner only) — mở sheet sửa bài & submit lại cho AI
  *
  * Design: same animation pattern as UserActionsSheet / ReportUserSheet
  */
@@ -40,11 +41,14 @@ interface PostActionsSheetProps {
   onBlockUser: () => void;
   /** Called when user taps "Delete Post" */
   onDeletePost: () => void;
+  /** Called when user taps "Edit Post" */
+  onEditPost?: () => void;
   /** Called when sheet is fully dismissed */
   onClose: () => void;
 }
 
-const SHEET_HEIGHT = 280;
+const SHEET_HEIGHT_BASE = 280;
+const ACTION_ROW_HEIGHT = 52;
 
 export function PostActionsSheet({
   visible,
@@ -54,16 +58,23 @@ export function PostActionsSheet({
   onReportPost,
   onBlockUser,
   onDeletePost,
+  onEditPost,
   onClose,
 }: PostActionsSheetProps) {
   const { colors, isDark } = useTheme();
   const isOwner = currentUserId === postOwnerId;
 
+  // Chiều cao sheet phụ thuộc số hành động hiển thị:
+  //   - Chủ bài: Report + Edit + Delete (3 hàng)
+  //   - Người khác: Report + Block (2 hàng)
+  const actionCount = isOwner ? 3 : 2;
+  const sheetHeight = SHEET_HEIGHT_BASE + (actionCount - 2) * ACTION_ROW_HEIGHT;
+
   // Local state so animation out completes before React unmounts the Modal.
   const [isRendered, setIsRendered] = useState(false);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const sheetTranslateY = useRef(new Animated.Value(SHEET_HEIGHT_BASE)).current;
 
   // Mount animation
   useEffect(() => {
@@ -96,14 +107,14 @@ export function PostActionsSheet({
           useNativeDriver: true,
         }),
         Animated.spring(sheetTranslateY, {
-          toValue: SHEET_HEIGHT,
+          toValue: sheetHeight,
           damping: 30,
           stiffness: 300,
           useNativeDriver: true,
         }),
       ]).start(() => setIsRendered(false));
     }
-  }, [visible, isRendered]);
+  }, [visible, isRendered, sheetHeight]);
 
   const handleClose = () => onClose();
 
@@ -137,6 +148,12 @@ export function PostActionsSheet({
     );
   };
 
+  const handleEditPost = () => {
+    // Close this sheet, then open the edit sheet after animation completes.
+    setTimeout(() => onEditPost?.(), 220);
+    onClose();
+  };
+
   // Don't render anything while closing animation finishes
   if (!isRendered) return null;
 
@@ -159,6 +176,7 @@ export function PostActionsSheet({
           styles.sheet,
           {
             backgroundColor: isDark ? colors.surface : (Platform.OS === 'ios' ? 'rgba(255,255,255,0.92)' : colors.surfaceElevated),
+            height: sheetHeight,
             transform: [{ translateY: sheetTranslateY }],
           },
         ]}
@@ -206,6 +224,26 @@ export function PostActionsSheet({
                 />
               </View>
               <Text style={[styles.actionLabel, styles.dangerLabel]}>Block User</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Edit Post — owner only. Mở sheet sửa bài; nội dung mới sẽ được
+              gửi lại cho AI kiểm duyệt (resubmit). */}
+          {isOwner && (
+            <TouchableOpacity
+              style={[styles.actionRow, { borderBottomColor: colors.borderLight }]}
+              activeOpacity={0.65}
+              onPress={handleEditPost}
+            >
+              <View style={styles.actionIcon}>
+                <Feather
+                  name="edit-2"
+                  size={20}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
+              </View>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Edit Post</Text>
             </TouchableOpacity>
           )}
 
@@ -258,7 +296,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SHEET_HEIGHT,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     paddingHorizontal: layoutPadding,

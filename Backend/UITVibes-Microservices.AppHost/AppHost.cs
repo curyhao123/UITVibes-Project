@@ -84,6 +84,7 @@ var postService = builder.AddProject<Projects.PostService>("postservice")
     .WithEnvironment("Cloudinary__ApiKey", cloudinaryApiKey)
     .WithEnvironment("Cloudinary__ApiSecret", cloudinaryApiSecret)
     .WithEnvironment("DeepSeek__ApiKey", deepSeekApiKey)
+    .WithEnvironment("Jwt__Key", jwtKey)
     .WithHttpHealthCheck("/health");
 
 

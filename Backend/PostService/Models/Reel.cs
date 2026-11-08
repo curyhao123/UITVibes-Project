@@ -1,4 +1,6 @@
-﻿namespace PostService.Models
+using PostService.Enums;
+
+namespace PostService.Models
 {
     public class Reel
     {
@@ -19,6 +21,12 @@
         // Thời gian
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        // ── Moderation ────────────────────────────────────────────────────────
+        // Caption của reel đi qua hàng đợi kiểm duyệt giống post.
+        // Tác giả luôn thấy reel của mình; người khác chỉ thấy reel Approved.
+        public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+        public DateTime? ModeratedAt { get; set; }
 
         // Navigation
         public ICollection<ReelLike> Likes { get; set; } = new List<ReelLike>();

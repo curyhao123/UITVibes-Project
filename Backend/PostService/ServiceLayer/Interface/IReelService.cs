@@ -1,4 +1,4 @@
-﻿using PostService.DTOs;
+using PostService.DTOs;
 
 namespace PostService.ServiceLayer.Interface
 {
@@ -11,6 +11,8 @@ namespace PostService.ServiceLayer.Interface
         Task<List<ReelDto>> GetReelsAsync(int skip, int take, Guid? currentUserId);
         Task<List<ReelDto>> GetReelsByUserAsync(Guid userId, int skip, int take, Guid? currentUserId);
         Task DeleteReelAsync(Guid reelId, Guid userId);
+        Task<ReelDto> UpdateReelAsync(Guid reelId, Guid userId, UpdateReelRequest request);
+        Task<List<ReelDto>> GetMyReelsAsync(Guid userId, int skip, int take);
 
         // Tương tác
         Task LikeReelAsync(Guid reelId, Guid userId);
@@ -21,8 +23,8 @@ namespace PostService.ServiceLayer.Interface
 
         // Comment
         Task<ReelCommentDto> CreateCommentAsync(Guid reelId, Guid userId, CreateReelCommentRequest request);
-        Task<List<ReelCommentDto>> GetCommentsAsync(Guid reelId, int skip, int take);
-        Task<List<ReelCommentDto>> GetRepliesAsync(Guid commentId, int skip, int take);
+        Task<List<ReelCommentDto>> GetCommentsAsync(Guid reelId, Guid? currentUserId, int skip, int take);
+        Task<List<ReelCommentDto>> GetRepliesAsync(Guid commentId, Guid? currentUserId, int skip, int take);
         Task DeleteCommentAsync(Guid commentId, Guid userId);
         Task LikeCommentAsync(Guid commentId, Guid userId);
         Task UnlikeCommentAsync(Guid commentId, Guid userId);

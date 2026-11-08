@@ -1,4 +1,4 @@
-﻿namespace PostService.DTOs
+namespace PostService.DTOs
 {
     public class ReelDto
     {
@@ -24,6 +24,15 @@
         // Trạng thái của người dùng hiện tại
         public bool IsLiked { get; set; }       // currentUser đã like chưa
         public bool IsOwner { get; set; }        // currentUser có phải chủ không
+
+        // Trạng thái kiểm duyệt: "Pending" | "Approved" | "Rejected" | "NeedsReview"
+        public string ModerationStatus { get; set; } = "Approved";
+
+        /// Lý do bị từ chối / cần xem xét — chỉ trả về cho tác giả.
+        public string? ModerationReason { get; set; }
+
+        /// Id của bản ghi kiểm duyệt — cần để tác giả gửi khiếu nại (appeal).
+        public Guid? ModerationResultId { get; set; }
 
         public DateTime CreatedAt { get; set; }
     }

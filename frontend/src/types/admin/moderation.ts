@@ -10,15 +10,30 @@
 export type ModerationStatus = "Pending" | "Approved" | "Rejected" | "NeedsReview";
 
 /** The kind of content that was moderated. */
-export type ModerationTargetType = "Post" | "Comment" | "Reel" | "Story";
+export type ModerationTargetType =
+  | "Post"
+  | "Comment"
+  | "Reel"
+  | "Story"
+  | "ReelComment";
 
 /**
  * Where the decision came from:
  *  - Rule     = automatic rule (e.g. an empty post is auto-approved)
  *  - Llm      = decided by the AI
+ *  - Human    = decided by an admin (the AI's original verdict is kept in
+ *               llmDecision / severity / confidence for comparison)
  *  - Fallback = the AI failed / was unavailable → routed to NeedsReview
  */
-export type ModerationSource = "Rule" | "Llm" | "Fallback";
+export type ModerationSource = "Rule" | "Llm" | "Human" | "Fallback";
+
+/**
+ * Appeal state — the author appealed a rejection and an admin has to decide.
+ *  - None     = no appeal
+ *  - Pending  = appeal submitted, waiting for an admin
+ *  - Resolved = an admin already handled the appeal
+ */
+export type ModerationAppealStatus = "None" | "Pending" | "Resolved";
 
 /** A moderation record returned by GET /post/moderation. */
 export interface BE_ModerationResult {
@@ -51,11 +66,24 @@ export interface BE_ModerationResult {
   reviewedBy: string | null;
   reviewedAt: string | null;
 
+  // ── Appeal ──
+  appealStatus: ModerationAppealStatus;
+  appealReason: string | null;
+  appealSubmittedAt: string | null;
+  appealResolvedAt: string | null;
+
   /** The moderated content. */
   targetContent: string;
   targetMediaUrls: string[];
   /** True when the author deleted the content before it could be reviewed. */
   targetDeleted: boolean;
+
+  /** Number of open (unresolved) reports on this content. */
+  reportCount: number;
+  /** Queue priority — higher means the admin should look at it first. */
+  priority: number;
+  /** Text extracted from images via OCR (empty when OCR is off or found nothing). */
+  ocrText: string | null;
 
   /** Author info. */
   authorId: string;
@@ -74,6 +102,23 @@ export interface BE_ModerationStats {
   reviewedByAdminCount: number;
   /** Records whose original content was deleted by the author. */
   orphanCount: number;
+  /** Appeals waiting for an admin decision. */
+  appealPendingCount: number;
+  /** Items waiting longer than the 24h SLA. */
+  slaBreachedCount: number;
+  /** Age of the oldest pending item, in hours. */
+  oldestPendingAgeHours: number;
+}
+
+/** A page of moderation records — GET /post/moderation/paged. */
+export interface BE_ModerationPagedResult {
+  items: BE_ModerationResult[];
+  total: number;
+  skip: number;
+  take: number;
+  page: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 
 /** Filters for the moderation queue. */
@@ -82,6 +127,35 @@ export interface ModerationQueryParams {
   targetType?: ModerationTargetType;
   category?: string;
   orderByUpdatedAt?: boolean;
+  /** Sort by severity (descending) — the order an admin wants to work in. */
+  orderBySeverity?: boolean;
+  /** Sort by queue priority (descending) — reported content comes first. */
+  orderByPriority?: boolean;
+  /** Full-text search across the content, reason and categories. */
+  search?: string;
+  /** Only records with at least this many open reports. */
+  minReportCount?: number;
+  /** Only records with a pending appeal. */
+  onlyWithAppeal?: boolean;
+  /** Minimum severity 0–3. */
+  minSeverity?: number;
+  /** Minimum confidence 0.0–1.0. */
+  minConfidence?: number;
+  /** ISO date-time lower bound on createdAt. */
+  fromUtc?: string;
+  /** ISO date-time upper bound on createdAt. */
+  toUtc?: string;
+  /** Filter by the author's user id. */
+  authorId?: string;
   skip?: number;
   take?: number;
+}
+
+/** Result of a bulk approve/reject action. */
+export interface BE_BulkModerationResult {
+  action: string;
+  succeededCount: number;
+  failedCount: number;
+  succeededIds: string[];
+  failures: { id: string; reason: string }[];
 }
