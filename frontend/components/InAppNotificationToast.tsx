@@ -60,6 +60,9 @@ const TYPE_META: Record<
   Tagged: { name: 'tag', color: '#A855F7' },
   NewMessage: { name: 'message-square', color: '#10B981' },
   MessageRead: { name: 'check-circle', color: '#10B981' },
+  ContentRejected: { name: 'x-circle', color: '#EF4444' },
+  ContentNeedsReview: { name: 'eye', color: '#8B5CF6' },
+  AppealResolved: { name: 'flag', color: '#8B5CF6' },
 };
 
 const getTypeMeta = (type: string) =>
@@ -76,6 +79,9 @@ function buildTitle(n: Notification): string {
     case 'Mentioned': return 'You Were Mentioned';
     case 'Tagged': return 'You Were Tagged';
     case 'MessageRead': return 'Message Read';
+    case 'ContentRejected': return 'Content Rejected';
+    case 'ContentNeedsReview': return 'Content Under Review';
+    case 'AppealResolved': return 'Appeal Resolved';
     default: return 'New Notification';
   }
 }
@@ -89,6 +95,11 @@ function resolveTarget(n: Notification): string | null {
     case 'PostCommented':
     case 'Tagged':
     case 'Mentioned':
+      return `/post/${n.entityId}`;
+    // Moderation: entityId là id nội dung bị kiểm duyệt.
+    case 'ContentRejected':
+    case 'ContentNeedsReview':
+    case 'AppealResolved':
       return `/post/${n.entityId}`;
     default:
       return null;

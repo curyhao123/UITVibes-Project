@@ -86,7 +86,11 @@ interface AppContextType {
     visibility?: number,
   ) => Promise<Post | null>;
   createReel: (videoUri: string, caption: string, duration?: number) => Promise<any>;
-  updatePost: (postId: string, caption: string) => Promise<void>;
+  updatePost: (
+    postId: string,
+    caption: string,
+    options?: { visibility?: number; location?: string },
+  ) => Promise<Post | null>;
   deletePost: (postId: string) => Promise<void>;
 
   reels: any[];

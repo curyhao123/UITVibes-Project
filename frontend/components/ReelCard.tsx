@@ -39,6 +39,7 @@ import Animated, {
 import { SPRING_BOUNCE, SPRING_SOFT } from '../animations/spring';
 import { AppColors } from '../constants/theme';
 import { User } from '../data/mockData';
+import { PostModerationBadge } from './PostModerationBadge';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -60,6 +61,12 @@ export interface ReelDisplayData {
   isLiked: boolean;
   isBookmarked?: boolean;
   createdAt?: string;
+  /** Trạng thái kiểm duyệt — chỉ tác giả thấy. */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 // ─── Animated Heart Overlay (double-tap like) ──────────────────────────────────
@@ -431,6 +438,10 @@ interface ReelCardProps {
   onFollow: () => void;
   onTogglePaused: (paused: boolean) => void;
   isCurrentUser?: boolean;
+  /** Mở sheet khiếu nại khi reel của tác giả bị từ chối. */
+  onAppeal?: () => void;
+  /** Mở sheet sửa caption để resubmit khi reel của tác giả bị từ chối. */
+  onEdit?: () => void;
 }
 
 export const ReelCard: React.FC<ReelCardProps> = ({
@@ -446,6 +457,8 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onFollow,
   onTogglePaused,
   isCurrentUser = false,
+  onAppeal,
+  onEdit,
 }) => {
   const [showHeart, setShowHeart] = useState(false);
   const [isLiked, setIsLiked] = useState(item.isLiked);
@@ -648,7 +661,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       </View>
 
       {/* Bottom content - positioned above tab bar */}
-      <View 
+      <View
         style={[styles.bottomContent, { paddingBottom: bottomPadding + 16 }]}
         pointerEvents="none"
       >
@@ -662,6 +675,30 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
         <MusicTrack music={item.music} artist={item.musicArtist} />
       </View>
+
+      {/* Trạng thái kiểm duyệt — chỉ tác giả reel thấy */}
+      {isCurrentUser && item.moderationStatus ? (
+        <View
+          style={[styles.moderationOverlay, { bottom: bottomPadding + 130 }]}
+          pointerEvents="box-none"
+        >
+          <PostModerationBadge
+            status={item.moderationStatus}
+            reason={item.moderationReason ?? undefined}
+            contentType="reel"
+            isAuthor={isCurrentUser}
+            edgeToEdge
+            onAppeal={
+              item.moderationStatus === 'Rejected' && item.moderationResultId
+                ? onAppeal
+                : undefined
+            }
+            onEdit={
+              item.moderationStatus === 'Rejected' ? onEdit : undefined
+            }
+          />
+        </View>
+      ) : null}
 
       {/* Progress bar - positioned above tab bar */}
       <View 
@@ -826,6 +863,11 @@ const styles = StyleSheet.create({
     left: 12,
     right: 70,
     bottom: 40,
+  },
+  moderationOverlay: {
+    position: 'absolute',
+    left: 12,
+    right: 70,
   },
   captionContainer: {
     marginBottom: 8,

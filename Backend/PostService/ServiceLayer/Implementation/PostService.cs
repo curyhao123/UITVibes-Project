@@ -18,6 +18,8 @@ public class PostService : IPostService
     private readonly IUserProfileRpcClient _userProfileRpcClient;
     private readonly IRepostService _repostService;
     private readonly IPostMentionedPublisher _postMentionedPublisher;
+    private readonly IModerationEnqueuer _moderationEnqueuer;
+    private readonly IModerationReportService _moderationReportService;
     public PostService(
         PostDbContext context,
         ICloudinaryService cloudinaryService,
@@ -26,7 +28,9 @@ public class PostService : IPostService
         IPostLikedPublisher postLikedPublisher,
         IUserProfileRpcClient userProfileRpcClient,
         IRepostService repostService,
-        IPostMentionedPublisher postMentionedPublisher)
+        IPostMentionedPublisher postMentionedPublisher,
+        IModerationEnqueuer moderationEnqueuer,
+        IModerationReportService moderationReportService)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
@@ -36,6 +40,8 @@ public class PostService : IPostService
         _userProfileRpcClient = userProfileRpcClient;
         _repostService = repostService;
         _postMentionedPublisher = postMentionedPublisher;
+        _moderationEnqueuer = moderationEnqueuer;
+        _moderationReportService = moderationReportService;
     }
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
@@ -52,20 +58,9 @@ public class PostService : IPostService
             PostType = PostType.Original,
             ModerationStatus = ModerationStatus.Pending,
         };
-        var pendingModeration = new ModerationResult
-        {
-            Id = Guid.NewGuid(),
-            TargetId = post.Id,
-            CreatedAt = post.CreatedAt,
-            UpdatedAt = post.UpdatedAt,
-            TargetType = ModerationTargetType.Post,
-            Status = ModerationStatus.Pending,
-            Source = ModerationSource.Rule,
-            InternalReasonCode = "pending_worker",
-            AttemptCount = 0
-        };
+
         _context.Posts.Add(post);
-        _context.ModerationResults.Add(pendingModeration);
+
 
         // ✅ Add media to post
         if (request.Media != null && request.Media.Any())
@@ -100,6 +95,13 @@ public class PostService : IPostService
         await ProcessMentionsAsync(post, mentions);
 
         await _context.SaveChangesAsync();
+
+        // Đưa bài vào hàng đợi kiểm duyệt (bài chỉ hiển thị công khai sau khi được duyệt).
+        await _moderationEnqueuer.EnqueueAsync(
+            ModerationTargetType.Post,
+            post.Id,
+            post.Content,
+            status => post.ModerationStatus = status);
 
         _logger.LogInformation("Created post {PostId} with {MediaCount} media items by user {UserId}",
             post.Id, post.Media.Count, userId);
@@ -188,24 +190,61 @@ public class PostService : IPostService
         if (post.UserId != userId)
             throw new UnauthorizedAccessException("You can only edit your own posts");
 
-        post.Content = request.Content;
-        post.Location = request.Location;
-        post.Visibility = (PostVisibility)request.Visibility;
+        var newContent = request.Content ?? string.Empty;
+
+        // Chỉ nội dung mới được coi là "nội dung mới" — nếu không, việc sửa bài đã
+        // duyệt (ví dụ chỉ đổi quyền hiển thị) sẽ kéo bài về Pending và làm nó
+        // biến mất khỏi feed cho tới khi AI duyệt lại.
+        var contentChanged = !string.Equals(
+            post.Content?.Trim(),
+            newContent.Trim(),
+            StringComparison.Ordinal);
+
+        post.Content = newContent;
+
+        // Location = null → giữ nguyên; chuỗi rỗng → xoá địa điểm.
+        if (request.Location != null)
+            post.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location;
+
+        // Visibility = null → giữ nguyên quyền hiện tại.
+        if (request.Visibility.HasValue)
+            post.Visibility = (PostVisibility)request.Visibility.Value;
+
         post.UpdatedAt = DateTime.UtcNow;
 
         // Update hashtags
         _context.PostHashtags.RemoveRange(post.Hashtags);
-        var hashtags = ExtractHashtags(request.Content);
+        var hashtags = ExtractHashtags(newContent);
         await ProcessHashtagsAsync(post, hashtags);
 
         // Update mentions
         _context.PostMentions.RemoveRange(post.Mentions);
-        var mentions = ExtractMentions(request.Content);
+        var mentions = ExtractMentions(newContent);
         await ProcessMentionsAsync(post, mentions);
 
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Updated post {PostId}", postId);
+        if (contentChanged)
+        {
+            // Nội dung đã thay đổi → bài phải được kiểm duyệt lại từ đầu.
+            // Đây cũng là cửa vào cho tác giả "resubmit" một bài bị từ chối:
+            // bài trở lại Pending và bị ẩn khỏi feed cho tới khi có quyết định mới.
+            await _moderationEnqueuer.ResubmitAsync(
+                ModerationTargetType.Post,
+                post.Id,
+                post.Content,
+                status =>
+                {
+                    post.ModerationStatus = status;
+                    post.ModeratedAt = status == ModerationStatus.Pending ? null : DateTime.UtcNow;
+                });
+
+            _logger.LogInformation("Updated post {PostId} and resubmitted it for moderation", postId);
+        }
+        else
+        {
+            _logger.LogInformation("Updated post {PostId} without content change — moderation status kept", postId);
+        }
 
         return await GetPostByIdAsync(postId, userId);
     }
@@ -427,6 +466,9 @@ public class PostService : IPostService
 
             // Ưu tiên lý do từ admin; nếu không có thì dùng lý do do AI sinh.
             dto.ModerationReason = moderation?.AdminNote ?? moderation?.AuthorReason;
+
+            // Id bản ghi kiểm duyệt để tác giả có thể gửi khiếu nại.
+            dto.ModerationResultId = moderation?.Id;
         }
 
         if (post.OriginalPost != null && (post.OriginalPost.UserId == currentUserId || post.OriginalPost.ModerationStatus == ModerationStatus.Approved))
@@ -659,6 +701,13 @@ public class PostService : IPostService
         }
 
         await _context.SaveChangesAsync();
+
+        // Liên kết report ↔ hàng đợi kiểm duyệt (Phase 3.6):
+        // đủ ngưỡng report → tự đẩy bài vào hàng đợi kiểm duyệt lại,
+        // đồng thời tăng điểm ưu tiên để admin xét trước.
+        await _moderationReportService.HandleReportAsync(
+            request.PostId,
+            ModerationTargetType.Post);
 
         var reporterProfileResult = await _userProfileRpcClient.GetProfileAsync(userId);
         var reporterDisplayName = reporterProfileResult.Found ? reporterProfileResult.DisplayName : "Someone";

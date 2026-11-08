@@ -33,4 +33,21 @@ public interface IModerationAdminService
     /// Admin từ chối nội dung: chuyển sang Rejected, nội dung bị ẩn khỏi feed.
     /// </summary>
     Task<ModerationResultDto> RejectAsync(Guid moderationResultId, Guid adminId, string? adminNote = null);
+
+    /// Lấy danh sách bản ghi có phân trang + tổng số (cho hàng đợi admin).
+    /// </summary>
+    Task<ModerationPagedResultDto> GetModerationResultsPagedAsync(ModerationQueryFilter filter);
+
+    /// Xử lý hàng loạt nhiều bản ghi. Bản ghi lỗi được bỏ qua, không làm hỏng cả lô.
+    /// </summary>
+    Task<BulkModerationResultDto> BulkResolveAsync(BulkModerationRequest request, Guid adminId);
+
+    /// <summary>
+    /// Thống kê "đồng thuận" giữa AI và admin (Phase 3.2): AI sai bao nhiêu,
+    /// theo category / prompt version / model, kèm ngưỡng được đề xuất từ dữ liệu thật.
+    /// </summary>
+    Task<ModerationAgreementDto> GetAgreementStatsAsync(
+        ModerationTargetType? targetType = null,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null);
 }

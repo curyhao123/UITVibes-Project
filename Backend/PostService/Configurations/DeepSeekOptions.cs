@@ -32,5 +32,19 @@ public class DeepSeekOptions
     /// </summary>
     [Range(256, 8192)]
     public int MaxCompletionTokens { get; set; } = 4096;
+
+    /// <summary>
+    /// Giá input (USD) cho 1 triệu token. Dùng để ước tính chi phí kiểm duyệt.
+    /// Để 0 nếu chưa muốn theo dõi chi phí.
+    /// </summary>
+    [Range(0, 1000)]
+    public double InputCostPer1MTokensUsd { get; set; } = 0;
+
+    /// <summary>
+    /// Giá output (USD) cho 1 triệu token. Dùng để ước tính chi phí kiểm duyệt.
+    /// Để 0 nếu chưa muốn theo dõi chi phí.
+    /// </summary>
+    [Range(0, 1000)]
+    public double OutputCostPer1MTokensUsd { get; set; } = 0;
 }
 

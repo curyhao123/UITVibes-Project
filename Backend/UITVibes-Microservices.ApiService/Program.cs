@@ -119,11 +119,18 @@ builder.Services.AddReverseProxy()
         {
             var httpContext = transformContext.HttpContext;
 
-            // Forward Authorization header
-            var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+            // Forward Authorization header.
+            // YARP đã tự copy header Authorization của request client sang request
+            // đi xuống service. Nếu ta TryAddWithoutValidation lần nữa thì header sẽ
+            // bị gộp thành "Bearer xxx, Bearer xxx" → service đọc được token hỏng
+            // (IDX12709 CanReadToken() == false) → mọi request có JWT đều bị 403.
+            // Vì vậy: xóa bản copy sẵn có rồi add lại đúng 1 giá trị.
+            var authHeader = httpContext.Request.Headers.Authorization.FirstOrDefault();
             if (!string.IsNullOrEmpty(authHeader))
-                transformContext.ProxyRequest.Headers
-                    .TryAddWithoutValidation("Authorization", authHeader);
+            {
+                transformContext.ProxyRequest.Headers.Remove("Authorization");
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("Authorization", authHeader);
+            }
 
             // Case 1 — HTTP thường, user đã authenticated qua JWT header
             if (httpContext.User.Identity?.IsAuthenticated == true)

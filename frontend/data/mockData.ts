@@ -33,6 +33,15 @@ export interface Comment {
   isLiked?: boolean;
   replies?: Comment[];
   parentId?: string;
+  /**
+   * Trạng thái kiểm duyệt của bình luận — chỉ tác giả thấy.
+   * "Pending" | "Approved" | "Rejected" | "NeedsReview"
+   */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export interface Post {
@@ -64,6 +73,8 @@ export interface Post {
   moderationStatus?: string;
   /** Lý do bị từ chối / cần xem xét. */
   moderationReason?: string;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export interface Conversation {

@@ -21,6 +21,9 @@ export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { ReportUserSheet } from './profile/ReportUserSheet';
 export { PostActionsSheet } from './PostActionsSheet';
 export { ReportPostSheet } from './ReportPostSheet';
+export { EditPostSheet } from './EditPostSheet';
+export { PostModerationBadge } from './PostModerationBadge';
+export { ModerationAppealSheet } from './ModerationAppealSheet';
 // Animation components
 export { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
 export {

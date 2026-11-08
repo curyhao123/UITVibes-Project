@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Metrics;
 using PostService.Configurations;
 using PostService.Messaging;
 using PostService.Messaging.Implementation;
@@ -35,6 +36,8 @@ builder.Services.AddScoped<IPostLikedPublisher, PostLikedPublisher>();
 builder.Services.AddScoped<IRepostService, RepostService>();
 builder.Services.AddScoped<IPostMentionedPublisher, PostMentionedPublisher>();
 builder.Services.AddScoped<ICommentMentionedPublisher, CommentMentionedPublisher>();
+builder.Services.AddScoped<IContentModeratedPublisher, ContentModeratedPublisher>();
+builder.Services.AddScoped<IContentModerationNotifier, ContentModerationNotifier>();
 builder.Services.AddScoped<IHighlightService, HighlightService>();
 builder.Services.AddScoped<IReelService, ReelService>();
 builder.Services.AddHostedService<PostCountRpcConsumer>();
@@ -44,11 +47,55 @@ builder.Services.AddOptions<ModerationOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Lớp rule tiền xử lý — chặn tất định trước khi gọi LLM.
+builder.Services.AddOptions<ModerationRuleOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationRuleOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// A/B routing — chạy nhiều model/prompt song song để đo độ chính xác (3.3).
+builder.Services.AddOptions<ModerationRoutingOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationRoutingOptions.SectionName));
+
+// Shadow mode — chạy model "bóng" chỉ để ghi log, không áp dụng (3.3).
+builder.Services.AddOptions<ModerationShadowOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationShadowOptions.SectionName));
+
 builder.Services.AddSingleton<IModerationResponseParser, ModerationResponseParser>();
 builder.Services.AddSingleton<IModerationPromptBuilder, ModerationPromptBuilder>();
 builder.Services.AddScoped<IModerationDecisionEvaluator, ModerationDecisionEvaluator>();
+builder.Services.AddScoped<IModerationRuleFilter, ModerationRuleFilter>();
 builder.Services.AddScoped<ILlmModerationService, LlmModerationService>();
+builder.Services.AddSingleton<IModerationMetrics, ModerationMetrics>();
+// OpenTelemetry thu thập metric của moderation qua meter này (3.4).
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddMeter(IModerationMetrics.MeterName));
 builder.Services.AddScoped<IModerationAdminService, ModerationAdminService>();
+builder.Services.AddScoped<IModerationAppealService, ModerationAppealService>();
+builder.Services.AddScoped<IModerationDecisionLogger, ModerationDecisionLogger>();
+builder.Services.AddScoped<IModerationStrikeService, ModerationStrikeService>();
+builder.Services.AddScoped<IUserBannedPublisher, UserBannedPublisher>();
+// Cấu hình strike + tự động khoá tài khoản (3.5).
+builder.Services.AddOptions<ModerationStrikeOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationStrikeOptions.SectionName));
+builder.Services.AddScoped<IModerationEnqueuer, ModerationEnqueuer>();
+// Liên kết report ↔ hàng đợi kiểm duyệt (3.6).
+builder.Services.AddOptions<ModerationReportOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationReportOptions.SectionName));
+builder.Services.AddScoped<IModerationReportService, ModerationReportService>();
+builder.Services.AddScoped<IModerationTargetAccessor, ModerationTargetAccessor>();
+// OCR — trích text từ ảnh để đưa vào pipeline kiểm duyệt text (3.0).
+builder.Services.AddOptions<ModerationOcrOptions>()
+    .Bind(builder.Configuration.GetSection(ModerationOcrOptions.SectionName));
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IOcrService, OcrService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+// Xác thực danh tính admin từ JWT (fallback sang header gateway khi chưa cấu hình Jwt:Key).
+builder.Services.AddScoped<IAdminIdentityResolver, AdminIdentityResolver>();
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName));
 // DeepSeek API config
 builder.Services.AddOptions<DeepSeekOptions>()
     .Bind(builder.Configuration.GetSection(DeepSeekOptions.SectionName))

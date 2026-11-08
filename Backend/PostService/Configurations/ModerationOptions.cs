@@ -6,15 +6,14 @@ namespace PostService.Configurations;
 ///       .Bind(builder.Configuration.GetSection(ModerationOptions.SectionName))
 ///       .ValidateDataAnnotations()
 ///       .ValidateOnStart();
-/// Only the fields needed by the decision evaluator are here for now; worker/client settings
-/// (PollInterval, BatchSize, LeaseDuration, MaxAttempts, DeepSeek:*...) are added in later phases.
 /// </summary>
 public class ModerationOptions
 {
     public const string SectionName = "Moderation";
 
-    /// Master switch. false = moderation pipeline is bypassed (new posts go straight to Approved).
-    /// Intended for local dev / emergencies only — see plan §7.8.
+    /// Master switch. false = moderation pipeline bị tắt: nội dung mới đi thẳng
+    /// Approved (không tạo bản ghi kiểm duyệt, không gọi LLM).
+    /// Dùng cho local dev / tình huống khẩn cấp.
     public bool Enabled { get; set; } = true;
 
     /// Minimum confidence required to accept an LLM "approve" verdict.
@@ -42,4 +41,9 @@ public class ModerationOptions
 
     /// Maximum moderation attempts before marking as Fallback/NeedsReview.
     public int MaxAttempts { get; set; } = 3;
+
+    /// Thời gian (giây) một worker giữ lease trên một bản ghi Pending.
+    /// Phải lớn hơn thời gian tối đa một lần gọi LLM (DeepSeek TimeoutSeconds)
+    /// để tránh worker khác giành mất bản ghi khi nó đang xử lý.
+    public int LeaseDurationSeconds { get; set; } = 120;
 }

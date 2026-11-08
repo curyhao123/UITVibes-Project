@@ -12,6 +12,12 @@ namespace PostService.Messaging;
 public class PostCountRpcConsumer : BackgroundService
 {
     private const string QueueName = "post.count.get";
+
+    /// <summary>
+    /// Khoảng nghỉ giữa các lần thử kết nối lại khi RabbitMQ chưa sẵn sàng.
+    /// </summary>
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+
     private readonly ILogger<PostCountRpcConsumer> _logger;
     private readonly IServiceProvider _serviceProvider;
     private IConnection? _connection;
@@ -26,6 +32,48 @@ public class PostCountRpcConsumer : BackgroundService
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // Vòng lặp reconnect: nếu RabbitMQ chưa sẵn sàng (hoặc tạm thời gián đoạn),
+        // ta chờ rồi thử lại thay vì ném exception ra ngoài.
+        //
+        // Lý do: exception không xử lý trong một BackgroundService sẽ làm
+        // HostOptions.BackgroundServiceExceptionBehavior (mặc định = StopHost) dừng
+        // cả ứng dụng. Với Aspire, điều đó biến thành vòng lặp
+        // "crash → restart → crash" khiến resource liên tục báo Finished.
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ConsumeAsync(stoppingToken);
+                return; // Chỉ thoát khi bị yêu cầu dừng.
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to consume queue '{Queue}'. Retrying in {Delay}s.",
+                    QueueName, ReconnectDelay.TotalSeconds);
+
+                await CleanupChannelAsync();
+
+                try
+                {
+                    await Task.Delay(ReconnectDelay, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        _logger.LogInformation("PostCountRpcConsumer stopped.");
+    }
+
+    private async Task ConsumeAsync(CancellationToken stoppingToken)
     {
         using var scope = _serviceProvider.CreateScope();
         var connectionFactory = scope.ServiceProvider.GetRequiredService<IConnectionFactory>();
@@ -79,7 +127,8 @@ public class PostCountRpcConsumer : BackgroundService
                 _logger.LogError(ex, "Error processing PostCount RPC request");
             }
 
-            if (!string.IsNullOrEmpty(ea.BasicProperties?.ReplyTo))
+            var replyTo = ea.BasicProperties?.ReplyTo;
+            if (!string.IsNullOrEmpty(replyTo))
             {
                 var replyProps = new BasicProperties
                 {
@@ -89,7 +138,7 @@ public class PostCountRpcConsumer : BackgroundService
                 var replyBody = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
                 await _channel.BasicPublishAsync(
                     exchange: string.Empty,
-                    routingKey: ea.BasicProperties.ReplyTo,
+                    routingKey: replyTo,
                     mandatory: false,
                     basicProperties: replyProps,
                     body: replyBody,
@@ -110,19 +159,37 @@ public class PostCountRpcConsumer : BackgroundService
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
+    private async Task CleanupChannelAsync()
+    {
+        try
+        {
+            if (_channel != null)
+            {
+                await _channel.CloseAsync();
+                await _channel.DisposeAsync();
+            }
+
+            if (_connection != null)
+            {
+                await _connection.CloseAsync();
+                await _connection.DisposeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Dọn dẹp là best-effort — không được để lỗi ở đây chặn vòng reconnect.
+            _logger.LogWarning(ex, "Error while cleaning up RabbitMQ connection for queue '{Queue}'.", QueueName);
+        }
+        finally
+        {
+            _channel = null;
+            _connection = null;
+        }
+    }
+
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_channel != null)
-        {
-            await _channel.CloseAsync(cancellationToken);
-            await _channel.DisposeAsync();
-        }
-
-        if (_connection != null)
-        {
-            await _connection.CloseAsync(cancellationToken);
-            await _connection.DisposeAsync();
-        }
+        await CleanupChannelAsync();
 
         await base.StopAsync(cancellationToken);
     }

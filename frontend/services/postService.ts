@@ -72,6 +72,9 @@ async function transformComment(
     isLiked: be.isLikedByCurrentUser,
     replies,
     parentId: be.parentCommentId ?? undefined,
+    moderationStatus: be.moderationStatus,
+    moderationReason: be.moderationReason ?? undefined,
+    moderationResultId: be.moderationResultId ?? null,
   };
 }
 
@@ -185,6 +188,7 @@ function transformBEPost(post: BE_PostResponse, author?: User): Post {
     isReposted: post.isRepostedByCurrentUser ?? false,
     moderationStatus: post.moderationStatus ?? "Approved",
     moderationReason: post.moderationReason ?? undefined,
+    moderationResultId: post.moderationResultId ?? null,
   };
 }
 
@@ -495,16 +499,37 @@ export async function createPost(
   return transformBEPost(data, author);
 }
 
+/**
+ * Cập nhật nội dung bài của chính tác giả.
+ *
+ * Khi nội dung thay đổi, backend sẽ tự đưa bài về trạng thái "Pending" và
+ * gửi lại vào hàng đợi kiểm duyệt (bài tạm ẩn với người khác cho tới khi có
+ * quyết định mới) — đây chính là luồng "resubmit" cho bài bị từ chối.
+ *
+ * `visibility` và `location` là tuỳ chọn: không truyền thì giữ nguyên giá trị
+ * hiện tại của bài.
+ */
 export async function updatePost(
   postId: string,
   caption: string,
+  options?: { visibility?: number; location?: string },
 ): Promise<Post | null> {
-  const { data } = await apiClient.put<BE_PostResponse>(`/post/${postId}`, {
-    content: caption,
-    visibility: 0,
-  });
-  const author = await fetchUserById(data.userId);
-  return transformBEPost(data, author);
+  try {
+    const { data } = await apiClient.put<BE_PostResponse>(`/post/${postId}`, {
+      content: caption,
+      ...(options?.visibility !== undefined ? { visibility: options.visibility } : {}),
+      ...(options?.location !== undefined ? { location: options.location } : {}),
+    });
+    const author = await fetchUserById(data.userId);
+    return transformBEPost(data, author);
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Could not update this post. Please try again.";
+    console.error("[updatePost] Error:", error);
+    throw new Error(message);
+  }
 }
 
 export async function deletePost(postId: string): Promise<boolean> {
@@ -758,6 +783,12 @@ export interface BE_ReelResponse {
   isLiked: boolean;
   isOwner: boolean;
   createdAt: string;
+  /** Trạng thái kiểm duyệt — chỉ tác giả thấy. */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export interface Reel {
@@ -776,6 +807,12 @@ export interface Reel {
   isLiked: boolean;
   isOwner: boolean;
   createdAt: string;
+  /** Trạng thái kiểm duyệt — chỉ tác giả thấy. */
+  moderationStatus?: string;
+  /** Lý do bị từ chối / cần xem xét — chỉ tác giả thấy. */
+  moderationReason?: string | null;
+  /** Id bản ghi kiểm duyệt — cần để gửi khiếu nại (appeal). */
+  moderationResultId?: string | null;
 }
 
 export async function createReel(
@@ -1006,6 +1043,24 @@ export async function getMyReels(): Promise<Reel[]> {
   } catch (error) {
     console.error("[getMyReels] API error:", error);
     return [];
+  }
+}
+
+// ─── Update Reel (edit caption & resubmit for moderation) ─────────────────────
+
+export async function updateReel(
+  reelId: string,
+  caption: string,
+): Promise<BE_ReelResponse | null> {
+  try {
+    const { data } = await apiClient.put<BE_ReelResponse>(
+      `/post/reel/${reelId}`,
+      { caption },
+    );
+    return data ?? null;
+  } catch (error) {
+    console.error("[updateReel] API error:", error);
+    return null;
   }
 }
 

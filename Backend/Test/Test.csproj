@@ -27,6 +27,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AuthService\AuthService.csproj" />
+      <ProjectReference Include="..\PostService\PostService.csproj" />
+      <ProjectReference Include="..\NotificationService\NotificationService.csproj" />
     </ItemGroup>
 
 </Project>

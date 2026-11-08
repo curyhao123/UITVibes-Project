@@ -12,7 +12,11 @@ export type NotificationType =
   | "Mentioned"
   | "Tagged"
   | "NewMessage"
-  | "MessageRead";
+  | "MessageRead"
+  // ── Moderation ──
+  | "ContentRejected"
+  | "ContentNeedsReview"
+  | "AppealResolved";
 
 export interface Notification {
   id: string;

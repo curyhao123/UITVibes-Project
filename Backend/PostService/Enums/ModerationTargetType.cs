@@ -9,4 +9,6 @@ public enum ModerationTargetType
     Comment = 1,
     Reel = 2,
     Story = 3,
+    /// <summary>Bình luận trên reel (Phase 3.0).</summary>
+    ReelComment = 4,
 }

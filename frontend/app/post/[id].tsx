@@ -9,6 +9,7 @@ import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +21,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, CommentItem, DeleteConfirmModal, ImageCarousel } from "../../components";
 import { CommentInput } from "../../components/CommentInput";
+import { EditPostSheet } from "../../components/EditPostSheet";
+import { ModerationAppealSheet } from "../../components/ModerationAppealSheet";
+import { PostModerationBadge } from "../../components/PostModerationBadge";
 import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { AppColors, layoutPadding } from "../../constants/theme";
@@ -80,12 +84,19 @@ export default function PostDetailScreen() {
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const { toggleLike, addComment, currentUser, toggleFollow } = useApp();
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showAppealSheet, setShowAppealSheet] = useState(false);
+  // Bình luận đang được khiếu nại (riêng với bài viết) — tác giả có thể
+  // khiếu nại cho cả bài lẫn bình luận của mình.
+  const [appealingComment, setAppealingComment] = useState<Comment | null>(null);
+  const { toggleLike, addComment, currentUser, toggleFollow, updatePost } = useApp();
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [localReposted, setLocalReposted] = useState(false);
   const [localRepostCount, setLocalRepostCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const router = useRouter();
+
+  const isPostAuthor = !!post && !!currentUser && post.userId === currentUser.id;
 
   useEffect(() => {
     loadPost();
@@ -381,6 +392,30 @@ export default function PostDetailScreen() {
     }
   };
 
+  // Sửa nội dung → backend tự gửi lại bài cho AI kiểm duyệt (resubmit).
+  const handleSaveEdit = async (content: string) => {
+    if (!post) return;
+    try {
+      const updated = await updatePost(post.id, content);
+      if (updated) {
+        // Giữ lại comments đã load sẵn — response của API không kèm comments.
+        setPost((prev) =>
+          prev ? { ...prev, ...updated, comments: prev.comments } : prev,
+        );
+      }
+      Alert.alert(
+        'Post updated',
+        'Your post has been submitted for review again. It will stay hidden from others until it is approved.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Could not update this post. Please try again.',
+      );
+      throw error;
+    }
+  };
+
   if (isLoading || !post) {
     return <PostDetailSkeleton />;
   }
@@ -505,6 +540,18 @@ export default function PostDetailScreen() {
         </Text>
       </View>
 
+      {/* Trạng thái kiểm duyệt (chỉ tác giả thấy) */}
+      <PostModerationBadge
+        status={post.moderationStatus}
+        reason={post.moderationReason}
+        contentType="post"
+        isAuthor={isPostAuthor}
+        onEdit={() => setShowEditSheet(true)}
+        onAppeal={
+          post.moderationResultId ? () => setShowAppealSheet(true) : undefined
+        }
+      />
+
       {/* Comments Header */}
       {post.comments.length > 0 && (
         <Text style={[styles.commentsHeader, { color: colors.textSecondary }]}>
@@ -533,6 +580,7 @@ export default function PostDetailScreen() {
               onLike={handleCommentLike}
               onEdit={handleEditComment}
               onDelete={handleDeleteComment}
+              onAppeal={(c) => setAppealingComment(c)}
               currentUserId={currentUser?.id}
             />
           )}
@@ -559,8 +607,59 @@ export default function PostDetailScreen() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      <EditPostSheet
+        visible={showEditSheet}
+        initialContent={post.caption}
+        moderationStatus={post.moderationStatus}
+        contentType="post"
+        onSave={handleSaveEdit}
+        onClose={() => setShowEditSheet(false)}
+      />
+
+      <ModerationAppealSheet
+        visible={showAppealSheet}
+        moderationResultId={post.moderationResultId ?? null}
+        targetContent={post.caption}
+        onClose={() => setShowAppealSheet(false)}
+      />
+
+      <ModerationAppealSheet
+        visible={appealingComment !== null}
+        moderationResultId={appealingComment?.moderationResultId ?? null}
+        targetContent={appealingComment?.text}
+        onClose={() => setAppealingComment(null)}
+        onSubmitted={() => {
+          // Bình luận chuyển sang vùng xám → cập nhật lại để tác giả thấy
+          // trạng thái mới thay vì trạng thái "bị từ chối" đã lỗi thời.
+          setPost((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  comments: updateCommentsModeration(prev.comments, appealingComment?.id),
+                }
+              : prev,
+          );
+        }}
+      />
     </>
   );
+}
+
+/**
+ * Đánh dấu bình luận (và các reply của nó) sang trạng thái "NeedsReview"
+ * sau khi tác giả gửi khiếu nại.
+ */
+function updateCommentsModeration(comments: Comment[], targetId?: string): Comment[] {
+  if (!targetId) return comments;
+
+  return comments.map((c) => {
+    const replies = c.replies?.length ? updateCommentsModeration(c.replies, targetId) : c.replies;
+    if (c.id === targetId) {
+      return { ...c, moderationStatus: 'NeedsReview' };
+    }
+    return replies === c.replies ? c : { ...c, replies };
+  });
 }
 
 const styles = StyleSheet.create({

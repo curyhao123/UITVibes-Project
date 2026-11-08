@@ -1,4 +1,6 @@
-﻿namespace PostService.Models
+using PostService.Enums;
+
+namespace PostService.Models
 {
     public class ReelComment
     {
@@ -17,5 +19,13 @@
         public ICollection<ReelCommentLike> Likes { get; set; } = new List<ReelCommentLike>();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        // ===== Kiểm duyệt AI (Phase 3.0) =====
+        // Trạng thái kiểm duyệt của bình luận reel. Người khác chỉ thấy bình luận
+        // ở trạng thái Approved; tác giả luôn thấy bình luận của mình.
+        public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
+
+        /// Thời điểm bình luận được kiểm duyệt xong.
+        public DateTime? ModeratedAt { get; set; }
     }
 }

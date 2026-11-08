@@ -33,6 +33,39 @@ public class ModerationDecisionResult
     /// Violation categories identified by LLM.
     public IReadOnlyList<string>? Categories { get; init; }
 
+    // ===== Observability (3.4) =====
+    // Dữ liệu kỹ thuật để đo chất lượng & chi phí. Không hiển thị cho tác giả.
+
+    /// Model LLM đã dùng để ra quyết định.
+    public string? ModelName { get; init; }
+
+    /// Phiên bản prompt đã dùng để ra quyết định (vd: "v3").
+    public string? PromptVersion { get; init; }
+
+    /// Raw response của LLM (đã cắt ngắn).
+    public string? RawResponse { get; init; }
+
+    /// Thời gian gọi LLM (ms).
+    public int? LatencyMs { get; init; }
+
+    public int? PromptTokens { get; init; }
+    public int? CompletionTokens { get; init; }
+    public int? TotalTokens { get; init; }
+
+    /// Chi phí ước tính (USD).
+    public double? EstimatedCostUsd { get; init; }
+
+    // ===== Shadow mode (3.3) =====
+    // Quyết định của "model bóng" — chỉ để so sánh, KHÔNG áp dụng lên nội dung.
+
+    public string? ShadowDecision { get; init; }
+    public ModerationStatus? ShadowStatus { get; init; }
+    public double? ShadowConfidence { get; init; }
+    public int? ShadowSeverity { get; init; }
+    public string? ShadowModel { get; init; }
+    public string? ShadowPromptVersion { get; init; }
+    public bool? ShadowAgreesWithPrimary { get; init; }
+
     public static ModerationDecisionResult NeedsReview(
         string internalReasonCode,
         string? authorReason = null,

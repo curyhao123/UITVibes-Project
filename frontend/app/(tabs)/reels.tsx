@@ -33,6 +33,8 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar } from '../../components/Avatar';
 import { CommentSheet } from '../../components/CommentSheet';
+import { EditPostSheet } from '../../components/EditPostSheet';
+import { ModerationAppealSheet } from '../../components/ModerationAppealSheet';
 import { TAB_BAR_BOTTOM_OFFSET } from '../../components/ModernTabBar';
 import { ReelCard, ReelDisplayData } from '../../components/ReelCard';
 import { ShareSheet } from '../../components/ShareSheet';
@@ -46,6 +48,7 @@ import {
   getReelComments,
   deleteReelComment as removeReelComment,
   toggleReelCommentLike as setReelCommentLike,
+  updateReel,
 } from '../../services/postService';
 import { fetchUserById } from '../../services/userService';
 
@@ -86,6 +89,9 @@ function transformReelForDisplay(reel: APIReel, userMap: Map<string, User>): Ree
     isLiked: reel.isLiked,
     isBookmarked: (reel as any).isBookmarked,
     createdAt: reel.createdAt,
+    moderationStatus: reel.moderationStatus,
+    moderationReason: reel.moderationReason ?? undefined,
+    moderationResultId: reel.moderationResultId ?? undefined,
   };
 }
 
@@ -199,6 +205,10 @@ export default function ReelsScreen() {
   const [commentVisible, setCommentVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
   const [selectedReel, setSelectedReel] = useState<ReelDisplayData | null>(null);
+  // Reel đang được khiếu nại (chỉ tác giả reel mới khiếu nại được).
+  const [appealingReel, setAppealingReel] = useState<ReelDisplayData | null>(null);
+  // Reel đang được sửa caption để resubmit (chỉ tác giả reel mới sửa được).
+  const [editingReel, setEditingReel] = useState<ReelDisplayData | null>(null);
   const [reelComments, setReelComments] = useState<CommentType[]>([]);
   const [reelUsers, setReelUsers] = useState<Map<string, User>>(new Map());
   const [displayReels, setDisplayReels] = useState<ReelDisplayData[]>([]);
@@ -482,6 +492,30 @@ export default function ReelsScreen() {
     setShareVisible(false);
   }, []);
 
+  // ── Edit reel & resubmit ────────────────────────────────────────────────────
+  const handleSaveReelCaption = useCallback(async (caption: string) => {
+    if (!editingReel) return;
+
+    const updated = await updateReel(editingReel.id, caption);
+
+    if (!updated) {
+      throw new Error('Failed to update reel');
+    }
+
+    // Reel quay về trạng thái "Pending" — cập nhật lại list để tác giả thấy ngay.
+    setDisplayReels((prev) =>
+      prev.map((reel) =>
+        reel.id === editingReel.id
+          ? {
+              ...reel,
+              caption: updated.caption ?? caption,
+              moderationStatus: updated.moderationStatus ?? 'Pending',
+            }
+          : reel,
+      ),
+    );
+  }, [editingReel]);
+
   // ── User navigation ─────────────────────────────────────────────────────────
   const handleUserPress = useCallback((userId: string) => {
     router.push(`/profile/${userId}`);
@@ -521,9 +555,23 @@ export default function ReelsScreen() {
         onFollow={() => handleFollow(item.userId)}
         onTogglePaused={handleTogglePaused}
         isCurrentUser={item.userId === currentUser?.id}
+        onAppeal={() => setAppealingReel(item)}
+        onEdit={() => setEditingReel(item)}
       />
     ),
-    [currentIndex, isPaused, ITEM_HEIGHT, OVERLAY_BOTTOM_PADDING, handleLike, handleOpenComments, handleOpenShare, handleUserPress, handleFollow, handleTogglePaused, currentUser?.id],
+    [
+      currentIndex,
+      isPaused,
+      ITEM_HEIGHT,
+      OVERLAY_BOTTOM_PADDING,
+      handleLike,
+      handleOpenComments,
+      handleOpenShare,
+      handleUserPress,
+      handleFollow,
+      handleTogglePaused,
+      currentUser?.id,
+    ],
   );
 
   // ── Render separator ─────────────────────────────────────────────────────────
@@ -638,6 +686,34 @@ export default function ReelsScreen() {
         reelId={selectedReel?.id || ''}
         caption={selectedReel?.caption || ''}
         username={selectedReel?.user?.username || ''}
+      />
+
+      {/* Edit sheet cho reel bị từ chối — sửa caption rồi resubmit */}
+      <EditPostSheet
+        visible={editingReel !== null}
+        initialContent={editingReel?.caption ?? ''}
+        moderationStatus={editingReel?.moderationStatus}
+        contentType="reel"
+        onSave={handleSaveReelCaption}
+        onClose={() => setEditingReel(null)}
+      />
+
+      {/* Appeal sheet cho reel bị từ chối */}
+      <ModerationAppealSheet
+        visible={appealingReel !== null}
+        moderationResultId={appealingReel?.moderationResultId ?? null}
+        targetContent={appealingReel?.caption}
+        onClose={() => setAppealingReel(null)}
+        onSubmitted={() => {
+          // Reel chuyển sang vùng xám → cập nhật lại để tác giả thấy trạng thái mới.
+          setDisplayReels((prev) =>
+            prev.map((reel) =>
+              reel.id === appealingReel?.id
+                ? { ...reel, moderationStatus: 'NeedsReview' }
+                : reel,
+            ),
+          );
+        }}
       />
     </View>
   );

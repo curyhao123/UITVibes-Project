@@ -8,25 +8,37 @@ namespace PostService.Controllers;
 /// <summary>
 /// Admin API for the AI moderation queue.
 ///
-/// Every endpoint requires the "X-User-Role: Admin" header — the gateway forwards
-/// this header from the "role" claim in the JWT. If the gateway doesn't validate the
-/// JWT, the request is rejected with 401 before it ever reaches here.
+/// Every endpoint requires an Admin identity. The identity is verified from the
+/// JWT in the "Authorization" header (forwarded by the gateway) — see
+/// <see cref="IAdminIdentityResolver"/> for the rationale. When no JWT key is
+/// configured (PostService running standalone outside Aspire) the gateway headers
+/// are used as a fallback.
 ///
 /// Route base: api/post/moderation — the gateway routes /post/{**catch-all} →
 /// /api/post/{**catch-all}, so the frontend calls /post/moderation/... via the gateway.
+///
+/// Ngoại lệ: endpoint <c>appeal</c> dành cho TÁC GIẢ (không phải admin) nên
+/// dùng đường dẫn riêng <c>/api/post/moderation-appeal</c> để không lẫn với
+/// các endpoint admin.
 /// </summary>
 [ApiController]
 [Route("api/post/moderation")]
 public class ModerationController : ControllerBase
 {
     private readonly IModerationAdminService _moderationAdminService;
+    private readonly IModerationStrikeService _moderationStrikeService;
+    private readonly IAdminIdentityResolver _adminIdentityResolver;
     private readonly ILogger<ModerationController> _logger;
 
     public ModerationController(
         IModerationAdminService moderationAdminService,
+        IModerationStrikeService moderationStrikeService,
+        IAdminIdentityResolver adminIdentityResolver,
         ILogger<ModerationController> logger)
     {
         _moderationAdminService = moderationAdminService;
+        _moderationStrikeService = moderationStrikeService;
+        _adminIdentityResolver = adminIdentityResolver;
         _logger = logger;
     }
 
@@ -64,6 +76,67 @@ public class ModerationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving moderation results");
+            return StatusCode(500, new { message = "An error occurred while retrieving moderation results" });
+        }
+    }
+
+    /// <summary>
+    /// List moderation records with pagination + total count + advanced filters.
+    /// GET /api/moderation/paged?status=NeedsReview&amp;orderBySeverity=true&amp;minSeverity=2
+    ///
+    /// Đây là endpoint mà hàng đợi admin nên dùng: có <c>total</c> để phân trang
+    /// và hỗ trợ lọc theo severity / confidence / thời gian / tác giả / khiếu nại.
+    /// </summary>
+    [HttpGet("paged")]
+    public async Task<ActionResult<ModerationPagedResultDto>> GetModerationResultsPaged(
+        [FromQuery] ModerationStatus? status = null,
+        [FromQuery] ModerationTargetType? targetType = null,
+        [FromQuery] string? category = null,
+        [FromQuery] bool orderByUpdatedAt = false,
+        [FromQuery] bool orderBySeverity = false,
+        [FromQuery] bool orderByPriority = false,
+        [FromQuery] string? search = null,
+        [FromQuery] int? minReportCount = null,
+        [FromQuery] bool onlyWithAppeal = false,
+        [FromQuery] int? minSeverity = null,
+        [FromQuery] double? minConfidence = null,
+        [FromQuery] DateTime? fromUtc = null,
+        [FromQuery] DateTime? toUtc = null,
+        [FromQuery] Guid? authorId = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var filter = new ModerationQueryFilter
+            {
+                Status = status,
+                TargetType = targetType,
+                Category = category,
+                OrderByUpdatedAt = orderByUpdatedAt,
+                OrderBySeverity = orderBySeverity,
+                OrderByPriority = orderByPriority,
+                Search = search,
+                MinReportCount = minReportCount,
+                OnlyWithAppeal = onlyWithAppeal,
+                MinSeverity = minSeverity,
+                MinConfidence = minConfidence,
+                FromUtc = fromUtc,
+                ToUtc = toUtc,
+                AuthorId = authorId,
+                Skip = skip,
+                Take = take
+            };
+
+            var result = await _moderationAdminService.GetModerationResultsPagedAsync(filter);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paged moderation results");
             return StatusCode(500, new { message = "An error occurred while retrieving moderation results" });
         }
     }
@@ -113,6 +186,35 @@ public class ModerationController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving moderation stats");
             return StatusCode(500, new { message = "An error occurred while retrieving moderation stats" });
+        }
+    }
+
+    /// <summary>
+    /// AI ↔ admin agreement analytics (Phase 3.2).
+    /// GET /api/moderation/agreement?targetType=Post&amp;fromUtc=...&amp;toUtc=...
+    ///
+    /// Trả về tỉ lệ đồng thuận, false positive/negative theo category, theo prompt
+    /// version, theo model, kèm ngưỡng được đề xuất từ dữ liệu thật.
+    /// </summary>
+    [HttpGet("agreement")]
+    public async Task<ActionResult<ModerationAgreementDto>> GetModerationAgreement(
+        [FromQuery] ModerationTargetType? targetType = null,
+        [FromQuery] DateTime? fromUtc = null,
+        [FromQuery] DateTime? toUtc = null)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var agreement = await _moderationAdminService.GetAgreementStatsAsync(
+                targetType, fromUtc, toUtc);
+            return Ok(agreement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving moderation agreement stats");
+            return StatusCode(500, new { message = "An error occurred while retrieving moderation agreement stats" });
         }
     }
 
@@ -188,17 +290,117 @@ public class ModerationController : ControllerBase
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Admin resolves multiple records at once.
+    /// POST /api/moderation/bulk
+    /// </summary>
+    [HttpPost("bulk")]
+    public async Task<ActionResult<BulkModerationResultDto>> BulkResolve(
+        [FromBody] BulkModerationRequest request)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
 
+        var adminId = GetAdminId();
+        if (adminId == null)
+            return Unauthorized(new { message = "User ID not found in request headers" });
+
+        try
+        {
+            var result = await _moderationAdminService.BulkResolveAsync(request, adminId.Value);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running bulk moderation action");
+            return StatusCode(500, new { message = "An error occurred while running bulk moderation action" });
+        }
+    }
+
+    /// <summary>
+    /// Strike status of a single account (Phase 3.5).
+    /// GET /api/moderation/strikes/{userId}
+    /// </summary>
+    [HttpGet("strikes/{userId:guid}")]
+    public async Task<ActionResult<ModerationStrikeResultDto>> GetStrikeStatus(Guid userId)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var status = await _moderationStrikeService.GetStrikeStatusAsync(userId);
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving strike status for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while retrieving strike status" });
+        }
+    }
+
+    /// <summary>
+    /// Top accounts by active strike weight (Phase 3.5).
+    /// GET /api/moderation/strikes/top?take=20
+    /// </summary>
+    [HttpGet("strikes/top")]
+    public async Task<ActionResult<List<ModerationStrikeEntryDto>>> GetTopViolators(
+        [FromQuery] int take = 20)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var entries = await _moderationStrikeService.GetTopViolatorsAsync(take);
+            return Ok(entries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving top violators");
+            return StatusCode(500, new { message = "An error occurred while retrieving top violators" });
+        }
+    }
+
+    /// <summary>
+    /// Revoke strikes for an account (Phase 3.5).
+    /// POST /api/moderation/strikes/{userId}/revoke
+    /// </summary>
+    [HttpPost("strikes/{userId:guid}/revoke")]
+    public async Task<ActionResult<ModerationStrikeResultDto>> RevokeStrikes(
+        Guid userId,
+        [FromBody] RevokeStrikeRequest? request = null)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var count = await _moderationStrikeService.RevokeStrikesAsync(
+                userId, request?.ModerationResultId, request?.Reason);
+
+            var status = await _moderationStrikeService.GetStrikeStatusAsync(userId);
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revoking strikes for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while revoking strikes" });
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
     private bool IsAdmin()
     {
-        var role = Request.Headers["X-User-Role"].FirstOrDefault();
-        return !string.IsNullOrEmpty(role) && role == "Admin";
+        return _adminIdentityResolver.GetAdminId(HttpContext).HasValue;
     }
 
     private Guid? GetAdminId()
     {
-        var userId = Request.Headers["X-User-Id"].FirstOrDefault();
-        return Guid.TryParse(userId, out var parsed) ? parsed : null;
+        return _adminIdentityResolver.GetAdminId(HttpContext);
     }
 }

@@ -50,6 +50,68 @@ public class ModerationResultDto
 
     public DateTime? ReviewedAt { get; set; }
 
+    // ===== Appeal (khiếu nại của tác giả) =====
+    /// Trạng thái khiếu nại: "None" | "Pending" | "Resolved".
+    public string AppealStatus { get; set; } = "None";
+
+    /// Lý do tác giả khiếu nại.
+    public string? AppealReason { get; set; }
+
+    public DateTime? AppealSubmittedAt { get; set; }
+
+    public DateTime? AppealResolvedAt { get; set; }
+
+    // ===== Versioning + observability (3.3 / 3.4) =====
+
+    /// Phiên bản prompt đã dùng để ra quyết định (vd: "v3").
+    public string? PromptVersion { get; set; }
+
+    /// Model LLM đã dùng.
+    public string? ModelName { get; set; }
+
+    /// Thời gian gọi LLM (ms).
+    public int? LlmLatencyMs { get; set; }
+
+    public int? TotalTokens { get; set; }
+
+    /// Chi phí ước tính (USD).
+    public double? EstimatedCostUsd { get; set; }
+
+    // ===== Shadow mode (3.3) =====
+
+    /// Quyết định thô của model bóng: "approve" | "reject" | "review".
+    public string? ShadowDecision { get; set; }
+
+    /// Trạng thái cuối đã quy đổi của model bóng.
+    public string? ShadowStatus { get; set; }
+
+    public double? ShadowConfidence { get; set; }
+
+    public int? ShadowSeverity { get; set; }
+
+    public string? ShadowModel { get; set; }
+
+    public string? ShadowPromptVersion { get; set; }
+
+    /// Model bóng có đồng ý với quyết định chính không.
+    public bool? ShadowAgreesWithPrimary { get; set; }
+
+    // ===== Bằng chứng media (3.7) =====
+
+    /// Snapshot URL media tại thời điểm kiểm duyệt (CSV).
+    public List<string> TargetMediaUrlsSnapshot { get; set; } = new();
+
+    /// Text trích xuất từ ảnh bằng OCR (Phase 3.0).
+    public string? OcrText { get; set; }
+
+    // ===== Ưu tiên trong hàng đợi (3.6) =====
+
+    /// Số report đang mở (chưa xử lý) của nội dung này.
+    public int ReportCount { get; set; }
+
+    /// Điểm ưu tiên trong hàng đợi admin (số lớn hơn = xét trước).
+    public int Priority { get; set; }
+
     // ===== Moderated content (snapshot) =====
     public string TargetContent { get; set; } = string.Empty;
 

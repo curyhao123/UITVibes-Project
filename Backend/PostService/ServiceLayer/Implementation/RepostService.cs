@@ -46,6 +46,10 @@ namespace PostService.ServiceLayer.Implementation
                 throw new InvalidOperationException("You have already reposted this post");
 
             // 5. Tạo repost
+            // Repost chỉ là tham chiếu tới bài gốc (không có nội dung riêng), nên KHÔNG
+            // đi qua hàng đợi kiểm duyệt — nếu không, repost sẽ kẹt vĩnh viễn ở trạng
+            // thái Pending và không ai nhìn thấy (feed chỉ hiển thị bài Approved).
+            // Bài repost kế thừa trạng thái kiểm duyệt của bài gốc.
             var repost = new Post
             {
                 Id = Guid.NewGuid(),
@@ -53,6 +57,8 @@ namespace PostService.ServiceLayer.Implementation
                 PostType = PostType.Repost,
                 OriginalPostId = rootPostId,
                 Visibility = originalPost.Visibility,
+                ModerationStatus = originalPost.ModerationStatus,
+                ModeratedAt = originalPost.ModeratedAt,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -187,6 +193,9 @@ namespace PostService.ServiceLayer.Implementation
                 Content = op.Content,
                 Location = op.Location,
                 Visibility = (PostVisibilityDto)op.Visibility,
+                // Repost hiển thị nội dung của bài gốc nên mang trạng thái kiểm duyệt
+                // của bài gốc (đọc trực tiếp để không bị stale khi bài gốc được đổi trạng thái).
+                ModerationStatus = op.ModerationStatus,
                 LikesCount = op.LikesCount,
                 CommentsCount = op.CommentsCount,
                 SharesCount = op.SharesCount,
