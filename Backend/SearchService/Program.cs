@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SearchService.Configurations;
+using SearchService.Messaging;
 using SearchService.Models;
 using SearchService.ServiceLayer.Implementation;
 using SearchService.ServiceLayer.Interface;
@@ -40,6 +41,21 @@ builder.Services.AddHttpClient(TeiRerankClient.HttpClientName, (sp, client) =>
     client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
 });
 builder.Services.AddScoped<IRerankClient, TeiRerankClient>();
+
+// ===== Indexing (RabbitMQ + chunking) =====
+builder.AddRabbitMQClient("messaging");
+
+builder.Services.AddOptions<ChunkingOptions>()
+    .Bind(builder.Configuration.GetSection(ChunkingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IChunker, Chunker>();
+builder.Services.AddScoped<IPostContentRpcClient, PostContentRpcClient>();
+builder.Services.AddScoped<IPostChunkRepository, PostChunkRepository>();
+builder.Services.AddScoped<IIndexingService, IndexingService>();
+builder.Services.AddSingleton<IReindexJob, ReindexJob>();
+builder.Services.AddHostedService<SearchIndexRequestedConsumer>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

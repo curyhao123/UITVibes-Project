@@ -1218,6 +1218,53 @@
           }
         }
       ]
+    },
+    {
+      "name": "SearchService",
+      "description": "Semantic search / RAG (SearchService). All requests need a JWT in {{token}} (admin endpoints: an Admin account); dev endpoints only work when SearchService runs in Development.",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/search/admin/reindex",
+          "description": "Start a background reindex of all searchable posts/reels (Admin). 202 started, 409 already running, 401 not logged in, 403 not Admin.",
+          "requiresAuth": true
+        },
+        {
+          "method": "GET",
+          "path": "/search/admin/reindex",
+          "description": "Get reindex job status: running, indexed, removed, failed, staleRemoved, lastError (Admin). 401/403 as above.",
+          "requiresAuth": true
+        },
+        {
+          "method": "POST",
+          "path": "/search/dev/embed",
+          "description": "Development only (404 otherwise): embed texts via TEI, returns dimensions, vector preview, cosine matrix and latency.",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "texts": [
+              "lịch thi cuối kỳ",
+              "khi nào thi final",
+              "giá vé xe buýt"
+            ]
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/search/dev/rerank",
+          "description": "Development only (404 otherwise): rerank texts against a query via TEI, returns sorted scores and latency.",
+          "requiresAuth": true,
+          "contentType": "application/json",
+          "requestBody": {
+            "query": "khi nào thi cuối kỳ?",
+            "texts": [
+              "Lịch thi cuối kỳ học kỳ 1 bắt đầu từ ngày 15/12.",
+              "Giá vé xe buýt sinh viên là 3.000đ.",
+              "Thư viện mở cửa đến 21h."
+            ]
+          }
+        }
+      ]
     }
   ]
 }

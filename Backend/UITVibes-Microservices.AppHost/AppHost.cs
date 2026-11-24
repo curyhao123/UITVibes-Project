@@ -145,6 +145,8 @@ var searchService = builder.AddProject<Projects.SearchService>("searchservice")
     .WaitFor(teiRerank)
     .WithReference(searchDb)
     .WaitFor(searchDb)
+    .WithReference(messaging)
+    .WaitFor(messaging)
     .WithHttpHealthCheck("/health");
 
 
@@ -168,6 +170,8 @@ var apiService = builder.AddProject<Projects.UITVibes_Microservices_ApiService>(
     .WaitFor(messageService)
     .WithReference(notificationService)
     .WaitFor(notificationService)
+    // Không WaitFor: searchservice chờ TEI tải model, không để cả gateway phải chờ theo.
+    .WithReference(searchService)
     .WithEnvironment("Jwt__Key", jwtKey);
 
 

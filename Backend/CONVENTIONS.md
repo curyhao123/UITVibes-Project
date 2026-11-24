@@ -426,6 +426,7 @@ Publisher (Service) ──► Queue ──► Consumer (BackgroundService) ─�
 | `post.mentioned`    | PostService     | NotificationService | User mentioned in post      |
 | `comment.mentioned` | PostService     | NotificationService | User mentioned in comment   |
 | `message.sent`      | MessageService  | NotificationService | New chat message sent       |
+| `search.index.requested` | PostService | SearchService | Post/Reel state changed, re-index it |
 
 **Publisher (scoped, short-lived connection):**
 ```csharp
@@ -461,6 +462,8 @@ RPC Client ──► Request Queue ──► RPC Consumer ──► Reply Queue 
 | `user.block.status`     | UserService       | MessageService   | Check block status for messaging    |
 | `post.count.get`        | PostService       | UserService      | Get post count for profile stats    |
 | `user.friendlist.get`   | UserService       | MessageService   | Get friend list for online tracking |
+| `search.post.get`       | PostService       | SearchService    | Current content/state of a Post/Reel |
+| `search.post.export`    | PostService       | SearchService    | Paged export of searchable items (backfill) |
 
 **RPC server replies using `ReplyTo` + `CorrelationId`:**
 ```csharp

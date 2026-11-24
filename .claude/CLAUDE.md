@@ -147,6 +147,8 @@ SignalR · .NET Aspire · YARP gateway · Cloudinary · Firebase FCM · BCrypt �
 - `PostService` – posts, comments, likes, stories, reels, hashtags, moderation.
 - `MessageService` – conversations and the SignalR `ChatHub`.
 - `NotificationService` – in-app + FCM push notifications.
+- `SearchService` – semantic search / RAG: TEI embedding + rerank, pgvector `post_chunks` index kept in
+  sync with PostService via `search.index.requested`.
 - `UITVibes-Microservices.ApiService` – YARP API gateway: validates JWT, forwards identity
   headers, maps public paths (`/auth/...`, `/user/...`, `/post/...`, `/message/...`,
   `/notification/...`, `/hubs/...`) to each service's `/api/...` routes (`appsettings.json`).
@@ -212,10 +214,11 @@ BCrypt-hashed, expire in 5 min, with a 1-minute resend cooldown.
 - **Events (fire-and-forget, durable queues):** save to DB first, then publish inside a
   `try/catch`; publish failure must not fail the request. Queues: `user.created`, `user.banned`,
   `user.followed`, `post.liked`, `post.commented`, `post.mentioned`, `comment.mentioned`,
-  `message.sent`.
+  `message.sent`, `search.index.requested` (emitted by PostService's `SearchIndexChangeInterceptor` via
+  `SearchIndexPublisher`: shared Aspire `IConnection`, one channel per publish, 2s timeout, never closes the connection).
 - **RPC (request/reply, non-durable queues)** via `ReplyTo` + `CorrelationId` for cross-service
   reads: `user.profile.get`, `user.follow.get`, `user.block.status`, `post.count.get`,
-  `user.friendlist.get`. Services don't call each other over HTTP.
+  `user.friendlist.get`, `search.post.get`, `search.post.export`. Services don't call each other over HTTP.
 - Consumers are `BackgroundService`s that create a DI scope per message, `BasicAck` on success
   and `BasicNack(requeue: true)` on failure.
 
