@@ -3,7 +3,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 var cache = builder.AddRedis("cache");
 
 // Add PostgreSQL for data persistence
+// Image pgvector cho searchdb; bản trixie để cùng glibc với postgres:17.6 cũ (tránh lệch collation trên volume).
 var postgres = builder.AddPostgres("postgres")
+    .WithImage("pgvector/pgvector")
+    .WithImageTag("0.8.7-pg17-trixie")
     .WithPgAdmin()
     .WithDataVolume("postgres_data");
 
@@ -12,6 +15,7 @@ var userDb = postgres.AddDatabase("userdb");
 var postDb = postgres.AddDatabase("postdb");
 var messageDb = postgres.AddDatabase("messagedb");
 var notificationDb = postgres.AddDatabase("notificationdb");
+var searchDb = postgres.AddDatabase("searchdb");
 
 // Add RabbitMQ for inter-service messaging
 var messaging = builder.AddRabbitMQ("messaging");
@@ -139,6 +143,8 @@ var searchService = builder.AddProject<Projects.SearchService>("searchservice")
     .WaitFor(teiEmbed)
     .WithReference(teiRerank.GetEndpoint("http"))
     .WaitFor(teiRerank)
+    .WithReference(searchDb)
+    .WaitFor(searchDb)
     .WithHttpHealthCheck("/health");
 
 
