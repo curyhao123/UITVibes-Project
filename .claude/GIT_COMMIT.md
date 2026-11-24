@@ -9,7 +9,6 @@
 1. **Check current branch** — If on `main` or `dev`, create a feature branch first
 2. **Ask the user first** — "Should I commit these changes?"
 3. **Wait for confirmation** — Do not proceed until the user says yes
-4. **Use `/spartan:commit-message`** — Generate commit message following the PR template format
 
 ### Branch Creation (REQUIRED)
 

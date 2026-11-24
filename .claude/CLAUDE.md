@@ -18,8 +18,9 @@ read the relevant one before making non-trivial changes.
 - Always ask user before pushing to origin
 - Always ask user before commit
 - write commit message with feat, fix, chore and (backend), (frontend) next to it
-- Keep comments short (one line where possible). Don't comment variables, properties, fields,
-  constants or DTOs; only comment non-obvious intent ("why"), not what the code already says.
+- Keep comments to a minimum: only comment when truly necessary to explain code that isn't
+  obvious (the "why"), in one short line where possible. Don't comment variables, properties,
+  fields, constants or DTOs, and don't restate what the code already says.
 
 ## Project overview
 
@@ -146,6 +147,8 @@ SignalR · .NET Aspire · YARP gateway · Cloudinary · Firebase FCM · BCrypt �
 - `PostService` – posts, comments, likes, stories, reels, hashtags, moderation.
 - `MessageService` – conversations and the SignalR `ChatHub`.
 - `NotificationService` – in-app + FCM push notifications.
+- `SearchService` – semantic search / RAG: TEI embedding + rerank, pgvector `post_chunks` index kept in
+  sync with PostService via `search.index.requested`.
 - `UITVibes-Microservices.ApiService` – YARP API gateway: validates JWT, forwards identity
   headers, maps public paths (`/auth/...`, `/user/...`, `/post/...`, `/message/...`,
   `/notification/...`, `/hubs/...`) to each service's `/api/...` routes (`appsettings.json`).
@@ -156,7 +159,7 @@ SignalR · .NET Aspire · YARP gateway · Cloudinary · Firebase FCM · BCrypt �
 
 ### Per-service layout (every service)
 ```
-Controllers/   ServiceLayer/{Interface,Implementation}/   DTOs/   Models/ (entities, DbContext, enums)
+Controllers/   ServiceLayer/{Interface,Implementation}/   DTOs/   Models/ (entities, DbContext)   Enums/
 Messaging/{Interface,Implementation}/ + *Consumer.cs   Migrations/   Program.cs   Dockerfile
 ```
 Controllers stay thin; business logic lives in the service layer. Register services as
@@ -183,7 +186,8 @@ sub-resources like `me/avatar`, and **state transitions via `PATCH`** (e.g.
 
 ### Models and state
 - Boolean flags for state (`IsActive`, `IsBanned`, `IsVerified`, `IsRevoked`).
-- Enums live in or next to their model file with explicit integer values.
+- One enum per file in the service's `Enums/` folder (namespace `<Service>.Enums`), with explicit
+  integer values. Older enums still inside model files can stay; new ones follow this rule.
   **Do not share enums or models across services**; each service owns its copy
   (e.g. `ReportStatus` exists in both UserService and PostService).
 - Counters (followers/following) are denormalized on `UserProfile` and updated at write time,
@@ -210,10 +214,11 @@ BCrypt-hashed, expire in 5 min, with a 1-minute resend cooldown.
 - **Events (fire-and-forget, durable queues):** save to DB first, then publish inside a
   `try/catch`; publish failure must not fail the request. Queues: `user.created`, `user.banned`,
   `user.followed`, `post.liked`, `post.commented`, `post.mentioned`, `comment.mentioned`,
-  `message.sent`.
+  `message.sent`, `search.index.requested` (emitted by PostService's `SearchIndexChangeInterceptor` via
+  `SearchIndexPublisher`: shared Aspire `IConnection`, one channel per publish, 2s timeout, never closes the connection).
 - **RPC (request/reply, non-durable queues)** via `ReplyTo` + `CorrelationId` for cross-service
   reads: `user.profile.get`, `user.follow.get`, `user.block.status`, `post.count.get`,
-  `user.friendlist.get`. Services don't call each other over HTTP.
+  `user.friendlist.get`, `search.post.get`, `search.post.export`. Services don't call each other over HTTP.
 - Consumers are `BackgroundService`s that create a DI scope per message, `BasicAck` on success
   and `BasicNack(requeue: true)` on failure.
 

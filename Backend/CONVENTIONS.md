@@ -67,7 +67,8 @@ Every microservice follows the **same folder structure**:
 <ServiceName>/
 ├── Controllers/          # HTTP endpoints (thin layer, no business logic)
 ├── DTOs/                 # Data Transfer Objects (request/response shapes)
-├── Models/               # EF Core entities + DbContext + Enums
+├── Models/               # EF Core entities + DbContext
+├── Enums/                # One enum per file (namespace <Service>.Enums)
 ├── ServiceLayer/
 │   ├── Interface/        # Service interfaces (I<Name>Service.cs)
 │   └── Implementation/   # Service implementations
@@ -149,9 +150,10 @@ app.MapDefaultEndpoints();
 
 ### Comments
 
-Keep comments short (one line where possible). No comments or XML docs on fields, properties,
-variables, constants or DTOs. A one-line `/// <summary>` on a class/interface/public method only
-when its name isn't self-explanatory; inline comments only for non-obvious "why".
+Keep comments to a minimum: only comment when truly necessary to explain code that isn't obvious
+(the "why"), in one short line where possible. No comments or XML docs on fields, properties,
+variables, constants or DTOs, and don't restate what the code already says. A one-line
+`/// <summary>` on a class/interface/public method only when its name isn't self-explanatory.
 
 ### Routes
 
@@ -180,7 +182,7 @@ when its name isn't self-explanatory; inline comments only for non-obvious "why"
 
 ### Status Enums
 
-Enums are defined **inside or alongside** their model file, using integer backing values with comments:
+New enums go in the service's `Enums/` folder, **one enum per file** (namespace `<Service>.Enums`), with explicit integer backing values. The legacy enums below still live inside their model files; don't move them just for this rule:
 
 ```csharp
 // UserService/Models/UserReport.cs
@@ -424,6 +426,7 @@ Publisher (Service) ──► Queue ──► Consumer (BackgroundService) ─�
 | `post.mentioned`    | PostService     | NotificationService | User mentioned in post      |
 | `comment.mentioned` | PostService     | NotificationService | User mentioned in comment   |
 | `message.sent`      | MessageService  | NotificationService | New chat message sent       |
+| `search.index.requested` | PostService | SearchService | Post/Reel state changed, re-index it |
 
 **Publisher (scoped, short-lived connection):**
 ```csharp
@@ -459,6 +462,8 @@ RPC Client ──► Request Queue ──► RPC Consumer ──► Reply Queue 
 | `user.block.status`     | UserService       | MessageService   | Check block status for messaging    |
 | `post.count.get`        | PostService       | UserService      | Get post count for profile stats    |
 | `user.friendlist.get`   | UserService       | MessageService   | Get friend list for online tracking |
+| `search.post.get`       | PostService       | SearchService    | Current content/state of a Post/Reel |
+| `search.post.export`    | PostService       | SearchService    | Paged export of searchable items (backfill) |
 
 **RPC server replies using `ReplyTo` + `CorrelationId`:**
 ```csharp

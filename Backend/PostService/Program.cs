@@ -6,6 +6,7 @@ using PostService.Configurations;
 using PostService.Messaging;
 using PostService.Messaging.Implementation;
 using PostService.Messaging.Interface;
+using PostService.Messaging.SearchIndex;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
 using PostService.ServiceLayer.Interface;
@@ -16,7 +17,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 // Add PostgreSQL DbContext
-builder.AddNpgsqlDbContext<PostDbContext>("postdb");
+builder.AddNpgsqlDbContext<PostDbContext>("postdb",
+    configureDbContextOptions: options => options.AddInterceptors(new SearchIndexChangeInterceptor()));
 // Add Redis
 builder.AddRedisClient("cache");
 
@@ -41,6 +43,11 @@ builder.Services.AddScoped<IContentModerationNotifier, ContentModerationNotifier
 builder.Services.AddScoped<IHighlightService, HighlightService>();
 builder.Services.AddScoped<IReelService, ReelService>();
 builder.Services.AddHostedService<PostCountRpcConsumer>();
+builder.Services.AddScoped<ISearchDocumentService, SearchDocumentService>();
+builder.Services.AddHostedService<SearchPostRpcConsumer>();
+builder.Services.AddSingleton<ISearchIndexPublisher>(sp => new SearchIndexPublisher(
+    () => sp.GetRequiredService<RabbitMQ.Client.IConnection>(),
+    sp.GetRequiredService<ILogger<SearchIndexPublisher>>()));
 builder.Services.AddHostedService<PostModerationWorker>();
 builder.Services.AddOptions<ModerationOptions>()
     .Bind(builder.Configuration.GetSection(ModerationOptions.SectionName))

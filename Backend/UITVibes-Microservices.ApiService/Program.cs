@@ -27,7 +27,9 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     ["ReverseProxy:Clusters:message-cluster:Destinations:destination1:Address"] =
         builder.Configuration["services:messageservice:http:0"] ?? "http://localhost:5240",
     ["ReverseProxy:Clusters:notification-cluster:Destinations:destination1:Address"] =
-        builder.Configuration["services:notificationservice:http:0"] ?? "http://localhost:5091"
+        builder.Configuration["services:notificationservice:http:0"] ?? "http://localhost:5091",
+    ["ReverseProxy:Clusters:search-cluster:Destinations:destination1:Address"] =
+        builder.Configuration["services:searchservice:http:0"] ?? "http://localhost:5096"
 });
 
 // ===== REGISTER SERVICE DISCOVERY =====

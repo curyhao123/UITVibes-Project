@@ -5,6 +5,7 @@ namespace SearchService.Configurations;
 public class EmbeddingOptions
 {
     public const string SectionName = "Embedding";
+    public const int DefaultDimensions = 1024;
 
     [Required(AllowEmptyStrings = false)]
     public string BaseUrl { get; set; } = "http://tei-embed";
@@ -12,7 +13,7 @@ public class EmbeddingOptions
     public string Model { get; set; } = "BAAI/bge-m3";
 
     [Range(1, 8192)]
-    public int Dimensions { get; set; } = 1024;
+    public int Dimensions { get; set; } = DefaultDimensions;
 
     [Range(1, 256)]
     public int MaxBatchSize { get; set; } = 32;
