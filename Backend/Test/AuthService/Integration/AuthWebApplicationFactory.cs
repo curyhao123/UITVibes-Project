@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using System.Data.Common;
 
@@ -60,6 +61,17 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddScoped<IMessagePublisher>(_ => MessagePublisherMock.Object);
             services.AddScoped<IEmailService>(_ => EmailServiceMock.Object);
+
+            // Bỏ consumer đọc RabbitMQ: không có broker trong môi trường test và
+            // consumer này sẽ làm sập host khi không kết nối được broker.
+            // Chỉ gỡ đúng consumer, giữ lại GenericWebHostService của ASP.NET Core.
+            foreach (var descriptor in services
+                .Where(d => d.ServiceType == typeof(IHostedService)
+                    && d.ImplementationType == typeof(UserBannedConsumer))
+                .ToList())
+            {
+                services.Remove(descriptor);
+            }
         });
     }
 
