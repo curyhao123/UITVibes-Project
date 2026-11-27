@@ -470,6 +470,129 @@ public class ModerationAdminService : IModerationAdminService
     }
 
     /// <summary>
+    /// Số liệu phân tích cho dashboard admin.
+    ///
+    /// Gom tất cả trong một lần gọi để dashboard không phải gọi 5–6 API:
+    ///   - Lưu lượng theo ngày (đường).
+    ///   - Phân bố theo loại nội dung / category / nguồn quyết định (cột / tròn).
+    ///   - Độ chính xác của AI (đồng thuận) + đề xuất ngưỡng.
+    ///   - Độ trễ & chi phí LLM.
+    /// </summary>
+    public async Task<ModerationAnalyticsDto> GetAnalyticsAsync(int days = 14)
+    {
+        var dayCount = Math.Clamp(days, 1, 90);
+        var since = DateTime.UtcNow.AddDays(-dayCount);
+
+        var scoped = await _context.ModerationResults
+            .Where(m => m.CreatedAt >= since)
+            .ToListAsync();
+
+        var dto = new ModerationAnalyticsDto
+        {
+            Days = dayCount,
+            Summary = await GetModerationStatsAsync()
+        };
+
+        // ── Lưu lượng theo ngày ───────────────────────────────────────────────
+        var dailyLookup = scoped
+            .GroupBy(m => m.CreatedAt.Date)
+            .ToDictionary(
+                g => g.Key,
+                g => new ModerationDailyPointDto
+                {
+                    Date = g.Key.ToString("yyyy-MM-dd"),
+                    Total = g.Count(),
+                    Approved = g.Count(m => m.Status == ModerationStatus.Approved),
+                    Rejected = g.Count(m => m.Status == ModerationStatus.Rejected),
+                    NeedsReview = g.Count(m => m.Status == ModerationStatus.NeedsReview),
+                    Pending = g.Count(m => m.Status == ModerationStatus.Pending)
+                });
+
+        var daily = new List<ModerationDailyPointDto>(dayCount);
+        for (var i = dayCount - 1; i >= 0; i--)
+        {
+            var date = DateTime.UtcNow.Date.AddDays(-i);
+            daily.Add(dailyLookup.TryGetValue(date, out var point)
+                ? point
+                : new ModerationDailyPointDto { Date = date.ToString("yyyy-MM-dd") });
+        }
+
+        dto.Daily = daily;
+
+        // ── Phân bố theo loại nội dung ────────────────────────────────────────
+        dto.ByTargetType = BuildBreakdown(
+            scoped.GroupBy(m => m.TargetType.ToString())
+                .Select(g => (Key: g.Key, Count: g.Count())));
+
+        // ── Phân bố theo nguồn quyết định ────────────────────────────────────
+        dto.BySource = BuildBreakdown(
+            scoped.GroupBy(m => m.Source.ToString())
+                .Select(g => (Key: g.Key, Count: g.Count())));
+
+        // ── Phân bố theo category (một bản ghi có thể có nhiều category) ─────
+        var categoryCounts = new Dictionary<string, int>();
+        foreach (var item in scoped)
+        {
+            foreach (var category in SplitCategories(item.Categories))
+            {
+                categoryCounts[category] = categoryCounts.GetValueOrDefault(category) + 1;
+            }
+        }
+
+        dto.ByCategory = BuildBreakdown(
+            categoryCounts.Select(kv => (Key: kv.Key, Count: kv.Value)));
+
+        // ── Độ chính xác AI ──────────────────────────────────────────────────
+        dto.Agreement = await GetAgreementStatsAsync();
+
+        // ── Độ trễ, confidence & chi phí ─────────────────────────────────────
+        var latencies = scoped
+            .Where(m => m.LlmLatencyMs.HasValue)
+            .Select(m => (double)m.LlmLatencyMs!.Value)
+            .ToList();
+
+        dto.AverageLatencyMs = latencies.Count == 0 ? 0 : Math.Round(latencies.Average(), 0);
+
+        var confidences = scoped
+            .Where(m => m.Confidence.HasValue)
+            .Select(m => m.Confidence!.Value)
+            .ToList();
+
+        dto.AverageConfidence = confidences.Count == 0
+            ? 0
+            : Math.Round(confidences.Average(), 4);
+
+        dto.TotalCostUsd = Math.Round(
+            scoped.Where(m => m.EstimatedCostUsd.HasValue)
+                .Sum(m => m.EstimatedCostUsd!.Value),
+            6);
+
+        dto.UsersOverStrikeThreshold = await _strikeService.CountUsersOverThresholdAsync();
+
+        return dto;
+    }
+
+    /// <summary>
+    /// Chuyển danh sách (key, count) thành breakdown có phần trăm.
+    /// </summary>
+    private static List<ModerationBreakdownDto> BuildBreakdown(
+        IEnumerable<(string Key, int Count)> items)
+    {
+        var list = items.ToList();
+        var total = list.Sum(i => i.Count);
+
+        return list
+            .Select(i => new ModerationBreakdownDto
+            {
+                Key = i.Key,
+                Count = i.Count,
+                Percentage = total == 0 ? 0 : Math.Round(i.Count * 100.0 / total, 1)
+            })
+            .OrderByDescending(i => i.Count)
+            .ToList();
+    }
+
+    /// <summary>
     /// Đề xuất ngưỡng confidence dựa trên dữ liệu thật.
     ///
     /// - ApproveMinConfidence: lấy confidence trung vị của các ca AI "approve"

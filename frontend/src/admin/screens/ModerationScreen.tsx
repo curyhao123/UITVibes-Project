@@ -19,6 +19,7 @@ import {
   bulkModeration,
   getModerationResultsPaged,
   getModerationStats,
+  getStrikeStatus,
   rejectModeration,
 } from "@/services/moderationService";
 import type {
@@ -27,6 +28,7 @@ import type {
   ModerationStatus,
   ModerationTargetType,
 } from "@/src/types/admin/moderation";
+import type { BE_ModerationStrikeStatus } from "@/src/types/admin/strike";
 import { Feather } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -472,6 +474,21 @@ const DetailSheet: React.FC<{
   onReject: (note: string) => void;
 }> = ({ item, busy, onClose, onApprove, onReject }) => {
   const [note, setNote] = useState("");
+  const [strikeStatus, setStrikeStatus] = useState<BE_ModerationStrikeStatus | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    void getStrikeStatus(item.authorId).then((status) => {
+      if (active) setStrikeStatus(status);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [item.authorId]);
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -526,6 +543,46 @@ const DetailSheet: React.FC<{
                 <Text style={styles.authorName}>
                   {item.authorDisplayName || "Someone"}
                 </Text>
+                {strikeStatus && strikeStatus.activeStrikeWeight > 0 ? (
+                  <View
+                    style={[
+                      styles.strikeBadge,
+                      {
+                        backgroundColor:
+                          strikeStatus.activeStrikeWeight >=
+                          strikeStatus.banThreshold
+                            ? "rgba(239,68,68,0.14)"
+                            : "rgba(245,158,11,0.14)",
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name="alert-triangle"
+                      size={10}
+                      color={
+                        strikeStatus.activeStrikeWeight >=
+                        strikeStatus.banThreshold
+                          ? "#EF4444"
+                          : "#F59E0B"
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.strikeBadgeText,
+                        {
+                          color:
+                            strikeStatus.activeStrikeWeight >=
+                            strikeStatus.banThreshold
+                              ? "#EF4444"
+                              : "#F59E0B",
+                        },
+                      ]}
+                    >
+                      {strikeStatus.activeStrikeWeight}/
+                      {strikeStatus.banThreshold} strikes
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -1585,6 +1642,15 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.border,
   },
   authorName: { fontSize: 14, fontWeight: "600", color: AppColors.text },
+  strikeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9999,
+  },
+  strikeBadgeText: { fontSize: 11, fontWeight: "700" },
   appealBox: {
     gap: 6,
     backgroundColor: "#EDE9FE",

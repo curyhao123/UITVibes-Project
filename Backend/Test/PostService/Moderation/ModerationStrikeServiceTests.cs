@@ -9,6 +9,7 @@ using PostService.Enums;
 using PostService.Messaging.Interface;
 using PostService.Models;
 using PostService.ServiceLayer.Implementation;
+using PostService.ServiceLayer.Interface;
 
 namespace Test.PostService.Moderation;
 
@@ -28,6 +29,7 @@ public class ModerationStrikeServiceTests : IDisposable
     private readonly SqliteConnection _connection;
     private readonly PostDbContext _context;
     private readonly Mock<IUserBannedPublisher> _bannedPublisher;
+    private readonly Mock<IUserProfileRpcClient> _profileClient;
 
     public ModerationStrikeServiceTests()
     {
@@ -42,6 +44,16 @@ public class ModerationStrikeServiceTests : IDisposable
         _context.Database.EnsureCreated();
 
         _bannedPublisher = new Mock<IUserBannedPublisher>();
+
+        _profileClient = new Mock<IUserProfileRpcClient>();
+        _profileClient
+            .Setup(c => c.GetProfileAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => new UserProfileRpcResponse
+            {
+                UserId = id,
+                DisplayName = "Người dùng",
+                Found = true
+            });
     }
 
     public void Dispose()
@@ -209,8 +221,38 @@ public class ModerationStrikeServiceTests : IDisposable
         Assert.Empty(_context.UserStrikes);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    [Fact]
+    public async Task SetBannedAsync_PublishesBanEventWithRequestedState()
+    {
+        var service = CreateService();
+        var userId = Guid.NewGuid();
 
+        var ok = await service.SetBannedAsync(userId, true, "vi phạm nghiêm trọng");
+
+        Assert.True(ok);
+        _bannedPublisher.Verify(p => p.PublishAsync(
+            It.Is<UserBannedEvent>(e =>
+                e.UserId == userId &&
+                e.IsBanned &&
+                e.Reason == "vi phạm nghiêm trọng"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetBannedAsync_WhenPublisherThrows_ReturnsFalse()
+    {
+        _bannedPublisher
+            .Setup(p => p.PublishAsync(It.IsAny<UserBannedEvent>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("rabbit down"));
+
+        var service = CreateService();
+
+        var ok = await service.SetBannedAsync(Guid.NewGuid(), true, null);
+
+        Assert.False(ok);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
     private ModerationStrikeService CreateService(
         bool enabled = true,
         bool requireAdminConfirmation = true,
@@ -221,6 +263,7 @@ public class ModerationStrikeServiceTests : IDisposable
         return new ModerationStrikeService(
             _context,
             _bannedPublisher.Object,
+            _profileClient.Object,
             Options.Create(new ModerationStrikeOptions
             {
                 Enabled = enabled,

@@ -80,9 +80,20 @@ export default function AdminLayout() {
           <Stack.Screen
           name="moderation"
           options={{
-            title: "AI Moderation",
             headerShown: true,
+            title: "AI Moderation",
             headerTitle: "AI Moderation",
+            headerStyle: { backgroundColor: AppColors.surface },
+            headerTintColor: AppColors.text,
+            headerRight: () => <AdminLogoutButton />,
+          }}
+        />
+        <Stack.Screen
+          name="strikes"
+          options={{
+            headerShown: true,
+            title: "Strikes",
+            headerTitle: "Strike Manager",
             headerStyle: { backgroundColor: AppColors.surface },
             headerTintColor: AppColors.text,
             headerRight: () => <AdminLogoutButton />,

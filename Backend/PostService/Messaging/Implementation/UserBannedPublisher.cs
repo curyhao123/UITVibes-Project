@@ -15,7 +15,14 @@ namespace PostService.Messaging.Implementation
     /// </summary>
     public class UserBannedPublisher : IUserBannedPublisher
     {
-        private const string QueueName = "user.banned";
+        // Mỗi service dùng một queue riêng cho cùng một event. Nếu cùng consume
+        // một queue, RabbitMQ sẽ chia message ngẫu nhiên (competing consumers) →
+        // AuthService hoặc UserService có thể không bao giờ nhận được event ban.
+        private const string QueueNameUserBanned = "user.banned";
+        private const string QueueNameUserBannedAuth = "user.banned.auth";
+
+        private static readonly string[] BannedQueues =
+            { QueueNameUserBanned, QueueNameUserBannedAuth };
 
         private readonly IConnectionFactory _connectionFactory;
         private readonly ILogger<UserBannedPublisher> _logger;
@@ -35,21 +42,27 @@ namespace PostService.Messaging.Implementation
                 var connection = await _connectionFactory.CreateConnectionAsync(ct);
                 var channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
-                await channel.QueueDeclareAsync(
-                    queue: QueueName,
-                    durable: true,
-                    exclusive: false,
-                    autoDelete: false,
-                    arguments: null,
-                    cancellationToken: ct);
+                foreach (var queue in BannedQueues)
+                {
+                    await channel.QueueDeclareAsync(
+                        queue: queue,
+                        durable: true,
+                        exclusive: false,
+                        autoDelete: false,
+                        arguments: null,
+                        cancellationToken: ct);
+                }
 
                 var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(evt));
 
-                await channel.BasicPublishAsync(
-                    exchange: string.Empty,
-                    routingKey: QueueName,
-                    body: body,
-                    cancellationToken: ct);
+                foreach (var queue in BannedQueues)
+                {
+                    await channel.BasicPublishAsync(
+                        exchange: string.Empty,
+                        routingKey: queue,
+                        body: body,
+                        cancellationToken: ct);
+                }
 
                 await channel.CloseAsync(ct);
                 await connection.CloseAsync(ct);

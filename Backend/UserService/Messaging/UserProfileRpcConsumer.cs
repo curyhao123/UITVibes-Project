@@ -74,6 +74,7 @@ namespace UserService.Messaging
                                 UserId = profile.UserId,
                                 DisplayName = profile.DisplayName ?? string.Empty,
                                 AvatarUrl = profile.AvatarUrl ?? string.Empty,
+                                IsBanned = profile.IsBanned,
                                 Found = true
                             };
                         }

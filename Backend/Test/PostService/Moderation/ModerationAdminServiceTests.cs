@@ -66,6 +66,7 @@ public class ModerationAdminServiceTests : IDisposable
             new ModerationStrikeService(
                 _context,
                 Mock.Of<IUserBannedPublisher>(),
+                profileClient.Object,
                 Options.Create(new ModerationStrikeOptions
                 {
                     Enabled = true,

@@ -50,4 +50,10 @@ public interface IModerationAdminService
         ModerationTargetType? targetType = null,
         DateTime? fromUtc = null,
         DateTime? toUtc = null);
+
+    /// <summary>
+    /// Số liệu phân tích cho dashboard admin: lưu lượng theo ngày, phân bố theo
+    /// loại nội dung / category / nguồn quyết định, kèm chi phí & độ trễ LLM.
+    /// </summary>
+    Task<ModerationAnalyticsDto> GetAnalyticsAsync(int days = 14);
 }
