@@ -8,7 +8,7 @@ using RabbitMQ.Client.Events;
 namespace AuthService.Messaging;
 
 /// <summary>
-/// Consumer của queue "user.banned".
+/// Consumer của queue "user.banned.auth".
 ///
 /// Queue này được publish từ 2 nguồn:
 ///   - AuthService (BanUserAsync / UnbanUserAsync) — admin bấm tay trong trang Users.
@@ -23,6 +23,8 @@ public class UserBannedConsumer : BackgroundService
     /// (RabbitMQ chia message ngẫu nhiên khi nhiều consumer cùng đọc một queue).
     private const string QueueName = "user.banned.auth";
 
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+
     private readonly ILogger<UserBannedConsumer> _logger;
     private readonly IServiceProvider _serviceProvider;
     private IConnection? _connection;
@@ -36,7 +38,45 @@ public class UserBannedConsumer : BackgroundService
         _serviceProvider = serviceProvider;
     }
 
+    /// <summary>
+    /// Vòng lặp ngoài giữ cho consumer sống sót khi broker chưa sẵn sàng.
+    /// BackgroundServiceExceptionBehavior mặc định là StopHost, nên nếu để exception
+    /// thoát ra khỏi ExecuteAsync thì cả AuthService sẽ bị dừng — chỉ vì RabbitMQ
+    /// chưa kịp dựng hoặc đang restart.
+    /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ConsumeAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UserBannedConsumer chưa kết nối được broker. Thử lại sau {Delay}.", RetryDelay);
+            }
+            finally
+            {
+                await CleanupConnectionAsync();
+            }
+
+            try
+            {
+                await Task.Delay(RetryDelay, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    private async Task ConsumeAsync(CancellationToken stoppingToken)
     {
         using var scope = _serviceProvider.CreateScope();
         var connectionFactory = scope.ServiceProvider.GetRequiredService<IConnectionFactory>();
@@ -116,21 +156,44 @@ public class UserBannedConsumer : BackgroundService
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    private async Task CleanupConnectionAsync()
     {
-        _logger.LogInformation("Stopping UserBannedConsumer");
-
         if (_channel != null)
         {
-            await _channel.CloseAsync(cancellationToken);
-            await _channel.DisposeAsync();
+            try
+            {
+                await _channel.CloseAsync();
+                await _channel.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Không đóng được channel của UserBannedConsumer.");
+            }
+
+            _channel = null;
         }
 
         if (_connection != null)
         {
-            await _connection.CloseAsync(cancellationToken);
-            await _connection.DisposeAsync();
+            try
+            {
+                await _connection.CloseAsync();
+                await _connection.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Không đóng được connection của UserBannedConsumer.");
+            }
+
+            _connection = null;
         }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Stopping UserBannedConsumer");
+
+        await CleanupConnectionAsync();
 
         await base.StopAsync(cancellationToken);
     }
