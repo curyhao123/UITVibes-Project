@@ -44,6 +44,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMessagePublisher, RabbitMQPublisher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddHostedService<UserBannedConsumer>();
 
 // HttpClient for Google tokeninfo verification
 builder.Services.AddHttpClient("Google", client =>

@@ -367,6 +367,76 @@ public class ModerationController : ControllerBase
     }
 
     /// <summary>
+    /// Danh sách tài khoản đang tích lũy strike, gom theo tài khoản.
+    /// GET /api/moderation/strikes/users?take=50
+    /// </summary>
+    [HttpGet("strikes/users")]
+    public async Task<ActionResult<List<ModerationStrikeUserDto>>> GetStrikeUsers(
+        [FromQuery] int take = 50)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var users = await _moderationStrikeService.GetStrikeUsersAsync(take);
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving strike users");
+            return StatusCode(500, new { message = "An error occurred while retrieving strike users" });
+        }
+    }
+
+    /// <summary>
+    /// Lịch sử strike của một tài khoản (mới nhất trước).
+    /// GET /api/moderation/strikes/{userId}/history?take=50
+    /// </summary>
+    [HttpGet("strikes/{userId:guid}/history")]
+    public async Task<ActionResult<List<ModerationStrikeEntryDto>>> GetStrikeHistory(
+        Guid userId,
+        [FromQuery] int take = 50)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var history = await _moderationStrikeService.GetStrikeHistoryAsync(userId, take);
+            return Ok(history);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving strike history for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while retrieving strike history" });
+        }
+    }
+
+    /// <summary>
+    /// Số liệu phân tích cho dashboard admin.
+    /// GET /api/moderation/analytics?days=14
+    /// </summary>
+    [HttpGet("analytics")]
+    public async Task<ActionResult<ModerationAnalyticsDto>> GetAnalytics(
+        [FromQuery] int days = 14)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        try
+        {
+            var analytics = await _moderationAdminService.GetAnalyticsAsync(days);
+            return Ok(analytics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving moderation analytics");
+            return StatusCode(500, new { message = "An error occurred while retrieving moderation analytics" });
+        }
+    }
+
+    /// <summary>
     /// Revoke strikes for an account (Phase 3.5).
     /// POST /api/moderation/strikes/{userId}/revoke
     /// </summary>
@@ -380,8 +450,12 @@ public class ModerationController : ControllerBase
 
         try
         {
-            var count = await _moderationStrikeService.RevokeStrikesAsync(
-                userId, request?.ModerationResultId, request?.Reason);
+            // Ưu tiên gỡ đúng một bản ghi strike; fallback sang gỡ theo bản ghi kiểm duyệt.
+            var count = request?.StrikeId.HasValue == true
+                ? await _moderationStrikeService.RevokeStrikeByIdAsync(
+                    userId, request.StrikeId.Value, request.Reason)
+                : await _moderationStrikeService.RevokeStrikesAsync(
+                    userId, request?.ModerationResultId, request?.Reason);
 
             var status = await _moderationStrikeService.GetStrikeStatusAsync(userId);
             return Ok(status);
@@ -390,6 +464,40 @@ public class ModerationController : ControllerBase
         {
             _logger.LogError(ex, "Error revoking strikes for user {UserId}", userId);
             return StatusCode(500, new { message = "An error occurred while revoking strikes" });
+        }
+    }
+
+    /// <summary>
+    /// Admin khoá/gỡ khoá tài khoản thủ công (không đụng vào strike).
+    /// POST /api/moderation/strikes/{userId}/ban
+    /// Body: { "isBanned": true, "reason": "..." }
+    /// </summary>
+    [HttpPost("strikes/{userId:guid}/ban")]
+    public async Task<ActionResult<ModerationStrikeResultDto>> SetBanned(
+        Guid userId,
+        [FromBody] SetBannedRequest? request)
+    {
+        if (!IsAdmin())
+            return StatusCode(403, new { message = "Admin role required to access this endpoint" });
+
+        if (request == null)
+            return BadRequest(new { message = "Request body is required" });
+
+        try
+        {
+            var ok = await _moderationStrikeService.SetBannedAsync(
+                userId, request.IsBanned, request.Reason);
+
+            if (!ok)
+                return StatusCode(500, new { message = "Failed to publish ban state change" });
+
+            var status = await _moderationStrikeService.GetStrikeStatusAsync(userId);
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting banned state for user {UserId}", userId);
+            return StatusCode(500, new { message = "An error occurred while updating the ban state" });
         }
     }
 

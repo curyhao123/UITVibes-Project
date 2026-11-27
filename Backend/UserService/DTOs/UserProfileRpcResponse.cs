@@ -1,4 +1,4 @@
-﻿namespace UserService.DTOs
+namespace UserService.DTOs
 {
     public class UserProfileRpcResponse
     {
@@ -6,5 +6,6 @@
         public string DisplayName { get; set; } = string.Empty;
         public string AvatarUrl { get; set; } = string.Empty;
         public bool Found { get; set; }
+        public bool IsBanned { get; set; }
     }
 }

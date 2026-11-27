@@ -71,9 +71,12 @@ public class UserBannedConsumer : BackgroundService
 
                     if (profile != null)
                     {
+                        profile.IsBanned = userBannedEvent.IsBanned;
                         profile.UpdatedAt = DateTime.UtcNow;
                         await dbContext.SaveChangesAsync(stoppingToken);
-                        _logger.LogInformation("Updated profile IsBanned status for user {UserId}", userBannedEvent.UserId);
+                        _logger.LogInformation(
+                            "Updated profile IsBanned={IsBanned} for user {UserId}",
+                            userBannedEvent.IsBanned, userBannedEvent.UserId);
                     }
                     else
                     {

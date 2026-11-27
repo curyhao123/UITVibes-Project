@@ -217,12 +217,8 @@ namespace AuthService.Controllers
         [HttpPost("ban-user/{userId}")]
         public async Task<IActionResult> BanUser(Guid userId)
         {
-            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-
-            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
-            {
-                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "User ID not found in request headers" });
-            }
+            if (!IsAdmin())
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "Admin role required to ban users" });
 
             try
             {
@@ -246,12 +242,8 @@ namespace AuthService.Controllers
         [HttpPost("unban-user/{userId}")]
         public async Task<IActionResult> UnbanUser(Guid userId)
         {
-            var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
-
-            if (string.IsNullOrEmpty(userIdHeader) || !Guid.TryParse(userIdHeader, out var currentUserId))
-            {
-                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "User ID not found in request headers" });
-            }
+            if (!IsAdmin())
+                return Unauthorized(new ErrorResponse { ErrorCode = "UNAUTHORIZED", Message = "Admin role required to unban users" });
 
             try
             {
@@ -270,6 +262,18 @@ namespace AuthService.Controllers
                 _logger.LogError(ex, "Error unbanning user {UserId}", userId);
                 return BadRequest(new ErrorResponse { ErrorCode = "ERROR", Message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Chỉ Admin mới được ban/unban. Đọc role từ claim trong JWT mà gateway
+        /// forward xuống — header do client kiểm soát nên không dùng để xác thực.
+        /// </summary>
+        private bool IsAdmin()
+        {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value
+                       ?? Request.Headers["X-User-Role"].FirstOrDefault();
+
+            return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

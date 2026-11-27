@@ -39,7 +39,33 @@ public interface IModerationStrikeService
     Task<int> RevokeStrikesAsync(Guid userId, Guid? moderationResultId, string? reason);
 
     /// <summary>
+    /// Gỡ đúng một bản ghi strike theo id (dùng khi admin gỡ từng lỗi trong lịch sử).
+    /// </summary>
+    Task<int> RevokeStrikeByIdAsync(Guid userId, Guid strikeId, string? reason);
+
+    /// <summary>
     /// Danh sách tài khoản bị khoá do vi phạm kiểm duyệt (dùng cho admin).
     /// </summary>
     Task<List<ModerationStrikeEntryDto>> GetTopViolatorsAsync(int take = 20);
+
+    /// <summary>
+    /// Danh sách tài khoản đang tích lũy strike, gom theo tài khoản (mức "Strike Manager").
+    /// </summary>
+    Task<List<ModerationStrikeUserDto>> GetStrikeUsersAsync(int take = 50);
+
+    /// <summary>
+    /// Toàn bộ lịch sử strike của một tài khoản (mới nhất trước).
+    /// </summary>
+    Task<List<ModerationStrikeEntryDto>> GetStrikeHistoryAsync(Guid userId, int take = 50);
+
+    /// <summary>
+    /// Số tài khoản hiện đang vượt ngưỡng khoá (chưa bị ban) — dùng cho dashboard.
+    /// </summary>
+    Task<int> CountUsersOverThresholdAsync();
+
+    /// <summary>
+    /// Admin khoá/gỡ khoá tài khoản thủ công từ Strike Manager.
+    /// Không đụng vào strike — chỉ đổi trạng thái ban.
+    /// </summary>
+    Task<bool> SetBannedAsync(Guid userId, bool isBanned, string? reason);
 }

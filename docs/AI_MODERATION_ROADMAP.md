@@ -433,6 +433,29 @@ Tổng suite: **112/112 pass**.
 - [x] 5.9 Unit test: report service, strike service, decision logger, OCR service
 - [x] 5.10 `dotnet test` 149/149 pass, build BE sạch
 
+### Admin analytics + Strike Manager UI (2026-11-27)
+- [x] 6.1 BE `GET /api/post/moderation/strikes/users` — danh sách tài khoản gom theo strike (tên/avatar/trạng thái ban)
+- [x] 6.2 BE `GET /api/post/moderation/strikes/{userId}/history` — lịch sử strike chi tiết của 1 tài khoản
+- [x] 6.3 BE `GET /api/post/moderation/analytics?days=N` — lưu lượng theo ngày, breakdown (target type / category / source), agreement, latency, confidence, chi phí
+- [x] 6.4 BE `RevokeStrikeRequest.StrikeId` — gỡ đúng 1 bản ghi strike (trước đây chỉ gỡ theo `ModerationResultId`)
+- [x] 6.5 BE `UserProfileRpcResponse.IsBanned` — UserService trả về trạng thái ban qua RPC `user.profile.get`
+- [x] 6.6 FE màn hình `StrikeManagerScreen` — danh sách vi phạm, tiến trình tới ngưỡng ban, lịch sử, gỡ strike (từng cái / tất cả)
+- [x] 6.7 FE dashboard analytics — biểu đồ đường "daily decisions", breakdown bar, độ chính xác AI, sức khoẻ LLM (latency/confidence/cost), chọn khoảng 7/14/30 ngày
+- [x] 6.8 FE badge strike trong `ModerationScreen` (chi tiết nội dung) — admin thấy ngay tài khoản đang tích lũy strike
+- [x] 6.9 Route `/admin/strikes` + link từ dashboard
+- [x] 6.10 Build BE sạch, `tsc` 0 error, lint 0 error
+- [x] 6.11 BE `ModerationAnalyticsDto.UsersOverStrikeThreshold` + cảnh báo trên dashboard khi có tài khoản vượt ngưỡng strike
+
+### Đóng chuỗi ban end-to-end (2026-11-27)
+- [x] 7.1 BE `AuthService/Messaging/UserBannedConsumer.cs` — AuthService **chưa hề** consume queue `user.banned`, nên pipeline kiểm duyệt không bao giờ khoá được tài khoản
+- [x] 7.2 BE `UserService/UserBannedConsumer` — chỉ update `UpdatedAt`, **không** set `profile.IsBanned` (log ghi sai) → cột `UserProfiles.IsBanned` luôn `false`
+- [x] 7.3 BE queue riêng `user.banned.auth` cho AuthService — RabbitMQ chia message ngẫu nhiên khi nhiều consumer cùng đọc 1 queue (competing consumers)
+- [x] 7.4 BE publisher (`PostService` + `AuthService`) fan-out tới cả 2 queue `user.banned` / `user.banned.auth`
+- [x] 7.5 BE `IModerationStrikeService.SetBannedAsync` + `POST /api/post/moderation/strikes/{userId}/ban` — admin ban/unban thủ công từ Strike Manager
+- [x] 7.6 BE fix lỗ hổng phân quyền: `POST /auth/auth/ban-user|unban-user/{userId}` chỉ kiểm tra header `X-User-Id` tồn tại → **mọi user đăng nhập đều có thể ban người khác**. Nay yêu cầu role `Admin`
+- [x] 7.7 FE nút "Ban account" / "Unban account" trong sheet chi tiết của Strike Manager + tag trạng thái ban
+- [x] 7.8 Fix test project (`ModerationStrikeService` constructor thêm `IUserProfileRpcClient`) + 2 test mới cho `SetBannedAsync` — 28/28 pass
+
 ---
 
 ## 6. Tài liệu liên quan
@@ -458,5 +481,14 @@ Tổng suite: **112/112 pass**.
 | `Backend/PostService/ServiceLayer/Implementation/ModerationAppealService.cs` | Luồng khiếu nại của tác giả |
 | `Backend/PostService/Controllers/ModerationAppealController.cs` | API khiếu nại (dành cho tác giả) |
 | `frontend/src/admin/screens/ModerationScreen.tsx` | Hàng đợi admin |
+| `frontend/src/admin/screens/StrikeManagerScreen.tsx` | Màn hình quản lý strike (tài khoản vi phạm, gỡ strike) |
+| `frontend/src/admin/screens/DashboardScreen.tsx` | Dashboard admin + biểu đồ analytics kiểm duyệt |
+| `frontend/src/types/admin/strike.ts` | Type FE cho strike & analytics |
+| `Backend/PostService/DTOs/Moderation/ModerationStrikeUserDto.cs` | DTO tài khoản tích lũy strike (mức account) |
+| `Backend/PostService/DTOs/Moderation/ModerationAnalyticsDto.cs` | DTO số liệu phân tích cho dashboard |
+| `Backend/PostService/Controllers/ModerationController.cs` | API admin: queue, stats, agreement, analytics, strikes |
 | `frontend/components/PostModerationBadge.tsx` | Góc nhìn tác giả về trạng thái bài |
 | `frontend/components/ModerationAppealSheet.tsx` | Sheet gửi khiếu nại |
+| `Backend/AuthService/Messaging/UserBannedConsumer.cs` | Consumer ban/unban của AuthService (queue `user.banned.auth`) |
+| `Backend/PostService/DTOs/Moderation/SetBannedRequest.cs` | Request ban/unban thủ công từ Strike Manager |
+| `Backend/PostService/ServiceLayer/Implementation/ModerationStrikeService.cs` | Ghi/xoá strike, tự động ban khi vượt ngưỡng, ban thủ công |
