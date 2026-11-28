@@ -32,7 +32,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { AppColors, borderRadius } from "../constants/theme";
+import { borderRadius, type ThemeColors } from "../constants/theme";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 export interface OTPInputRef {
   focus: () => void;
@@ -63,6 +64,7 @@ const OTPInput = forwardRef<OTPInputRef, OTPInputProps>(
     },
     ref,
   ) => {
+    const styles = useThemedStyles(createStyles);
     const inputRefs = useRef<(TextInput | null)[]>([]);
 
     // Focus animation for the active box
@@ -229,7 +231,7 @@ OTPInput.displayName = "OTPInput";
 
 export default OTPInput;
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "center",
@@ -245,12 +247,12 @@ const styles = StyleSheet.create({
     height: DIGIT_BOX_SIZE,
     borderRadius: borderRadius.md,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     textAlign: "center",
     fontSize: 22,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: 0,
     paddingHorizontal: 0,
     paddingVertical: 0,
@@ -265,8 +267,8 @@ const styles = StyleSheet.create({
     }),
   },
   digitBoxFilled: {
-    borderColor: AppColors.primary,
-    backgroundColor: `${AppColors.primary}08`,
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}08`,
   },
   digitBoxDisabled: {
     opacity: 0.5,
@@ -277,6 +279,6 @@ const styles = StyleSheet.create({
     width: DIGIT_BOX_SIZE * 0.6,
     height: 2,
     borderRadius: 1,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
 });

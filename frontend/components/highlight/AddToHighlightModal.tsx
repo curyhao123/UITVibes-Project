@@ -27,7 +27,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
+import { borderRadius, layoutPadding, type ThemeColors } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
 import {
@@ -36,6 +36,8 @@ import {
   createHighlightGroup,
   getUserHighlights,
 } from "../../services/highlightService";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface AddToHighlightModalProps {
   visible: boolean;
@@ -50,6 +52,8 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const { currentUser } = useApp();
   const insets = useSafeAreaInsets();
   const [highlights, setHighlights] = useState<HighlightGroup[]>([]);
@@ -144,7 +148,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-                <Feather name="x" size={22} color={AppColors.text} strokeWidth={2.5} />
+                <Feather name="x" size={22} color={colors.text} strokeWidth={2.5} />
               </TouchableOpacity>
               <Text style={styles.title}>Add to Highlight</Text>
               <View style={styles.placeholder} />
@@ -160,7 +164,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
             {isLoading && !showCreateForm ? (
               <ActivityIndicator
                 size="small"
-                color={AppColors.primary}
+                color={colors.primary}
                 style={styles.loader}
               />
             ) : showCreateForm ? (
@@ -170,7 +174,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                   <TextInput
                     style={styles.input}
                     placeholder="Highlight title"
-                    placeholderTextColor={AppColors.iconMuted}
+                    placeholderTextColor={colors.iconMuted}
                     value={newTitle}
                     onChangeText={setNewTitle}
                     maxLength={100}
@@ -219,7 +223,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                           />
                         ) : (
                           <View style={[styles.thumbImage, styles.thumbPlaceholder]}>
-                            <Feather name="image" size={20} color={AppColors.iconMuted} />
+                            <Feather name="image" size={20} color={colors.iconMuted} />
                           </View>
                         )}
                       </View>
@@ -229,12 +233,12 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                           {group.itemCount} {group.itemCount === 1 ? "story" : "stories"}
                         </Text>
                       </View>
-                      <Feather name="plus" size={20} color={AppColors.primary} strokeWidth={2} />
+                      <Feather name="plus" size={20} color={colors.primary} strokeWidth={2} />
                     </TouchableOpacity>
                   ))
                 ) : (
                   <View style={styles.emptyState}>
-                    <Feather name="plus-square" size={40} color={AppColors.iconMuted} strokeWidth={1.5} />
+                    <Feather name="plus-square" size={40} color={colors.iconMuted} strokeWidth={1.5} />
                     <Text style={styles.emptyText}>No highlights yet</Text>
                     <Text style={styles.emptySubtext}>
                       Create your first highlight to save stories
@@ -249,7 +253,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
                   activeOpacity={0.7}
                 >
                   <View style={styles.createNewIcon}>
-                    <Feather name="plus-square" size={24} color={AppColors.primary} strokeWidth={2.5} />
+                    <Feather name="plus-square" size={24} color={colors.primary} strokeWidth={2.5} />
                   </View>
                   <Text style={styles.createNewText}>Create new highlight</Text>
                 </TouchableOpacity>
@@ -265,7 +269,7 @@ export const AddToHighlightModal: React.FC<AddToHighlightModalProps> = ({
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
@@ -275,7 +279,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   container: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     maxHeight: SCREEN_HEIGHT * 0.75,
@@ -288,7 +292,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   closeBtn: {
     width: 36,
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: AppColors.text,
+    color: colors.text,
   },
   placeholder: {
     width: 36,
@@ -328,7 +332,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
   },
   thumbImage: {
     width: "100%",
@@ -338,19 +342,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   highlightInfo: {
     flex: 1,
   },
   highlightTitle: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   highlightMeta: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   emptyState: {
     alignItems: "center",
@@ -359,11 +363,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...Typography.sectionTitle,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   emptySubtext: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: "center",
   },
   createNewBtn: {
@@ -373,22 +377,22 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.border,
+    borderTopColor: colors.border,
   },
   createNewIcon: {
     width: 52,
     height: 52,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
   },
   createNewText: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
+    color: colors.primary,
   },
   createForm: {
     paddingTop: 8,
@@ -398,13 +402,13 @@ const styles = StyleSheet.create({
   },
   input: {
     ...Typography.body,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: AppColors.text,
+    color: colors.text,
   },
   createFormActions: {
     flexDirection: "row",
@@ -414,20 +418,20 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   cancelBtnText: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   createBtn: {
     flex: 2,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
   },
   createBtnDisabled: {

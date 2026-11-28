@@ -20,10 +20,14 @@ import { Toast } from "../../components/Toast";
 import { ForgotPasswordModal } from "../../components/ForgotPasswordModal";
 import { BannedAccountModal } from "../../components/BannedAccountModal";
 import { useApp } from "../../context/AppContext";
-import { AppColors, borderRadius } from "../../constants/theme";
+import { borderRadius, type ThemeColors } from "../../constants/theme";
 import { GoogleIcon } from "../../components/GoogleIcon";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { login, loginWithGoogle } = useApp();
 
@@ -221,7 +225,7 @@ export default function LoginScreen() {
           <View style={styles.formSection}>
             {generalError ? (
               <View style={styles.errorBanner}>
-                <Feather name="alert-circle" size={18} color={AppColors.error} />
+                <Feather name="alert-circle" size={18} color={colors.error} />
                 <Text style={styles.errorBannerText}>{generalError}</Text>
               </View>
             ) : null}
@@ -266,7 +270,7 @@ export default function LoginScreen() {
                   <Feather
                     name={showPassword ? "eye-off" : "eye"}
                     size={18}
-                    color={AppColors.iconMuted}
+                    color={colors.iconMuted}
                   />
                 </TouchableOpacity>
               }
@@ -310,20 +314,6 @@ export default function LoginScreen() {
             >
               <GoogleIcon size={20} />
               <Text style={styles.socialBtnText}>Continue with Google</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7} disabled>
-              <Feather name="facebook" size={20} color={AppColors.text} />
-              <Text style={styles.socialBtnText}>Continue with Facebook</Text>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>Soon</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7} disabled>
-              <Feather name="smartphone" size={20} color={AppColors.text} />
-              <Text style={styles.socialBtnText}>Continue with Phone</Text>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>Soon</Text>
-              </View>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -372,7 +362,7 @@ export default function LoginScreen() {
               <Feather
                 name="mail"
                 size={32}
-                color={AppColors.primary}
+                color={colors.primary}
                 strokeWidth={1.5}
               />
             </View>
@@ -411,10 +401,10 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -439,13 +429,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
     letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
@@ -455,8 +445,8 @@ const styles = StyleSheet.create({
   errorBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FCA5A5",
+    backgroundColor: `${colors.error}14`,
+    borderColor: `${colors.error}40`,
     borderWidth: 1,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
@@ -467,7 +457,7 @@ const styles = StyleSheet.create({
   errorBannerText: {
     flex: 1,
     fontSize: 13,
-    color: AppColors.error,
+    color: colors.error,
     fontWeight: "500",
     lineHeight: 18,
   },
@@ -478,7 +468,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 14,
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: "600",
     letterSpacing: -0.1,
   },
@@ -493,12 +483,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: "500",
   },
   socialSection: {
@@ -510,45 +500,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     height: 50,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
   },
   socialBtnText: {
     fontSize: 15,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
-  },
-  comingSoonBadge: {
-    backgroundColor: `${AppColors.primary}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  comingSoonText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: AppColors.primary,
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
   },
   footer: {
     paddingHorizontal: 28,
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.border,
+    borderTopColor: colors.border,
     alignItems: "center",
   },
   footerText: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
   signUpLink: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: "700",
   },
   modalOverlay: {
@@ -559,7 +535,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   modalCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     padding: 28,
     alignItems: "center",
@@ -575,7 +551,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: `${AppColors.primary}14`,
+    backgroundColor: `${colors.primary}14`,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -583,14 +559,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 10,
     letterSpacing: -0.4,
     textAlign: "center",
   },
   modalMessage: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 20,
     textAlign: "center",
     marginBottom: 6,
@@ -598,7 +574,7 @@ const styles = StyleSheet.create({
   modalEmail: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 24,
   },
   modalBtn: {
@@ -608,7 +584,7 @@ const styles = StyleSheet.create({
   modalLater: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
 });

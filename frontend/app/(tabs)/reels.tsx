@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  LayoutChangeEvent,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -52,7 +53,10 @@ import {
 } from '../../services/postService';
 import { fetchUserById } from '../../services/userService';
 
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useOpenProfile } from '../../hooks/useOpenProfile';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -175,7 +179,10 @@ function shuffleArray<T>(array: T[]): T[] {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ReelsScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   // Wrap renderItem bằng memo để tránh re-render không cần thiết
@@ -189,12 +196,12 @@ export default function ReelsScreen() {
     toggleFollow,
   } = useApp();
 
-  // Calculate item height dynamically based on screen height and tab bar offset
-  // Video should extend edge-to-edge, but overlay UI needs bottom padding
-  const ITEM_HEIGHT = useMemo(() => {
-    // Full screen height minus top safe area (for header)
-    return SCREEN_HEIGHT - insets.top;
-  }, [insets.top]);
+  // Each reel fills the list viewport (below the header) so paging and bottom overlays line up.
+  const [listHeight, setListHeight] = useState(0);
+  const ITEM_HEIGHT = listHeight || SCREEN_HEIGHT - insets.top;
+  const handleListLayout = useCallback((e: LayoutChangeEvent) => {
+    setListHeight(e.nativeEvent.layout.height);
+  }, []);
 
   // Bottom padding for overlay UI to avoid being hidden by tab bar
   const OVERLAY_BOTTOM_PADDING = useMemo(() => {
@@ -332,7 +339,7 @@ export default function ReelsScreen() {
       offset: ITEM_HEIGHT * index,
       index,
     }),
-    [],
+    [ITEM_HEIGHT],
   );
 
   // ── Like handlers ───────────────────────────────────────────────────────────
@@ -518,8 +525,8 @@ export default function ReelsScreen() {
 
   // ── User navigation ─────────────────────────────────────────────────────────
   const handleUserPress = useCallback((userId: string) => {
-    router.push(`/profile/${userId}`);
-  }, [router]);
+    openProfile(userId);
+  }, [openProfile]);
 
   // ── Follow handler ──────────────────────────────────────────────────────────
   const handleFollow = useCallback(async (userId: string) => {
@@ -582,10 +589,10 @@ export default function ReelsScreen() {
     () => (
       <View style={styles.emptyContainer}>
         {isLoading ? (
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         ) : (
           <>
-            <Feather name="video" size={64} color={AppColors.iconMuted} />
+            <Feather name="video" size={64} color={colors.iconMuted} />
             <Text style={styles.emptyTitle}>No reels yet</Text>
             <Text style={styles.emptySubtitle}>
               When people you follow share reels, they&apos;ll appear here
@@ -594,7 +601,7 @@ export default function ReelsScreen() {
         )}
       </View>
     ),
-    [isLoading],
+    [isLoading, styles, colors],
   );
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -625,6 +632,7 @@ export default function ReelsScreen() {
           data={displayReels}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          onLayout={handleListLayout}
           pagingEnabled
           showsVerticalScrollIndicator={false}
           onScroll={scrollHandler}
@@ -646,8 +654,8 @@ export default function ReelsScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={AppColors.primary}
-              colors={[AppColors.primary]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         />
@@ -726,7 +734,7 @@ export { clearReelsUserCache } from '../../context/reelsUserCache';
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -806,7 +814,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 14,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,

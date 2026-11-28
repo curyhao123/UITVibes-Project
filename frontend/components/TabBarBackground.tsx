@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const TAB_BAR_HEIGHT = 72;
 const SCOOP_GAP = 80; // gap width in the middle for the add button
 
 export function TabBarBackground() {
+  const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const half = width / 2;
@@ -40,7 +42,7 @@ export function TabBarBackground() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     left: 0,
@@ -51,7 +53,7 @@ const styles = StyleSheet.create({
   side: {
     position: 'absolute',
     bottom: 0,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,

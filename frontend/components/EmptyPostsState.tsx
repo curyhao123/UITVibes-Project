@@ -3,13 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Button } from './Button';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface EmptyPostsStateProps {
   isNewUser?: boolean;
 }
 
 export const EmptyPostsState: React.FC<EmptyPostsStateProps> = ({ isNewUser = false }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   return (
@@ -21,7 +25,7 @@ export const EmptyPostsState: React.FC<EmptyPostsStateProps> = ({ isNewUser = fa
           activeOpacity={0.8}
           onPress={() => router.push('/(tabs)/create')}
         >
-          <Feather name="camera" size={32} color={AppColors.iconMuted} strokeWidth={1.5} />
+          <Feather name="camera" size={32} color={colors.iconMuted} strokeWidth={1.5} />
         </TouchableOpacity>
         <View style={styles.plusBadge}>
           <Feather name="plus" size={12} color="#fff" strokeWidth={3} />
@@ -46,7 +50,7 @@ export const EmptyPostsState: React.FC<EmptyPostsStateProps> = ({ isNewUser = fa
     </View>
   );
 };
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingVertical: 48,
@@ -62,9 +66,9 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -76,23 +80,23 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2.5,
-    borderColor: AppColors.background,
+    borderColor: colors.background,
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
     letterSpacing: -0.1,

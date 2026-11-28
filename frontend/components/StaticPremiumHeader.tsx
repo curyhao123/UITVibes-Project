@@ -6,6 +6,7 @@ import React, { memo, type ReactNode } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Platform,
@@ -21,6 +22,8 @@ import { Typography } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Equal side slots keep the title centered on screen.
+const SIDE_SLOT_WIDTH = 88;
 
 interface StaticPremiumHeaderProps {
   /** Screen title */
@@ -114,7 +117,11 @@ export const StaticPremiumHeader = memo(function StaticPremiumHeader({
               )}
             </TouchableOpacity>
           ) : (
-            <View style={styles.placeholder} />
+            <Image
+              source={require('../assets/images/UITVibesLogo.png')}
+              style={styles.logo}
+              accessibilityLabel="UITVibes"
+            />
           )}
         </View>
 
@@ -262,7 +269,7 @@ const styles = StyleSheet.create({
   },
   leftSlot: {
     flexShrink: 0,
-    width: 44,
+    width: SIDE_SLOT_WIDTH,
     alignItems: 'flex-start',
   },
   centerSlot: {
@@ -271,7 +278,7 @@ const styles = StyleSheet.create({
   },
   rightSlot: {
     flexShrink: 0,
-    width: 88,
+    width: SIDE_SLOT_WIDTH,
     alignItems: 'flex-end',
   },
   titleText: {
@@ -302,9 +309,9 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
-  placeholder: {
-    width: 32,
-    height: 32,
+  logo: {
+    width: 40,
+    height: 40,
   },
   rightActions: {
     flexDirection: 'row',

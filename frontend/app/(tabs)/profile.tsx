@@ -121,7 +121,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StaticPremiumHeader
-        title={currentUser.displayName}
+        title="Profile"
         onNotificationPress={() => router.push('/notifications' as any)}
         rightAction={
           <TouchableOpacity

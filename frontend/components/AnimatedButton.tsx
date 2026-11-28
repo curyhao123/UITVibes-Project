@@ -21,7 +21,9 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius, type ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 type HapticType = 'light' | 'medium' | 'heavy' | 'none';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -63,6 +65,8 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   style,
   testID,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const scale = useSharedValue(1);
 
   const triggerHaptic = useCallback(() => {
@@ -144,7 +148,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       return (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'danger' ? '#FFFFFF' : AppColors.primary}
+          color={variant === 'primary' || variant === 'danger' ? '#FFFFFF' : colors.primary}
         />
       );
     }
@@ -159,7 +163,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
           <Feather
             name={icon as any}
             size={size === 'sm' ? 16 : size === 'lg' ? 22 : 18}
-            color={getIconColor(variant, isDisabled)}
+            color={getIconColor(variant, isDisabled, colors)}
             style={styles.iconLeft}
           />
         )}
@@ -168,7 +172,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
           <Feather
             name={icon as any}
             size={size === 'sm' ? 16 : size === 'lg' ? 22 : 18}
-            color={getIconColor(variant, isDisabled)}
+            color={getIconColor(variant, isDisabled, colors)}
             style={styles.iconRight}
           />
         )}
@@ -187,18 +191,18 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
 
-function getIconColor(variant: ButtonVariant, disabled: boolean): string {
-  if (disabled) return AppColors.iconMuted;
+function getIconColor(variant: ButtonVariant, disabled: boolean, colors: ThemeColors): string {
+  if (disabled) return colors.iconMuted;
   switch (variant) {
     case 'primary':
     case 'danger':
       return '#FFFFFF';
     case 'secondary':
-      return AppColors.primary;
+      return colors.primary;
     case 'ghost':
-      return AppColors.text;
+      return colors.text;
     default:
-      return AppColors.text;
+      return colors.text;
   }
 }
 
@@ -219,12 +223,15 @@ export const AnimatedIconButton: React.FC<AnimatedIconButtonProps> = ({
   icon,
   onPress,
   size = 24,
-  color = AppColors.iconMuted,
+  color: colorProp,
   backgroundColor,
   hapticType = 'light',
   disabled = false,
   testID,
 }) => {
+  const { colors } = useTheme();
+  const color = colorProp ?? colors.iconMuted;
+  const styles = useThemedStyles(createStyles);
   const scale = useSharedValue(1);
 
   const triggerHaptic = useCallback(() => {
@@ -261,7 +268,7 @@ export const AnimatedIconButton: React.FC<AnimatedIconButtonProps> = ({
         ]}
         testID={testID}
       >
-        <Feather name={icon as any} size={size} color={disabled ? AppColors.iconMuted : color} />
+        <Feather name={icon as any} size={size} color={disabled ? colors.iconMuted : color} />
       </Animated.View>
     </GestureDetector>
   );
@@ -269,7 +276,7 @@ export const AnimatedIconButton: React.FC<AnimatedIconButtonProps> = ({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   base: {
     borderRadius: borderRadius.md,
     justifyContent: 'center',
@@ -294,12 +301,12 @@ const styles = StyleSheet.create({
 
   // Container variants
   primaryContainer: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
   secondaryContainer: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.primary,
+    borderColor: colors.primary,
   },
   ghostContainer: {
     backgroundColor: 'transparent',
@@ -307,7 +314,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   dangerContainer: {
-    backgroundColor: AppColors.error,
+    backgroundColor: colors.error,
   },
   disabled: {
     opacity: 0.5,
@@ -343,16 +350,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   secondaryText: {
-    color: AppColors.primary,
+    color: colors.primary,
   },
   ghostText: {
-    color: AppColors.text,
+    color: colors.text,
   },
   dangerText: {
     color: '#FFFFFF',
   },
   disabledText: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
 
   smText: {

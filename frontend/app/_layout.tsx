@@ -110,7 +110,16 @@ function AppLayoutInner() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="post/[id]"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_right',
+                animationDuration: 280,
+                gestureEnabled: true,
+                fullScreenGestureEnabled: true,
+              }}
+            />
             <Stack.Screen name="message" options={{ headerShown: false }} />
             <Stack.Screen name="profile/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="story/create" options={{ headerShown: false }} />

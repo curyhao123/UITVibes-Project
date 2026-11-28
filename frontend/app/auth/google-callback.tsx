@@ -34,9 +34,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 
-import { AppColors, borderRadius } from "../../constants/theme";
+import { borderRadius, type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import { loginWithGoogleBackend } from "../../services/googleAuthService";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 const SS_CODE_VERIFIER = "google_code_verifier";
 const SS_REDIRECT_URI = "google_redirect_uri";
@@ -44,6 +46,8 @@ const SS_REDIRECT_URI = "google_redirect_uri";
 type Status = "loading" | "success" | "error";
 
 export default function GoogleCallbackScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{ code?: string; error?: string }>();
   const { adoptGoogleSession } = useApp();
@@ -164,7 +168,7 @@ export default function GoogleCallbackScreen() {
       <View style={styles.content}>
         {status === "loading" && (
           <>
-            <ActivityIndicator size="large" color={AppColors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.title}>Completing sign-in…</Text>
             <Text style={styles.subtitle}>
               Exchanging the authorization code with Google and creating your session.
@@ -185,7 +189,7 @@ export default function GoogleCallbackScreen() {
         {status === "error" && (
           <>
             <View style={[styles.iconWrap, styles.iconWrapError]}>
-              <Feather name="alert-circle" size={48} color={AppColors.error} />
+              <Feather name="alert-circle" size={48} color={colors.error} />
             </View>
             <Text style={styles.title}>Sign-in failed</Text>
             <Text style={styles.subtitle}>
@@ -205,10 +209,10 @@ export default function GoogleCallbackScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -227,18 +231,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   iconWrapError: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: `${colors.error}1F`,
   },
   title: {
     fontSize: 20,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.4,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 20,
     textAlign: "center",
   },
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
   },
   retryBtnText: {

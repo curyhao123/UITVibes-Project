@@ -14,7 +14,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius, type ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface EditMessageModalProps {
   visible: boolean;
@@ -29,6 +31,8 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
   onSave,
   onCancel,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [text, setText] = useState(initialText);
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -74,7 +78,7 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
           <View style={styles.header}>
             <Text style={styles.title}>Edit message</Text>
             <TouchableOpacity onPress={onCancel} disabled={isSaving}>
-              <Feather name="x" size={20} color={AppColors.textSecondary} />
+              <Feather name="x" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -87,7 +91,7 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
             multiline
             autoCapitalize="sentences"
             placeholder="Edit your message..."
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             maxLength={4000}
           />
 
@@ -118,7 +122,7 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -127,7 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   dialog: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 20,
     width: '100%',
@@ -146,15 +150,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
   },
   input: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: colors.borderLight,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
     maxHeight: 120,
     textAlignVertical: 'top',
     marginBottom: 16,
@@ -170,10 +174,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   saveBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
   btnDisabled: {
     opacity: 0.6,
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
   },
   saveText: {
     fontSize: 15,

@@ -110,7 +110,11 @@ Some legacy files break these rules; follow the rules for new files, don't mass-
 ### Code style
 - Strict TypeScript; avoid `any`. Put backend-shaped types in `services/backendTypes.ts`.
 - Props typed with an interface (`interface PostCardProps`).
-- Styles via `StyleSheet.create({...})` at the bottom of the file, using `constants/theme.ts`.
+- Styles via `const createStyles = (colors: ThemeColors) => StyleSheet.create({...})` at the bottom
+  of the file; components call `const styles = useThemedStyles(createStyles)` (`hooks/useThemedStyles.ts`).
+  Read colors only from `useTheme().colors` / the `colors` factory argument, never `AppColors` (it is the
+  static light palette and breaks dark mode). Avoid hard-coded light hex backgrounds; use theme tokens or
+  alpha tints like `` `${colors.error}14` ``.
 
 ### State management
 Modular context: `AppContext.tsx` composes slices `useAuthState`, `useFeedState`,

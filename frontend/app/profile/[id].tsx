@@ -9,7 +9,7 @@ import { ReportUserSheet } from '../../components/profile/ReportUserSheet';
 import { UserActionsSheet } from '../../components/profile/UserActionsSheet';
 import { CompactHeader } from '../../components/StaticPremiumHeader';
 import { Toast } from '../../components/Toast';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,8 +19,10 @@ import { blockUser, getBlockStatus, type BlockStatusDto } from '../../services/b
 import { HighlightGroup, getUserHighlights } from '../../services/highlightService';
 import { getUserReposts } from '../../services/postService';
 import { getCurrentUserId } from '../../services/session';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export default function UserProfileScreen() {
+  const styles = useThemedStyles(createStyles);
   const { id } = useLocalSearchParams();
   const { colors } = useTheme();
   const [user, setUser] = useState<User | null>(null);
@@ -389,16 +391,16 @@ export default function UserProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   moreBtn: {
     width: 36,
     height: 36,
     borderRadius: borderRadius.sm + 2,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -426,11 +428,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
   },
   statLabel: {
     fontSize: 12,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   bioContainer: {
@@ -441,12 +443,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     marginBottom: 2,
-    color: AppColors.text,
+    color: colors.text,
   },
   bio: {
     fontSize: 14,
     lineHeight: 18,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
   },
   website: {
     fontSize: 14,
@@ -461,14 +463,14 @@ const styles = StyleSheet.create({
   },
   followButton: {
     flex: 1,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 8,
     borderRadius: 8,
     marginRight: 8,
     alignItems: 'center',
   },
   followingButton: {
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   followButtonText: {
     color: 'white',
@@ -476,11 +478,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   followingButtonText: {
-    color: AppColors.text,
+    color: colors.text,
   },
   messageButton: {
     flex: 1,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
@@ -493,12 +495,12 @@ const styles = StyleSheet.create({
   messageButtonText: {
     fontWeight: '600',
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
   },
   tabsContainer: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
+    borderTopColor: colors.border,
   },
   tab: {
     flex: 1,
@@ -507,7 +509,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderTopWidth: 1,
-    borderTopColor: AppColors.primary,
+    borderTopColor: colors.primary,
   },
   // Story strip
   storyStripScroll: {
@@ -524,12 +526,12 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     overflow: 'hidden',
     marginBottom: 4,
   },
   storyCircleActive: {
-    borderColor: AppColors.primary,
+    borderColor: colors.primary,
   },
   storyCircleImg: {
     width: '100%',
@@ -537,7 +539,7 @@ const styles = StyleSheet.create({
   },
   storyStripLabel: {
     fontSize: 12,
-    color: AppColors.text,
+    color: colors.text,
     textAlign: 'center',
   },
   // Empty stories
@@ -549,7 +551,7 @@ const styles = StyleSheet.create({
   emptyStoriesText: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   notFoundContainer: {
     flex: 1,
@@ -559,7 +561,7 @@ const styles = StyleSheet.create({
   },
   notFoundText: {
     ...Typography.sectionTitle,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   blockedContainer: {
     flex: 1,
@@ -569,12 +571,12 @@ const styles = StyleSheet.create({
   },
   blockedTitle: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
+    color: colors.text,
     marginTop: 12,
   },
   blockedText: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 6,
     textAlign: 'center',
   },

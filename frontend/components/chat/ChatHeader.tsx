@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { Avatar } from '../Avatar';
 import { PushButton } from '../PushButton';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface ChatHeaderProps {
   title: string;
@@ -35,6 +36,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onUserPress,
   onActionPress,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
   return (
@@ -97,7 +99,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,7 +108,7 @@ const styles = StyleSheet.create({
     minHeight: 70,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
     gap: 12,
   },
   backBtnWrap: {
@@ -137,7 +139,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -145,13 +147,13 @@ const styles = StyleSheet.create({
     ...Typography.screenTitle,
     fontSize: 17,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   chatSubtitle: {
     ...Typography.caption,
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   headerAction: {

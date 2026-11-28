@@ -116,7 +116,7 @@ To resolve code inconsistencies across legacy files, enforce the following stand
 ### Code Style Guidelines
 - **TypeScript**: Strict typing is enabled. Avoid using `any` where possible. Create typed interfaces in `services/backendTypes.ts` or local type files.
 - **Component Exports**: Use named exports or default exports consistently. Standard UI components export default or named components with TypeScript interfaces for props (`interface PostCardProps`).
-- **Styles**: Use `StyleSheet.create({...})` at the bottom of the file or use shared constant themes from `constants/theme.ts`.
+- **Styles**: Declare `const createStyles = (colors: ThemeColors) => StyleSheet.create({...})` at the bottom of the file and call `const styles = useThemedStyles(createStyles)` inside the component (`hooks/useThemedStyles.ts`). Take colors only from `useTheme().colors` or the factory's `colors` argument; never use `AppColors` (the static light palette) in styles or JSX, or dark mode breaks. Avoid hard-coded light hex backgrounds; use theme tokens or alpha tints such as `` `${colors.error}14` ``.
 - **Comments**: Keep them to a minimum: only comment when truly necessary to explain code that isn't obvious (the "why"), in one short line where possible. Don't comment variables, props, state or types, and don't restate what the code already says.
 
 ---

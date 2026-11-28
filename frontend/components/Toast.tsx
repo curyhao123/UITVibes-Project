@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -20,6 +21,7 @@ export function Toast({
   duration = 2500,
   onHide,
 }: ToastProps) {
+  const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
 
@@ -63,7 +65,7 @@ export function Toast({
   const iconName =
     type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info';
   const iconColor =
-    type === 'success' ? AppColors.success : type === 'error' ? AppColors.error : AppColors.primary;
+    type === 'success' ? colors.success : type === 'error' ? colors.error : colors.primary;
   const bgColor =
     type === 'success'
       ? '#E8F5EE'

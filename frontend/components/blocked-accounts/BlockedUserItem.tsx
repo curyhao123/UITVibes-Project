@@ -2,10 +2,11 @@ import { Image } from 'expo-image';
 import React, { memo, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import defaultAvatar from '../../assets/images/default-avatar.png';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { formatRelativeTime } from '../../utils/time';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface BlockedUserItemData {
   blockedId: string;
@@ -29,6 +30,7 @@ export const BlockedUserItem = memo(function BlockedUserItem({
   isUnblocking = false,
   isLast = false,
 }: BlockedUserItemProps) {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
   const handleUnblock = useCallback(() => {
@@ -91,24 +93,24 @@ export const BlockedUserItem = memo(function BlockedUserItem({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: layoutPadding,
     paddingVertical: 14,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     gap: 12,
   },
   separator: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     flexShrink: 0,
   },
   info: {
@@ -118,15 +120,15 @@ const styles = StyleSheet.create({
   },
   displayName: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   username: {
     ...Typography.meta,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   blockedTime: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   unblockBtn: {
@@ -134,8 +136,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: borderRadius.md,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     flexShrink: 0,
   },
   unblockBtnLoading: {
@@ -143,10 +145,10 @@ const styles = StyleSheet.create({
   },
   unblockBtnText: {
     ...Typography.captionSemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   unblockBtnLoadingText: {
     ...Typography.captionSemibold,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
 });

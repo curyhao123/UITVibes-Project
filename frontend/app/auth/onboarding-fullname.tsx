@@ -14,9 +14,13 @@ import { Feather } from '@expo/vector-icons';
 import { FormInput } from '../../components/FormInput';
 import { Button } from '../../components/Button';
 import { useApp } from '../../context/AppContext';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export default function OnboardingFullNameScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { saveOnboardingData } = useApp();
 
@@ -82,7 +86,7 @@ export default function OnboardingFullNameScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Feather name="arrow-left" size={18} color={AppColors.text} />
+            <Feather name="arrow-left" size={18} color={colors.text} />
           </TouchableOpacity>
 
           {/* Heading */}
@@ -94,7 +98,7 @@ export default function OnboardingFullNameScreen() {
           {/* Full name preview */}
           {fullName.trim().length > 0 && (
             <View style={styles.namePreview}>
-              <Feather name="user" size={18} color={AppColors.textMuted} style={{ marginRight: 8 }} />
+              <Feather name="user" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
               <Text style={styles.previewName} numberOfLines={1}>
                 {fullName.trim()}
               </Text>
@@ -132,8 +136,8 @@ export default function OnboardingFullNameScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   keyboardView: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
@@ -151,19 +155,19 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   progressDotActive: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     width: 24,
   },
   backRow: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -171,22 +175,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     marginBottom: 24,
   },
   namePreview: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.primary,
+    borderColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     height: 50,
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
   previewName: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
     letterSpacing: -0.2,
   },

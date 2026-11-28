@@ -12,13 +12,17 @@ import React, { useEffect } from "react";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useApp } from "@/context/AppContext";
-import { AppColors } from "@/constants/theme";
+import { type ThemeColors } from "@/constants/theme";
+import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 
 interface AdminNavigatorProps {
   children: React.ReactNode;
 }
 
 export function AdminNavigator({ children }: AdminNavigatorProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const { currentUser, isLoading } = useApp();
   const router = useRouter();
 
@@ -33,7 +37,7 @@ export function AdminNavigator({ children }: AdminNavigatorProps) {
   if (isLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -45,6 +49,6 @@ export function AdminNavigator({ children }: AdminNavigatorProps) {
   return <>{children}</>;
 }
 
-const styles = StyleSheet.create({
-  loading: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  loading: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
 });

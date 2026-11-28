@@ -36,9 +36,10 @@ import { InfoCard } from '../components/help/InfoCard';
 import { SectionHeader } from '../components/help/SectionHeader';
 import { HighlightCard } from '../components/privacy/HighlightCard';
 import { PrivacySection, type PrivacySectionData } from '../components/privacy/PrivacySection';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
@@ -208,6 +209,7 @@ const TRUST_HIGHLIGHTS = [
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function PrivacyPolicyScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const [supportModalVisible, setSupportModalVisible] = useState(false);
@@ -340,10 +342,10 @@ export default function PrivacyPolicyScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -360,11 +362,11 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...Typography.discoverTitle,
-    color: AppColors.text,
+    color: colors.text,
   },
   heroSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 4,
     lineHeight: 22,
   },
@@ -376,7 +378,7 @@ const styles = StyleSheet.create({
   },
   lastUpdatedText: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
 
   // Shared section padding
@@ -399,7 +401,7 @@ const styles = StyleSheet.create({
     marginHorizontal: layoutPadding,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     ...Platform.select({
       ios: {
         shadowColor: '#2D3748',
@@ -413,7 +415,7 @@ const styles = StyleSheet.create({
 
   // CTA card
   ctaCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 24,
     alignItems: 'center',
@@ -431,7 +433,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: borderRadius.full,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
@@ -440,13 +442,13 @@ const styles = StyleSheet.create({
     ...Typography.sectionTitle,
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   ctaSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -456,7 +458,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: 13,
     paddingHorizontal: 24,
@@ -473,7 +475,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
     borderRadius: borderRadius.md,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -483,7 +485,7 @@ const styles = StyleSheet.create({
   },
   ctaSecondaryBtnText: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
+    color: colors.primary,
     fontSize: 15,
   },
 

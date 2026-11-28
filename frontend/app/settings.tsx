@@ -61,7 +61,7 @@ function ProfileCard({ onEditPress }: ProfileCardProps) {
       {/* Avatar */}
       <TouchableOpacity
         activeOpacity={0.85}
-        onPress={() => profileRouter.push('/(tabs)/profile' as any)}
+        onPress={() => profileRouter.dismissTo('/(tabs)/profile')}
         style={profileStyles.avatarTouchArea}
       >
         {currentUser.avatar ? (

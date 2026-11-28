@@ -1,9 +1,10 @@
 import React, { memo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface UnblockConfirmModalProps {
   visible: boolean;
@@ -24,6 +25,7 @@ export const UnblockConfirmModal = memo(function UnblockConfirmModal({
   onUnblock,
   isLoading = false,
 }: UnblockConfirmModalProps) {
+  const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
 
   return (
@@ -46,7 +48,7 @@ export const UnblockConfirmModal = memo(function UnblockConfirmModal({
         >
           {/* Icon */}
           <View style={styles.iconWrap}>
-            <Feather name="user-x" size={32} color={colors.error || AppColors.error} />
+            <Feather name="user-x" size={32} color={colors.error || colors.error} />
           </View>
 
           {/* Title */}
@@ -89,7 +91,7 @@ export const UnblockConfirmModal = memo(function UnblockConfirmModal({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
@@ -100,7 +102,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 320,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 28,
     alignItems: 'center',
@@ -109,21 +111,21 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: `${AppColors.error}18`,
+    backgroundColor: `${colors.error}18`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   title: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
     fontWeight: '700',
   },
   hint: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -137,18 +139,18 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     borderRadius: borderRadius.lg,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     alignItems: 'center',
   },
   cancelBtnText: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   unblockBtn: {
     flex: 1,
     paddingVertical: 13,
     borderRadius: borderRadius.lg,
-    backgroundColor: AppColors.error,
+    backgroundColor: colors.error,
     alignItems: 'center',
   },
   unblockBtnLoading: {

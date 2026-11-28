@@ -8,11 +8,15 @@ import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
-import { AppColors } from "../../constants/theme";
+import { type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import { AdminNavigator } from "../../src/admin/navigation/AdminNavigator";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 function AdminLogoutButton() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const { logout } = useApp();
   const router = useRouter();
 
@@ -23,17 +27,18 @@ function AdminLogoutButton() {
 
   return (
     <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Feather name="log-out" size={18} color={AppColors.textMuted} />
+      <Feather name="log-out" size={18} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 export default function AdminLayout() {
+  const { colors } = useTheme();
   return (
     <AdminNavigator>
       <Stack
         screenOptions={{
-          contentStyle: { backgroundColor: AppColors.background },
+          contentStyle: { backgroundColor: colors.background },
           headerShown: false,
           animation: "slide_from_right",
         }}
@@ -44,8 +49,8 @@ export default function AdminLayout() {
             title: "Admin",
             headerShown: true,
             headerTitle: "Admin Panel",
-            headerStyle: { backgroundColor: AppColors.surface },
-            headerTintColor: AppColors.text,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
             headerRight: () => <AdminLogoutButton />,
           }}
         />
@@ -61,8 +66,8 @@ export default function AdminLayout() {
             title: "Users",
             headerShown: true,
             headerTitle: "User Management",
-            headerStyle: { backgroundColor: AppColors.surface },
-            headerTintColor: AppColors.text,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
             headerRight: () => <AdminLogoutButton />,
           }}
         />
@@ -72,8 +77,8 @@ export default function AdminLayout() {
             title: "Reports",
             headerShown: true,
             headerTitle: "Reports",
-            headerStyle: { backgroundColor: AppColors.surface },
-            headerTintColor: AppColors.text,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
             headerRight: () => <AdminLogoutButton />,
           }}
         />
@@ -83,8 +88,8 @@ export default function AdminLayout() {
             headerShown: true,
             title: "AI Moderation",
             headerTitle: "AI Moderation",
-            headerStyle: { backgroundColor: AppColors.surface },
-            headerTintColor: AppColors.text,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
             headerRight: () => <AdminLogoutButton />,
           }}
         />
@@ -94,8 +99,8 @@ export default function AdminLayout() {
             headerShown: true,
             title: "Strikes",
             headerTitle: "Strike Manager",
-            headerStyle: { backgroundColor: AppColors.surface },
-            headerTintColor: AppColors.text,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
             headerRight: () => <AdminLogoutButton />,
           }}
         />
@@ -104,10 +109,10 @@ export default function AdminLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   logoutBtn: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
   },
 });

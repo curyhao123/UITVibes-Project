@@ -28,7 +28,8 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius, type ThemeColors } from '../constants/theme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -74,6 +75,7 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
   contentStyle,
   testID,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const scale = useSharedValue(0.8);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(variant === 'slide-up' ? 100 : 0);
@@ -234,6 +236,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   height = 'auto',
   contentStyle,
 }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <AnimatedModal
       visible={visible}
@@ -271,6 +274,7 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
   children,
   dismissable = true,
 }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <AnimatedModal
       visible={visible}
@@ -308,6 +312,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   message,
   backdropVariant = 'dark',
 }) => {
+  const styles = useThemedStyles(createStyles);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -346,6 +351,7 @@ export const ToastCard: React.FC<ToastCardProps> = ({
   onClose,
   children,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const translateY = useSharedValue(-100);
   const opacity = useSharedValue(0);
 
@@ -381,7 +387,7 @@ export const ToastCard: React.FC<ToastCardProps> = ({
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -398,7 +404,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   defaultContent: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.xl,
     padding: 24,
     minWidth: 280,
@@ -414,7 +420,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     paddingBottom: 34,
@@ -434,7 +440,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
   },
   dragIndicator: {
     alignItems: 'center',
@@ -443,7 +449,7 @@ const styles = StyleSheet.create({
   dragIndicatorBar: {
     width: 36,
     height: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     borderRadius: 2,
   },
   bottomSheet: {
@@ -465,18 +471,18 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: `${AppColors.primary}20`,
+    backgroundColor: `${colors.primary}20`,
   },
   alertTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   alertMessage: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 20,
@@ -489,7 +495,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   loadingContainer: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.lg,
     padding: 24,
     alignItems: 'center',
@@ -500,13 +506,13 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 3,
-    borderColor: AppColors.borderLight,
-    borderTopColor: AppColors.primary,
+    borderColor: colors.borderLight,
+    borderTopColor: colors.primary,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   toastCard: {
@@ -514,7 +520,7 @@ const styles = StyleSheet.create({
     top: 60,
     left: 16,
     right: 16,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

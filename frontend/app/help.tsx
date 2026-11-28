@@ -28,8 +28,10 @@ import { useRouter } from 'expo-router';
 import { CompactHeader } from '../components/StaticPremiumHeader';
 import { HelpCard, FAQItem, SectionHeader } from '../components/help';
 import { SupportModal } from '../components/contact';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
@@ -102,20 +104,22 @@ const FAQ_DATA = [
 // ─── Search Bar ────────────────────────────────────────────────────────────────
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { colors } = useTheme();
+  const searchStyles = useThemedStyles(createSearchStyles);
   return (
     <View style={searchStyles.wrap}>
       <View style={searchStyles.inputRow}>
         <Feather
           name="search"
           size={17}
-          color={AppColors.iconMuted}
+          color={colors.iconMuted}
           strokeWidth={2}
           style={searchStyles.searchIcon}
         />
         <TextInput
           style={searchStyles.input}
           placeholder="Search help topics"
-          placeholderTextColor={AppColors.iconMuted}
+          placeholderTextColor={colors.iconMuted}
           value={value}
           onChangeText={onChange}
           returnKeyType="search"
@@ -124,7 +128,7 @@ function SearchBar({ value, onChange }: { value: string; onChange: (v: string) =
         />
         {value.length > 0 && (
           <TouchableOpacity onPress={() => onChange('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color={AppColors.iconMuted} strokeWidth={2.5} />
+            <Feather name="x" size={16} color={colors.iconMuted} strokeWidth={2.5} />
           </TouchableOpacity>
         )}
       </View>
@@ -147,6 +151,8 @@ function FAQItemWithIndex({ item, index, total }: { item: typeof FAQ_DATA[0]; in
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function HelpCenterScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [supportModalVisible, setSupportModalVisible] = useState(false);
@@ -252,7 +258,7 @@ export default function HelpCenterScreen() {
             </View>
           ) : (
             <View style={styles.emptySearch}>
-              <Feather name="search" size={32} color={AppColors.border} strokeWidth={1.5} />
+              <Feather name="search" size={32} color={colors.border} strokeWidth={1.5} />
               <Text style={styles.emptySearchTitle}>No results found</Text>
               <Text style={styles.emptySearchSub}>
                 Try a different keyword like &quot;password&quot;, &quot;privacy&quot;, or &quot;notification&quot;
@@ -276,7 +282,7 @@ export default function HelpCenterScreen() {
         <View style={styles.ctaWrap}>
           <View style={styles.ctaCard}>
             <View style={styles.ctaIconWrap}>
-              <Feather name="headphones" size={22} color={AppColors.primary} strokeWidth={2} />
+              <Feather name="headphones" size={22} color={colors.primary} strokeWidth={2} />
             </View>
             <Text style={styles.ctaTitle}>Still need help?</Text>
             <Text style={styles.ctaSubtitle}>
@@ -302,7 +308,7 @@ export default function HelpCenterScreen() {
                 )
               }
             >
-              <Feather name="edit-3" size={16} color={AppColors.primary} strokeWidth={2} />
+              <Feather name="edit-3" size={16} color={colors.primary} strokeWidth={2} />
               <Text style={styles.ctaSecondaryBtnText}>Send Feedback</Text>
             </TouchableOpacity>
           </View>
@@ -322,7 +328,7 @@ export default function HelpCenterScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const searchStyles = StyleSheet.create({
+const createSearchStyles = (colors: ThemeColors) => StyleSheet.create({
   wrap: {
     paddingHorizontal: layoutPadding,
     marginBottom: 4,
@@ -330,12 +336,12 @@ const searchStyles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     height: 46,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     gap: 10,
   },
   searchIcon: {
@@ -344,16 +350,16 @@ const searchStyles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.15,
     padding: 0,
   },
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -368,18 +374,18 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...Typography.discoverTitle,
-    color: AppColors.text,
+    color: colors.text,
   },
   heroSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 4,
   },
   cardWrap: {
     marginHorizontal: layoutPadding,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     ...Platform.select({
       ios: {
         shadowColor: '#2D3748',
@@ -393,19 +399,19 @@ const styles = StyleSheet.create({
   emptySearch: {
     marginHorizontal: layoutPadding,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     paddingVertical: 40,
     gap: 8,
   },
   emptySearchTitle: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
     marginTop: 8,
   },
   emptySearchSub: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 24,
   },
@@ -414,7 +420,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   ctaCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 24,
     alignItems: 'center',
@@ -432,7 +438,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: borderRadius.full,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
@@ -441,12 +447,12 @@ const styles = StyleSheet.create({
     ...Typography.sectionTitle,
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   ctaSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -456,7 +462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: 13,
     paddingHorizontal: 24,
@@ -473,7 +479,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
     borderRadius: borderRadius.md,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -482,7 +488,7 @@ const styles = StyleSheet.create({
   },
   ctaSecondaryBtnText: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
+    color: colors.primary,
     fontSize: 15,
   },
   bottomPad: {

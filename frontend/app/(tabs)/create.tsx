@@ -26,7 +26,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MentionInput } from '../../components/MentionInput';
 import { Toast } from '../../components/Toast';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -35,16 +35,12 @@ import {
   contentVisibilityToApiValue,
   getDefaultContentVisibility,
 } from '../../services/contentPreferences';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { VISIBILITY_OPTIONS } from '../../components/VisibilityPickerSheet';
 
 type CreateType = 'post' | 'reels';
 
 export type PostVisibility = ContentVisibility;
-
-const VISIBILITY_OPTIONS: { value: PostVisibility; label: string; icon: React.ComponentProps<typeof Feather>['name']; description: string }[] = [
-  { value: 'Public', label: 'Public', icon: 'globe', description: 'Anyone can see your post' },
-  { value: 'Followers', label: 'Followers', icon: 'users', description: 'Only followers can see' },
-  { value: 'Private', label: 'Private', icon: 'lock', description: 'Only mentioned users can see' },
-];
 
 const CAPTION_MAX = 2200;
 type AspectRatioKey = '9:16' | '1:1' | '16:9' | '4:5';
@@ -72,6 +68,7 @@ function OptionRow({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   return (
     <Pressable
@@ -99,6 +96,7 @@ function OptionRow({
 }
 
 export default function CreateScreen() {
+  const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
   const [createType, setCreateType] = React.useState<CreateType>('post');
   const [selectedMedia, setSelectedMedia] = React.useState<string[]>([]);
@@ -655,20 +653,20 @@ export default function CreateScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   topSection: {
     paddingHorizontal: layoutPadding,
     paddingTop: 12,
     paddingBottom: 16,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   segmentTrack: {
     flexDirection: 'row',
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 14,
     padding: 4,
     gap: 4,
@@ -689,10 +687,10 @@ const styles = StyleSheet.create({
   segmentLabel: {
     ...Typography.bodySemibold,
     fontSize: 14,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   segmentLabelActive: {
-    color: AppColors.primary,
+    color: colors.primary,
   },
   headerRow: {
     flexDirection: 'row',
@@ -707,7 +705,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -715,11 +713,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   headerTitleBlock: {
     flex: 1,
@@ -728,7 +726,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...Typography.screenTitle,
     fontSize: 18,
-    color: AppColors.text,
+    color: colors.text,
   },
   shareBtn: {
     paddingVertical: 8,
@@ -740,10 +738,10 @@ const styles = StyleSheet.create({
   shareLabel: {
     ...Typography.bodySemibold,
     fontSize: 16,
-    color: AppColors.primary,
+    color: colors.primary,
   },
   shareLabelDisabled: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   scroll: {
     flex: 1,
@@ -759,7 +757,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#2D3748',
@@ -790,7 +788,7 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 1.5,
-    borderColor: `${AppColors.iconMuted}55`,
+    borderColor: `${colors.iconMuted}55`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -799,12 +797,12 @@ const styles = StyleSheet.create({
   mediaPrimaryLabel: {
     ...Typography.sectionTitle,
     fontSize: 17,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   mediaInstruction: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: 'center',
     marginTop: 8,
     maxWidth: 280,
@@ -812,16 +810,16 @@ const styles = StyleSheet.create({
   mediaHint: {
     ...Typography.meta,
     fontSize: 11,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     marginTop: 10,
     textAlign: 'center',
   },
   previewShell: {
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#2D3748',
@@ -881,9 +879,9 @@ const styles = StyleSheet.create({
   mediaGridContainer: {
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   mediaGrid: {
     flexDirection: 'row',
@@ -931,7 +929,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   addMoreMediaBtn: {
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 4,
@@ -943,18 +941,18 @@ const styles = StyleSheet.create({
   addMoreMediaText: {
     ...Typography.meta,
     fontSize: 11,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   changeMediaLink: {
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
+    borderTopColor: colors.borderLight,
   },
   changeMediaLinkText: {
     ...Typography.meta,
     fontSize: 12,
-    color: AppColors.primary,
+    color: colors.primary,
     textAlign: 'center',
     fontWeight: '600',
   },
@@ -964,7 +962,7 @@ const styles = StyleSheet.create({
   },
   captionDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     marginBottom: 14,
   },
   mentionInputWrapper: {
@@ -976,7 +974,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     minHeight: 108,
     textAlignVertical: 'top',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.2,
     padding: 0,
     backgroundColor: 'transparent',
@@ -984,7 +982,7 @@ const styles = StyleSheet.create({
   charCount: {
     ...Typography.meta,
     fontSize: 11,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: 'right',
     marginTop: 10,
     letterSpacing: 0.3,
@@ -997,16 +995,16 @@ const styles = StyleSheet.create({
     ...Typography.meta,
     fontSize: 11,
     fontWeight: '700',
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
   optionsCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   optionRow: {
@@ -1014,37 +1012,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 14,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
   },
   optionRowDisabled: {
     opacity: 0.55,
   },
   optionRowPressed: {
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   optionIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   optionIconWrapDisabled: {
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   optionLabel: {
     ...Typography.bodyMedium,
     flex: 1,
-    color: AppColors.text,
+    color: colors.text,
   },
   optionLabelDisabled: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   optionSeparator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     marginLeft: 62,
   },
   // Visibility Picker Modal
@@ -1063,7 +1061,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   visibilityCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     paddingVertical: 8,
     width: '85%',
@@ -1085,12 +1083,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   visibilityTitle: {
     ...Typography.sectionTitle,
     fontSize: 18,
-    color: AppColors.text,
+    color: colors.text,
   },
   visibilityCloseBtn: {
     padding: 4,
@@ -1102,24 +1100,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   visibilityOptionSelected: {
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
   },
   visibilityOptionSeparator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     marginLeft: 72,
   },
   visibilityIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   visibilityIconSelected: {
-    backgroundColor: `${AppColors.primary}20`,
+    backgroundColor: `${colors.primary}20`,
   },
   visibilityOptionText: {
     flex: 1,
@@ -1127,17 +1125,17 @@ const styles = StyleSheet.create({
   visibilityOptionLabel: {
     ...Typography.bodyMedium,
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 2,
   },
   visibilityOptionLabelSelected: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: '600',
   },
   visibilityOptionDesc: {
     ...Typography.meta,
     fontSize: 13,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   // Aspect ratio selector
   aspectRatioBar: {
@@ -1153,22 +1151,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   aspectRatioPillActive: {
-    backgroundColor: `${AppColors.primary}15`,
-    borderColor: AppColors.primary,
+    backgroundColor: `${colors.primary}15`,
+    borderColor: colors.primary,
   },
   aspectRatioPillLabel: {
     ...Typography.meta,
     fontSize: 12,
     fontWeight: '600',
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   aspectRatioPillLabelActive: {
-    color: AppColors.primary,
+    color: colors.primary,
   },
   aspectRatioBadge: {
     position: 'absolute',

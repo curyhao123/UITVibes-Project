@@ -20,6 +20,7 @@ import { type ReportReason } from '../services/backendTypes';
 import { blockUser } from '../services/blockService';
 import { removeBookmark, repostPost, undoRepost } from '../services/postService';
 import { AnimatedHeart, AnimatedHeartIcon, useAnimatedHeart } from './AnimatedHeart';
+import { AnimatedRepostIcon } from './AnimatedRepostIcon';
 import { Avatar } from './Avatar';
 import { EditPostSheet } from './EditPostSheet';
 import { ImageCarousel } from './ImageCarousel';
@@ -30,6 +31,7 @@ import { PostModerationBadge } from './PostModerationBadge';
 import { ReportPostSheet } from './ReportPostSheet';
 import { SwipeableRow } from './SwipeableRow';
 import { TextPostCard } from './TextPostCard';
+import { useOpenProfile } from '../hooks/useOpenProfile';
 
 const ACTION_ICON = 24;
 
@@ -41,6 +43,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
   const { toggleLike, toggleBookmark, currentUser, toggleFollow, deletePost, updatePost } = useApp();
   const { colors, isDark } = useTheme();
   const router = useRouter();
+  const openProfile = useOpenProfile();
 
   const [showActionsSheet, setShowActionsSheet] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
@@ -49,7 +52,6 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
 
   // ── Heart animation state ──────────────────────────────────────────────
   const { scale: heartScale, opacity: heartOpacity, play: playHeart } = useAnimatedHeart();
-  const likeIconScale = useSharedValue(1);
   const [localLiked, setLocalLiked] = React.useState(post.isLiked);
   const [localReposted, setLocalReposted] = React.useState(post.isReposted ?? false);
   const [localRepostCount, setLocalRepostCount] = React.useState(post.repostCount ?? 0);
@@ -80,6 +82,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
 
   // ── Button handlers ───────────────────────────────────────────────────
   const handleLike = async () => {
+    triggerHaptic('light');
     const wasLiked = localLiked;
     setLocalLiked(!wasLiked);
     try {
@@ -117,6 +120,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
       return;
     }
 
+    triggerHaptic('light');
     const wasReposted = localReposted;
     setLocalReposted(!wasReposted);
     setLocalRepostCount((prev) => (wasReposted ? prev - 1 : prev + 1));
@@ -136,7 +140,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
   };
 
   const handleProfilePress = () => {
-    router.push(`/profile/${post.userId}` as any);
+    openProfile(post.userId);
   };
 
   const handleCommentPress = () => {
@@ -361,7 +365,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
               style={styles.actionGroup}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <AnimatedHeartIcon isLiked={localLiked} scale={likeIconScale} />
+              <AnimatedHeartIcon isLiked={localLiked} />
               <Text style={[styles.actionText, { color: colors.iconMuted }]}>
                 {formatCount(post.likes)} {post.likes === 1 ? 'Like' : 'Likes'}
               </Text>
@@ -385,12 +389,7 @@ const MediaPostCard: React.FC<PostCardProps & { images: string[] }> = ({ post, i
               style={styles.actionGroup}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Feather
-                name="refresh-cw"
-                size={ACTION_ICON}
-                color={localReposted ? colors.primary : colors.iconMuted}
-                strokeWidth={2}
-              />
+              <AnimatedRepostIcon isReposted={localReposted} size={ACTION_ICON} />
               <Text style={[styles.actionText, { color: colors.iconMuted }]}>
                 {formatCount(localRepostCount)} {localRepostCount === 1 ? 'Repost' : 'Reposts'}
               </Text>

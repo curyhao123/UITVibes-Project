@@ -119,18 +119,21 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
 
 // ===== SEARCH / RAG =====
 // TEI tải model (~2.2 GB) vào volume ở lần chạy đầu; image cpu-* không cần GPU.
+// TEI cpu-1.8 chỉ có linux/amd64; Docker Desktop mô phỏng kiến trúc này trên Apple Silicon.
 // max-batch-tokens mặc định 16384 làm warmup trên CPU tốn ~16 GB RAM (bị OOM); auto-truncate bắt buộc khi nó < 8192.
 string[] teiArgs = ["--max-batch-tokens", "4096", "--max-client-batch-size", "32", "--auto-truncate"];
 const string teiImage = "ghcr.io/huggingface/text-embeddings-inference";
 const string teiTag = "cpu-1.8";
 
 var teiEmbed = builder.AddContainer("tei-embed", teiImage, teiTag)
+    .WithContainerRuntimeArgs("--platform=linux/amd64")
     .WithArgs(["--model-id", "BAAI/bge-m3", .. teiArgs])
     .WithVolume("tei-embed-data", "/data")
     .WithHttpEndpoint(targetPort: 80, name: "http")
     .WithHttpHealthCheck("/health");
 
 var teiRerank = builder.AddContainer("tei-rerank", teiImage, teiTag)
+    .WithContainerRuntimeArgs("--platform=linux/amd64")
     .WithArgs(["--model-id", "BAAI/bge-reranker-v2-m3", .. teiArgs])
     .WithVolume("tei-rerank-data", "/data")
     .WithHttpEndpoint(targetPort: 80, name: "http")

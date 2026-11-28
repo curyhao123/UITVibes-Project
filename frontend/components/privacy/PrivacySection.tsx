@@ -9,9 +9,10 @@ import {
   UIManager,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 if (
   Platform.OS === 'android' &&
@@ -50,6 +51,7 @@ export const PrivacySection = memo(function PrivacySection({
   isFirst,
   isLast,
 }: PrivacySectionProps) {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -101,22 +103,22 @@ export const PrivacySection = memo(function PrivacySection({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
   },
   containerFirst: {
     borderTopLeftRadius: borderRadius.md,
     borderTopRightRadius: borderRadius.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
+    borderTopColor: colors.borderLight,
   },
   containerLast: {
     borderBottomLeftRadius: borderRadius.md,
     borderBottomRightRadius: borderRadius.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
     marginBottom: 0,
   },
   trigger: {
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
   },
   contentWrap: {
@@ -138,12 +140,12 @@ const styles = StyleSheet.create({
   },
   contentDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     marginBottom: 14,
   },
   content: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 23,
   },
   bulletsWrap: {
@@ -158,13 +160,13 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     marginTop: 8,
     flexShrink: 0,
   },
   bulletText: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 22,
     flex: 1,
   },

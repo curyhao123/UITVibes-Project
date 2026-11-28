@@ -1,9 +1,10 @@
 import React, { memo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export type HighlightVariant = 'trust' | 'warning' | 'control' | 'security';
 
@@ -22,6 +23,7 @@ export const HighlightCard = memo(function HighlightCard({
   description,
   children,
 }: HighlightCardProps) {
+  const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
 
   const variantConfig: Record<
@@ -45,10 +47,10 @@ export const HighlightCard = memo(function HighlightCard({
     },
     warning: {
       icon: 'alert-triangle',
-      bgColor: isDark ? 'rgba(239, 68, 68, 0.12)' : `${colors.error || AppColors.error}0A`,
-      iconColor: colors.error || AppColors.error,
-      iconBgColor: isDark ? 'rgba(239, 68, 68, 0.22)' : `${colors.error || AppColors.error}15`,
-      accentColor: colors.error || AppColors.error,
+      bgColor: isDark ? 'rgba(239, 68, 68, 0.12)' : `${colors.error || colors.error}0A`,
+      iconColor: colors.error || colors.error,
+      iconBgColor: isDark ? 'rgba(239, 68, 68, 0.22)' : `${colors.error || colors.error}15`,
+      accentColor: colors.error || colors.error,
       titleColor: colors.text,
     },
     control: {
@@ -61,10 +63,10 @@ export const HighlightCard = memo(function HighlightCard({
     },
     security: {
       icon: 'lock',
-      bgColor: isDark ? 'rgba(16, 185, 129, 0.12)' : `${colors.success || AppColors.success}0A`,
-      iconColor: colors.success || AppColors.success,
-      iconBgColor: isDark ? 'rgba(16, 185, 129, 0.22)' : `${colors.success || AppColors.success}15`,
-      accentColor: colors.success || AppColors.success,
+      bgColor: isDark ? 'rgba(16, 185, 129, 0.12)' : `${colors.success || colors.success}0A`,
+      iconColor: colors.success || colors.success,
+      iconBgColor: isDark ? 'rgba(16, 185, 129, 0.22)' : `${colors.success || colors.success}15`,
+      accentColor: colors.success || colors.success,
       titleColor: colors.text,
     },
   };
@@ -102,7 +104,7 @@ export const HighlightCard = memo(function HighlightCard({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
   },
   description: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 21,
     marginTop: 4,
   },

@@ -22,13 +22,15 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
+import { borderRadius, layoutPadding, type ThemeColors } from "../../constants/theme";
+import { useTheme } from "../../context/ThemeContext";
 import { Typography } from "../../constants/typography";
 import {
   HighlightGroup,
   deleteHighlightGroup,
   getHighlightDetail,
 } from "../../services/highlightService";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface HighlightBarProps {
   highlights: HighlightGroup[];
@@ -47,13 +49,16 @@ interface HighlightViewerProps {
 const HighlightCircle: React.FC<{
   highlight: HighlightGroup;
   onPress: () => void;
-}> = ({ highlight, onPress }) => (
+}> = ({ highlight, onPress }) => {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  return (
   <TouchableOpacity
     style={styles.circleItem}
     onPress={onPress}
     activeOpacity={0.7}
   >
-    <View style={styles.circleOuter}>
+    <View style={[styles.circleOuter, { backgroundColor: colors.surface }]}>
       {highlight.coverImage ? (
         <Image
           source={{ uri: highlight.coverImage }}
@@ -61,18 +66,21 @@ const HighlightCircle: React.FC<{
         />
       ) : (
         <View style={[styles.circleImage, styles.circlePlaceholder]}>
-          <Feather name="image" size={18} color={AppColors.iconMuted} />
+          <Feather name="image" size={18} color={colors.iconMuted} />
         </View>
       )}
     </View>
-    <Text style={styles.circleLabel} numberOfLines={1}>
+    <Text style={[styles.circleLabel, { color: colors.text }]} numberOfLines={1}>
       {highlight.title}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 const AddStoryCircle = () => {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { colors } = useTheme();
   const pulseScale = useSharedValue(1);
 
   const startPulse = () => { pulseScale.value = withSpring(0.9); };
@@ -90,10 +98,16 @@ const AddStoryCircle = () => {
       activeOpacity={1}
       style={styles.circleItem}
     >
-      <Animated.View style={[styles.addStoryCircle, animatedStyle]}>
-        <Feather name="plus" size={26} color={AppColors.primary} strokeWidth={2} />
+      <Animated.View
+        style={[
+          styles.addStoryCircle,
+          { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+          animatedStyle,
+        ]}
+      >
+        <Feather name="plus" size={26} color={colors.primary} strokeWidth={2} />
       </Animated.View>
-      <Text style={styles.addStoryText}>Add story</Text>
+      <Text style={[styles.addStoryText, { color: colors.text }]}>Add story</Text>
     </TouchableOpacity>
   );
 };
@@ -198,6 +212,8 @@ export const HighlightBar: React.FC<HighlightBarProps> = ({
   isCurrentUser = false,
   onRefresh,
 }) => {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [selectedHighlight, setSelectedHighlight] = useState<HighlightGroup | null>(null);
 
@@ -218,7 +234,7 @@ export const HighlightBar: React.FC<HighlightBarProps> = ({
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { borderTopColor: colors.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -247,11 +263,10 @@ export const HighlightBar: React.FC<HighlightBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.border,
   },
   scrollContent: {
     paddingHorizontal: layoutPadding,
@@ -261,16 +276,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: AppColors.surfaceElevated,
     borderWidth: 2,
-    borderColor: AppColors.border,
     justifyContent: "center",
     alignItems: "center",
   },
   addStoryText: {
     ...Typography.meta,
     marginTop: 4,
-    color: AppColors.text,
   },
   circleItem: {
     alignItems: "center",
@@ -283,7 +295,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#22c55e",
     overflow: "hidden",
-    backgroundColor: AppColors.surface,
   },
   circleImage: {
     width: "100%",
@@ -298,15 +309,14 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
   },
   circleLabel: {
     ...Typography.meta,
-    color: AppColors.text,
     textAlign: "center",
     marginTop: 4,
   },

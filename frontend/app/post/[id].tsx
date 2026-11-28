@@ -21,19 +21,35 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, CommentItem, DeleteConfirmModal, ImageCarousel } from "../../components";
 import { CommentInput } from "../../components/CommentInput";
+import { MentionText } from "../../components/MentionText";
+import { VisibilityPickerSheet } from "../../components/VisibilityPickerSheet";
+import { contentVisibilityToApiValue, type ContentVisibility } from "../../services/contentPreferences";
 import { EditPostSheet } from "../../components/EditPostSheet";
 import { ModerationAppealSheet } from "../../components/ModerationAppealSheet";
 import { PostModerationBadge } from "../../components/PostModerationBadge";
 import { SkeletonShimmer } from "../../components/SkeletonLoader";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
-import { AppColors, layoutPadding } from "../../constants/theme";
+import { borderRadius, layoutPadding, type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Comment, Post } from "../../data/mockData";
 import { deleteComment, getPostById, removeBookmark, repostPost, toggleBookmark, toggleCommentLike, undoRepost, updateComment } from "../../services/postService";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useOpenProfile } from "../../hooks/useOpenProfile";
 
 // ─── Skeleton for initial load ────────────────────────────────────────────────
+const FOLLOWERS_COLOR = "#3B82F6";
+
+const toContentVisibility = (visibility?: string): ContentVisibility => {
+  const normalized = (visibility ?? "").toLowerCase();
+  if (normalized === "followers") return "Followers";
+  if (normalized === "private") return "Private";
+  return "Public";
+};
+
 const PostDetailSkeleton = () => {
+  const styles = useThemedStyles(createStyles);
+  const skelStyles = useThemedStyles(createSkelStyles);
   const { colors } = useTheme();
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -76,6 +92,7 @@ const PostDetailSkeleton = () => {
 
 // ─── Main screen ────────────────────────────────────────────────────────────
 export default function PostDetailScreen() {
+  const styles = useThemedStyles(createStyles);
   const { id } = useLocalSearchParams();
   const { colors } = useTheme();
   const [post, setPost] = useState<Post | null>(null);
@@ -91,10 +108,13 @@ export default function PostDetailScreen() {
   const [appealingComment, setAppealingComment] = useState<Comment | null>(null);
   const { toggleLike, addComment, currentUser, toggleFollow, updatePost } = useApp();
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
+  const [showVisibilitySheet, setShowVisibilitySheet] = useState(false);
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
   const [localReposted, setLocalReposted] = useState(false);
   const [localRepostCount, setLocalRepostCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const router = useRouter();
+  const openProfile = useOpenProfile();
 
   const isPostAuthor = !!post && !!currentUser && post.userId === currentUser.id;
 
@@ -145,6 +165,27 @@ export default function PostDetailScreen() {
             : null,
         );
       }
+    }
+  };
+
+  const handleVisibilitySelect = async (visibility: ContentVisibility) => {
+    if (!post) return;
+    const previous = post.visibility;
+    if (visibility === toContentVisibility(previous)) {
+      setShowVisibilitySheet(false);
+      return;
+    }
+    setIsSavingVisibility(true);
+    setPost((prev) => (prev ? { ...prev, visibility } : prev));
+    try {
+      // Same caption keeps the post out of re-moderation; only visibility changes.
+      await updatePost(post.id, post.caption, { visibility: contentVisibilityToApiValue(visibility) });
+      setShowVisibilitySheet(false);
+    } catch (err: any) {
+      setPost((prev) => (prev ? { ...prev, visibility: previous } : prev));
+      Alert.alert("Couldn't change visibility", err?.message ?? "Please try again.");
+    } finally {
+      setIsSavingVisibility(false);
     }
   };
 
@@ -371,10 +412,10 @@ export default function PostDetailScreen() {
 
   const getVisibilityMeta = (visibility?: string) => {
     const normalized = (visibility ?? "").toLowerCase();
-    if (normalized === "followers") return { label: "Followers", icon: "users" as const };
-    if (normalized === "private") return { label: "Private", icon: "lock" as const };
-    if (normalized === "hidden") return { label: "Hidden", icon: "eye-off" as const };
-    return { label: "Public", icon: "globe" as const };
+    if (normalized === "followers") return { label: "Followers", icon: "users" as const, color: FOLLOWERS_COLOR };
+    if (normalized === "private") return { label: "Private", icon: "lock" as const, color: colors.textMuted };
+    if (normalized === "hidden") return { label: "Hidden", icon: "eye-off" as const, color: colors.error };
+    return { label: "Public", icon: "globe" as const, color: colors.primary };
   };
 
   const handleBookmarkToggle = async () => {
@@ -427,7 +468,7 @@ export default function PostDetailScreen() {
       {/* Post Header: User Info */}
       <View style={styles.postHeader}>
         <TouchableOpacity
-          onPress={() => router.push(`/profile/${post.user.id}` as any)}
+          onPress={() => openProfile(post.user.id)}
           style={styles.userInfoRow}
         >
           <Avatar user={post.user} size="small" showBorder />
@@ -440,10 +481,16 @@ export default function PostDetailScreen() {
               {(() => {
                  const visibilityMeta = getVisibilityMeta(post.visibility);
                  return (
-                   <>
-                     <Feather name={visibilityMeta.icon} size={12} color={colors.textSecondary} />
-                     <Text style={[styles.visibilityText, { color: colors.textSecondary }]}>{visibilityMeta.label}</Text>
-                   </>
+                   <TouchableOpacity
+                     style={[styles.visibilityChip, { backgroundColor: `${visibilityMeta.color}1F` }]}
+                     onPress={() => setShowVisibilitySheet(true)}
+                     disabled={!isPostAuthor}
+                     hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                   >
+                     <Feather name={visibilityMeta.icon} size={11} color={visibilityMeta.color} />
+                     <Text style={[styles.visibilityText, { color: visibilityMeta.color }]}>{visibilityMeta.label}</Text>
+                     {isPostAuthor && <Feather name="chevron-down" size={11} color={visibilityMeta.color} />}
+                   </TouchableOpacity>
                  );
               })()}
               <Text style={[styles.metaSeparator, { color: colors.textSecondary }]}>•</Text>
@@ -451,26 +498,28 @@ export default function PostDetailScreen() {
             </View>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.followBtn,
-            {
-              backgroundColor: isFollowingAuthor ? colors.surfaceElevated : colors.primary,
-              borderWidth: isFollowingAuthor ? 1 : 0,
-              borderColor: colors.border,
-            },
-          ]}
-          onPress={handleFollowToggle}
-        >
-          <Text
+        {!isPostAuthor && (
+          <TouchableOpacity
             style={[
-              styles.followBtnText,
-              { color: isFollowingAuthor ? colors.text : "#FFFFFF" },
+              styles.followBtn,
+              {
+                backgroundColor: isFollowingAuthor ? colors.surfaceElevated : colors.primary,
+                borderWidth: isFollowingAuthor ? 1 : 0,
+                borderColor: colors.border,
+              },
             ]}
+            onPress={handleFollowToggle}
           >
-            {isFollowingAuthor ? "Following" : "Follow"}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.followBtnText,
+                { color: isFollowingAuthor ? colors.text : "#FFFFFF" },
+              ]}
+            >
+              {isFollowingAuthor ? "Following" : "Follow"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Post Image(s) — Instagram-style carousel for multi-image */}
@@ -536,7 +585,7 @@ export default function PostDetailScreen() {
           <Text style={[styles.captionUsername, { color: colors.text }]}>
             {post.user.fullName || post.user.displayName}
           </Text>{" "}
-          {post.caption}
+          <MentionText text={post.caption} />
         </Text>
       </View>
 
@@ -602,6 +651,14 @@ export default function PostDetailScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
+      <VisibilityPickerSheet
+        visible={showVisibilitySheet}
+        current={toContentVisibility(post.visibility)}
+        isSaving={isSavingVisibility}
+        onSelect={handleVisibilitySelect}
+        onClose={() => setShowVisibilitySheet(false)}
+      />
+
       <DeleteConfirmModal
         visible={deleteTarget !== null}
         onCancel={() => setDeleteTarget(null)}
@@ -662,10 +719,10 @@ function updateCommentsModeration(comments: Comment[], targetId?: string): Comme
   });
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   kavContainer: {
     flex: 1,
@@ -689,21 +746,21 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: "600",
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
   },
   userHandle: {
     fontSize: 12,
-    color: AppColors.textSecondary,
-    marginTop: 2,
+    color: colors.textSecondary,
+    marginTop: 3,
   },
   followBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
   },
   followBtnFollowing: {
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   followBtnText: {
     color: "#FFFFFF",
@@ -711,7 +768,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   followBtnTextFollowing: {
-    color: AppColors.text,
+    color: colors.text,
   },
   postImage: {
     width: "100%",
@@ -737,58 +794,67 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   captionContainer: {
     paddingHorizontal: layoutPadding,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    marginTop: 6,
   },
   caption: {
     fontSize: 14,
     lineHeight: 20,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   captionUsername: {
     fontWeight: "600",
   },
+  visibilityChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
   visibilityText: {
-    fontSize: 12,
-    color: AppColors.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
   },
   metaSeparator: {
     fontSize: 12,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     marginHorizontal: 4,
   },
   timestamp: {
     fontSize: 12,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
   },
   commentsHeader: {
     paddingHorizontal: layoutPadding,
     paddingVertical: 12,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
 });
 
-const skelStyles = StyleSheet.create({
+const createSkelStyles = (colors: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
   },
   actionsRow: {
     flexDirection: "row",

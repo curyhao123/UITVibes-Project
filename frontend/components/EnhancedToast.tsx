@@ -23,7 +23,9 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius, type ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TOAST_WIDTH = SCREEN_WIDTH - 32;
@@ -43,40 +45,43 @@ interface ToastItemProps {
   index: number;
 }
 
-const VARIANT_CONFIG = {
+// Light mode keeps pastel banners; dark mode uses an opaque elevated surface so text stays readable.
+const createVariantConfig = (colors: ThemeColors, isDark: boolean) => ({
   success: {
     icon: 'check-circle',
-    bgColor: '#E8F5EE',
-    iconColor: AppColors.success,
-    textColor: AppColors.success,
-    progressColor: AppColors.success,
+    bgColor: isDark ? colors.surfaceElevated : '#E8F5EE',
+    iconColor: colors.success,
+    textColor: colors.success,
+    progressColor: colors.success,
   },
   error: {
     icon: 'x-circle',
-    bgColor: '#FAECEC',
-    iconColor: AppColors.error,
-    textColor: AppColors.error,
-    progressColor: AppColors.error,
+    bgColor: isDark ? colors.surfaceElevated : '#FAECEC',
+    iconColor: colors.error,
+    textColor: colors.error,
+    progressColor: colors.error,
   },
   info: {
     icon: 'info',
-    bgColor: '#EDF4FF',
-    iconColor: AppColors.primary,
-    textColor: AppColors.primary,
-    progressColor: AppColors.primary,
+    bgColor: isDark ? colors.surfaceElevated : '#EDF4FF',
+    iconColor: colors.primary,
+    textColor: colors.primary,
+    progressColor: colors.primary,
   },
   warning: {
     icon: 'alert-triangle',
-    bgColor: '#FFF8E6',
+    bgColor: isDark ? colors.surfaceElevated : '#FFF8E6',
     iconColor: '#E5A83D',
     textColor: '#B8860B',
     progressColor: '#E5A83D',
   },
-};
+});
 
 // ─── Toast Item ──────────────────────────────────────────────────────────────
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, index }) => {
+  const styles = useThemedStyles(createStyles);
+  const { colors, isDark } = useTheme();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
@@ -84,7 +89,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, index }) => {
   const progress = useSharedValue(1);
   const contextX = useSharedValue(0);
 
-  const config = VARIANT_CONFIG[toast.variant];
+  const config = createVariantConfig(colors, isDark)[toast.variant];
 
   // Progress animation
   useEffect(() => {
@@ -219,6 +224,7 @@ interface ToastContainerProps {
 }
 
 const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.container} pointerEvents="box-none">
       {toasts.map((toast, index) => (
@@ -331,6 +337,8 @@ export function Toast({
   duration = 2500,
   onHide,
 }: LegacyToastProps) {
+  const styles = useThemedStyles(createStyles);
+  const { colors, isDark } = useTheme();
   const translateY = useSharedValue(-20);
   const opacity = useSharedValue(0);
 
@@ -355,7 +363,7 @@ export function Toast({
 
   if (!visible) return null;
 
-  const config = VARIANT_CONFIG[type];
+  const config = createVariantConfig(colors, isDark)[type];
 
   return (
     <Animated.View
@@ -375,7 +383,7 @@ export function Toast({
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     top: 60,
@@ -399,11 +407,11 @@ const styles = StyleSheet.create({
   },
   swipeLeft: {
     right: 0,
-    backgroundColor: AppColors.error,
+    backgroundColor: colors.error,
   },
   swipeRight: {
     left: 0,
-    backgroundColor: AppColors.success,
+    backgroundColor: colors.success,
   },
   toastContent: {
     flex: 1,

@@ -9,16 +9,18 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Post, User } from "../data/mockData";
-import { AppColors } from "../constants/theme";
+import { type ThemeColors } from "../constants/theme";
 import defaultAvatar from "../assets/images/default-avatar.png";
 import { useRouter } from "expo-router";
 import { ConfirmationModal } from "./ConfirmationModal";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 export const PostGrid: React.FC<{
   posts: Post[];
   onDeletePost?: (postId: string) => Promise<void>;
   currentUserId?: string;
 }> = ({ posts, onDeletePost, currentUserId }) => {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -111,6 +113,7 @@ export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({
   user,
   onPress,
 }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <TouchableOpacity style={styles.userItem} onPress={onPress}>
       <Image
@@ -128,7 +131,7 @@ export const UserListItem: React.FC<{ user: User; onPress?: () => void }> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   gridRow: {
     flexDirection: "row",
   },
@@ -136,11 +139,11 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     padding: 1,
-    backgroundColor: AppColors.borderLight, // Debug: thấy được grid items
+    backgroundColor: colors.borderLight, // Debug: thấy được grid items
   },
   gridImage: {
     flex: 1,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
   },
   gridOverlay: {
     position: "absolute",
@@ -181,7 +184,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
   },
   avatar: {
     width: 56,
@@ -195,14 +198,14 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: "600",
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
   },
   displayName: {
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 14,
   },
   followButton: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,

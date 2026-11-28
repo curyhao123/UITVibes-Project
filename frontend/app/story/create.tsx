@@ -24,12 +24,13 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { AppColors, borderRadius, layoutPadding } from "../../constants/theme";
+import { borderRadius, layoutPadding, type ThemeColors } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { createStory } from "../../services/storyService";
 import { Avatar } from "../../components/Avatar";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface SelectedMedia {
   uri: string;
@@ -37,6 +38,7 @@ interface SelectedMedia {
 }
 
 export default function CreateStoryScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors } = useTheme();
   const { currentUser, refreshStories } = useApp();
@@ -245,17 +247,17 @@ export default function CreateStoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: layoutPadding,
     paddingVertical: 14,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     gap: 12,
   },
   closeBtn: {
@@ -264,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: borderRadius.sm + 2,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
   },
   headerTitle: {
     flex: 1,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: AppColors.text,
+    color: colors.text,
   },
   shareBtn: {
     paddingVertical: 8,
@@ -284,10 +286,10 @@ const styles = StyleSheet.create({
   shareLabel: {
     ...Typography.bodySemibold,
     fontSize: 16,
-    color: AppColors.primary,
+    color: colors.primary,
   },
   shareLabelDisabled: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   scroll: {
     flex: 1,
@@ -306,13 +308,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: "center",
     justifyContent: "center",
   },
   userName: {
     ...Typography.bodyMedium,
-    color: AppColors.text,
+    color: colors.text,
   },
   previewGrid: {
     flexDirection: "row",
@@ -325,9 +327,9 @@ const styles = StyleSheet.create({
     aspectRatio: 9 / 16,
     borderRadius: borderRadius.md,
     overflow: "hidden",
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   previewImage: {
     width: "100%",
@@ -370,20 +372,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   emptyTitle: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   emptySubtitle: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
   actionsSection: {
     flexDirection: "row",
@@ -398,18 +400,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   actionBtnText: {
     ...Typography.bodyMedium,
-    color: AppColors.text,
+    color: colors.text,
   },
   hint: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: "center",
     marginTop: 12,
   },

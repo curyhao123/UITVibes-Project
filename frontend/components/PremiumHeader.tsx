@@ -22,10 +22,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { AppColors, layoutPadding } from '../constants/theme';
+import { layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { User } from '../data/mockData';
 import { Avatar } from './Avatar';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const HEADER_MAX_HEIGHT = 100;
 const HEADER_MIN_HEIGHT = 56;
@@ -65,6 +67,8 @@ export const PremiumHeader = memo(function PremiumHeader({
   scrollY,
   headerStyle,
 }: PremiumHeaderProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [isScrolled] = useState(false);
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -199,7 +203,7 @@ export const PremiumHeader = memo(function PremiumHeader({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Feather name="arrow-left" size={22} color={AppColors.text} />
+              <Feather name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
           )}
         </View>
@@ -247,7 +251,7 @@ export const PremiumHeader = memo(function PremiumHeader({
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
-                  <Feather name="bell" size={22} color={AppColors.text} />
+                  <Feather name="bell" size={22} color={colors.text} />
                   {notificationCount > 0 && (
                     <Animated.View
                       style={[
@@ -272,7 +276,7 @@ export const PremiumHeader = memo(function PremiumHeader({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Feather name="settings" size={22} color={AppColors.text} />
+                <Feather name="settings" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
           )}
@@ -326,7 +330,7 @@ export class ScrollableHeader extends React.Component<
         onScroll={this.handleScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={scrollStyles.scrollContent}
       >
         {this.props.children}
       </Animated.ScrollView>
@@ -349,7 +353,7 @@ export function useScrollHeader() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     top: 0,
@@ -360,7 +364,7 @@ const styles = StyleSheet.create({
   },
   background: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   shadow: {
     position: 'absolute',
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   content: {
     flex: 1,
@@ -389,14 +393,14 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.screenTitle,
-    color: AppColors.text,
+    color: colors.text,
     position: 'absolute',
     bottom: 8,
   },
   largeTitle: {
     fontSize: LARGE_TITLE_MAX_SIZE,
     fontWeight: '800',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.8,
     position: 'absolute',
     bottom: 4,
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
@@ -441,7 +445,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   badge: {
     position: 'absolute',
@@ -460,6 +464,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+});
+
+const scrollStyles = StyleSheet.create({
   scrollContent: {
     paddingTop: HEADER_MAX_HEIGHT,
   },

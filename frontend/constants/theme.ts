@@ -1,5 +1,5 @@
 /**
- * Earthy Minimalist palette — warm off-white in light mode, pitch black in dark mode.
+ * Orange primary: Warm Minimalist in light mode (off-white, charcoal/slate text), Modern Dark in dark mode (obsidian/slate, soft orange).
  */
 
 import { Platform } from 'react-native';
@@ -12,47 +12,52 @@ export const LightThemeColors = {
   primaryLight: '#E89578',
   primaryDark: '#C45F3D',
 
-  background: '#F9F8F6',
+  background: '#FAF9F6',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
 
-  border: '#E8E4DF',
-  borderLight: '#F2EFEB',
+  border: '#E7E5E4',
+  borderLight: '#F4F4F5',
 
-  text: '#2D3748',
-  textSecondary: '#4A5568',
+  text: '#18181B',
+  textSecondary: '#475569',
   /** Muted copy */
-  textMuted: '#718096',
+  textMuted: '#64748B',
   /** Inactive tab icons & de-emphasized chrome */
-  iconMuted: '#A0AEC0',
+  iconMuted: '#94A3B8',
 
   like: '#D97757',
   error: '#C75C5C',
   success: '#6B8F71',
+
+  /** Each hashtag gets one of these, picked deterministically from its text */
+  hashtagPalette: ['#0F766E', '#1D4ED8', '#6D28D9', '#BE185D', '#0E7490', '#15803D'],
 };
 
 export const DarkThemeColors = {
-  primary: '#E07A5F',
-  primaryLight: '#E89578',
-  primaryDark: '#C45F3D',
+  primary: '#FF8C42',
+  primaryLight: '#FFA766',
+  primaryDark: '#E5722A',
 
-  background: '#000000', // Pitch black
-  surface: '#121212', // Deep dark card/surface
-  surfaceElevated: '#1C1C1E', // Elevated surface
+  background: '#0F1115',
+  surface: '#16181D',
+  surfaceElevated: '#1E2128',
 
-  border: '#242426',
-  borderLight: '#2C2C2E',
+  border: '#262A31',
+  borderLight: '#2E323A',
 
-  text: '#FFFFFF', // Crisp white
-  textSecondary: '#EBEBF5',
+  text: '#FFFFFF',
+  textSecondary: '#E4E6EB',
   /** Muted copy */
-  textMuted: '#8E8E93',
+  textMuted: '#8B919C',
   /** Inactive tab icons & de-emphasized chrome */
-  iconMuted: '#636366',
+  iconMuted: '#5F6672',
 
-  like: '#E07A5F',
+  like: '#FF8C42',
   error: '#EF4444',
   success: '#34C759',
+
+  hashtagPalette: ['#2DD4BF', '#60A5FA', '#A78BFA', '#F472B6', '#22D3EE', '#4ADE80'],
 };
 
 export type ThemeColors = typeof LightThemeColors;

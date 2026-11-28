@@ -566,6 +566,8 @@ docker-compose up -d
 #### Tùy Chọn B: .NET Aspire tự quản lý (Khuyến Nghị)
 Nếu dùng .NET Aspire ở Bước 3, hạ tầng sẽ được khởi động tự động.
 
+Trên Mac Apple Silicon, hai container TEI dùng image `linux/amd64`; Docker Desktop sẽ chạy chúng qua emulation.
+
 ### Bước 3: Thiết Lập Backend
 
 #### Tùy Chọn A: Chạy với .NET Aspire (Khuyến Nghị)
