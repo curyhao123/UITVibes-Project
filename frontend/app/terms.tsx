@@ -35,8 +35,10 @@ import { TermsSection, type TermsSectionData } from '../components/help/TermsSec
 import { InfoCard } from '../components/help/InfoCard';
 import { SectionHeader } from '../components/help/SectionHeader';
 import { SupportModal } from '../components/contact';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
@@ -106,6 +108,8 @@ const TERMS_DATA: TermsSectionData[] = [
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function TermsOfServiceScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [supportModalVisible, setSupportModalVisible] = useState(false);
 
@@ -139,7 +143,7 @@ export default function TermsOfServiceScreen() {
             Please review the terms for using our platform.
           </Text>
           <View style={styles.lastUpdatedRow}>
-            <Feather name="clock" size={13} color={AppColors.iconMuted} strokeWidth={2} />
+            <Feather name="clock" size={13} color={colors.iconMuted} strokeWidth={2} />
             <Text style={styles.lastUpdatedText}>Last updated: May 17, 2026</Text>
           </View>
         </View>
@@ -181,7 +185,7 @@ export default function TermsOfServiceScreen() {
               <Feather
                 name="headphones"
                 size={22}
-                color={AppColors.primary}
+                color={colors.primary}
                 strokeWidth={2}
               />
             </View>
@@ -204,7 +208,7 @@ export default function TermsOfServiceScreen() {
               activeOpacity={0.7}
               onPress={handleEmailSupport}
             >
-              <Feather name="mail" size={16} color={AppColors.primary} strokeWidth={2} />
+              <Feather name="mail" size={16} color={colors.primary} strokeWidth={2} />
               <Text style={styles.supportSecondaryBtnText}>support@uitvibes.com</Text>
             </TouchableOpacity>
           </View>
@@ -224,10 +228,10 @@ export default function TermsOfServiceScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -244,11 +248,11 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     ...Typography.discoverTitle,
-    color: AppColors.text,
+    color: colors.text,
   },
   heroSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 4,
     lineHeight: 22,
   },
@@ -260,7 +264,7 @@ const styles = StyleSheet.create({
   },
   lastUpdatedText: {
     ...Typography.meta,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
   },
 
   // Shared section padding (horizontal)
@@ -273,7 +277,7 @@ const styles = StyleSheet.create({
     marginHorizontal: layoutPadding,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     ...Platform.select({
       ios: {
         shadowColor: '#2D3748',
@@ -287,7 +291,7 @@ const styles = StyleSheet.create({
 
   // Support card
   supportCard: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 24,
     alignItems: 'center',
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: borderRadius.full,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
@@ -314,13 +318,13 @@ const styles = StyleSheet.create({
     ...Typography.sectionTitle,
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   supportSubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -330,7 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: 13,
     paddingHorizontal: 24,
@@ -347,7 +351,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
     borderRadius: borderRadius.md,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -356,7 +360,7 @@ const styles = StyleSheet.create({
   },
   supportSecondaryBtnText: {
     ...Typography.bodySemibold,
-    color: AppColors.primary,
+    color: colors.primary,
     fontSize: 15,
   },
 

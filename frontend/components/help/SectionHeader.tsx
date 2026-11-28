@@ -1,7 +1,8 @@
 import React, { memo, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface SectionHeaderProps {
   title: string;
@@ -18,6 +19,7 @@ export const SectionHeader = memo(function SectionHeader({
   subtitle,
   right,
 }: SectionHeaderProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.container}>
       <View style={styles.left}>
@@ -29,7 +31,7 @@ export const SectionHeader = memo(function SectionHeader({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -50,11 +52,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     fontSize: 12,
     fontWeight: '700',
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   subtitle: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
 });

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import defaultAvatar from "../../assets/images/default-avatar.png";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
-import { AppColors } from "../../constants/theme";
+import { type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { User } from "../../data/mockData";
@@ -23,9 +23,13 @@ import {
   getUserById,
   isFollowing
 } from "../../services/api";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useOpenProfile } from "../../hooks/useOpenProfile";
 
 export default function FollowersScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const { colors } = useTheme();
   const { userId, tab } = useLocalSearchParams<{
     userId: string;
@@ -110,7 +114,7 @@ export default function FollowersScreen() {
   const renderItem = ({ item }: { item: User }) => (
     <TouchableOpacity
       style={[styles.userItem, { borderBottomColor: colors.border }]}
-      onPress={() => router.push(`/profile/${item.id}` as any)}
+      onPress={() => openProfile(item.id)}
     >
       <Image
         source={item.avatar ? { uri: item.avatar } : defaultAvatar}
@@ -137,7 +141,7 @@ export default function FollowersScreen() {
           {item.bio}
         </Text>
       </View>
-      {item.id !== "current" && (
+      {item.id !== currentUser?.id && (
         <TouchableOpacity
           style={[
             styles.followBtn,
@@ -228,15 +232,15 @@ export default function FollowersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   tabSwitcher: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   switchTab: {
     flex: 1,
@@ -245,15 +249,15 @@ const styles = StyleSheet.create({
   },
   switchTabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: AppColors.primary,
+    borderBottomColor: colors.primary,
   },
   switchTabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   switchTabTextActive: {
-    color: AppColors.primary,
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -269,7 +273,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   avatar: {
     width: 48,
@@ -288,26 +292,26 @@ const styles = StyleSheet.create({
   displayName: {
     fontWeight: "600",
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
   },
   username: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 1,
   },
   bio: {
     fontSize: 13,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   followBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
   },
   followBtnFollowing: {
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   followBtnText: {
     color: "white",
@@ -315,7 +319,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   followBtnTextFollowing: {
-    color: AppColors.text,
+    color: colors.text,
   },
   emptyState: {
     alignItems: "center",
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 16,
   },
 });

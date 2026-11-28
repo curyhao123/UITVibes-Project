@@ -9,13 +9,14 @@
  *   Tab bar visible on inbox (index) → hidden when viewing a conversation (chat/[id])
  */
 import { Stack } from 'expo-router';
-import { AppColors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function MessageLayout() {
+  const { colors } = useTheme();
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: AppColors.background },
+        contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
         headerShown: false,
       }}

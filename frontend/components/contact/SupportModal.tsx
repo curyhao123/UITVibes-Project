@@ -39,10 +39,12 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AppColors, borderRadius, layoutPadding } from '../../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { ADMIN_CONTACTS, type AdminContact } from '../../data/adminContacts';
 import { ContactAvatar } from './ContactAvatar';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface SupportModalProps {
   visible: boolean;
@@ -65,6 +67,7 @@ interface AdminCardProps {
 }
 
 function AdminCard({ admin, isFirst, isLast }: AdminCardProps) {
+  const styles = useThemedStyles(createStyles);
   const handleFacebookPress = () => {
     Linking.openURL(admin.facebookUrl);
   };
@@ -119,6 +122,7 @@ interface BackdropProps {
 }
 
 function Backdrop({ opacity, onPress }: BackdropProps) {
+  const styles = useThemedStyles(createStyles);
   const animatedStyle = useAnimatedStyle(() => {
     'worklet';
     return {
@@ -141,12 +145,15 @@ function Backdrop({ opacity, onPress }: BackdropProps) {
 // ─── Swipeable Handle ──────────────────────────────────────────────────────────
 
 function SwipeHandle() {
+  const styles = useThemedStyles(createStyles);
   return <View style={styles.swipeHandle} />;
 }
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 export function SupportModal({ visible, onClose }: SupportModalProps) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(SHEET_HEIGHT);
 
@@ -200,7 +207,7 @@ export function SupportModal({ visible, onClose }: SupportModalProps) {
           <SwipeHandle />
           <View style={styles.titleRow}>
             <View style={styles.headerIconWrap}>
-              <Feather name="headphones" size={18} color={AppColors.primary} strokeWidth={2} />
+              <Feather name="headphones" size={18} color={colors.primary} strokeWidth={2} />
             </View>
             <View style={styles.titleGroup}>
               <Text style={styles.title}>Contact Admin Support</Text>
@@ -214,7 +221,7 @@ export function SupportModal({ visible, onClose }: SupportModalProps) {
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Feather name="x" size={20} color={AppColors.iconMuted} strokeWidth={2.5} />
+              <Feather name="x" size={20} color={colors.iconMuted} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
         </View>
@@ -237,7 +244,7 @@ export function SupportModal({ visible, onClose }: SupportModalProps) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -267,7 +274,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -280,7 +287,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: `${AppColors.primary}15`,
+    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
@@ -290,19 +297,19 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '700',
   },
   subtitle: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: borderRadius.sm,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
@@ -310,7 +317,7 @@ const styles = StyleSheet.create({
   adminList: {
     marginHorizontal: layoutPadding,
     marginTop: 4,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     // Subtle inset shadow for depth
@@ -324,9 +331,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
     gap: 12,
   },
   adminCardFirst: {
@@ -344,7 +351,7 @@ const styles = StyleSheet.create({
   },
   adminName: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   roleRow: {
     flexDirection: 'row',
@@ -352,20 +359,20 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   roleBadge: {
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     borderRadius: borderRadius.sm,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   roleText: {
     ...Typography.meta,
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
   adminDescription: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 4,
     lineHeight: 18,
   },

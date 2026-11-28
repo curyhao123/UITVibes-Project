@@ -13,7 +13,8 @@
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface OnlineIndicatorProps {
   /** Size of the parent avatar (used to scale the dot proportionally) */
@@ -29,6 +30,7 @@ export const OnlineIndicator: React.FC<OnlineIndicatorProps> = ({
   isOnline,
   offset,
 }) => {
+  const styles = useThemedStyles(createStyles);
   if (!isOnline) return null;
 
   const dotSize = Math.max(10, Math.round(avatarSize * 0.28));
@@ -51,11 +53,11 @@ export const OnlineIndicator: React.FC<OnlineIndicatorProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   dot: {
     position: 'absolute',
     backgroundColor: '#22c55e',
     borderWidth: 2,
-    borderColor: AppColors.surfaceElevated,
+    borderColor: colors.surfaceElevated,
   },
 });

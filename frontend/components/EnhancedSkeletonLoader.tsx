@@ -20,8 +20,9 @@ import Animated, {
   withSequence,
   withTiming
 } from 'react-native-reanimated';
-import { AppColors, borderRadius as themeRadii } from '../constants/theme';
+import { borderRadius as themeRadii, type ThemeColors } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 // ─── Animation constants ───────────────────────────────────────────────────────
 
@@ -45,10 +46,12 @@ export const TravelingShimmer: React.FC<TravelingShimmerProps> = ({
   height = 16,
   borderRadius: radius = themeRadii.sm,
   style,
-  baseColor = AppColors.borderLight,
+  baseColor: baseColorProp,
   highlightColor = 'rgba(255, 255, 255, 0.7)',
   duration = SHIMMER_DURATION,
 }) => {
+  const { colors } = useTheme();
+  const baseColor = baseColorProp ?? colors.borderLight;
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -117,9 +120,11 @@ export const PulseShimmer: React.FC<PulseShimmerProps> = ({
   height = 16,
   borderRadius: radius = themeRadii.sm,
   style,
-  baseColor = AppColors.borderLight,
+  baseColor: baseColorProp,
   pulseColor = 'rgba(255, 255, 255, 0.5)',
 }) => {
+  const { colors } = useTheme();
+  const baseColor = baseColorProp ?? colors.borderLight;
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -306,7 +311,9 @@ export const FeedSkeleton: React.FC<FeedSkeletonProps> = ({ count = 3 }) => (
 
 // ─── Message skeleton ────────────────────────────────────────────────────────
 
-export const SkeletonMessageItem: React.FC<{ index?: number }> = ({ index = 0 }) => (
+export const SkeletonMessageItem: React.FC<{ index?: number }> = ({ index = 0 }) => {
+  const messageStyles = useThemedStyles(createMessageStyles);
+  return (
   <BounceEntrance index={index}>
     <View style={messageStyles.item}>
       <SkeletonCircle size={48} />
@@ -320,6 +327,7 @@ export const SkeletonMessageItem: React.FC<{ index?: number }> = ({ index = 0 })
     </View>
   </BounceEntrance>
 );
+};
 
 export const MessageListSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) => (
   <View>
@@ -354,7 +362,9 @@ export const UserListSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) =>
 
 // ─── Story skeleton ─────────────────────────────────────────────────────────
 
-export const SkeletonStory: React.FC<{ index?: number }> = ({ index = 0 }) => (
+export const SkeletonStory: React.FC<{ index?: number }> = ({ index = 0 }) => {
+  const storyStyles = useThemedStyles(createStoryStyles);
+  return (
   <BounceEntrance index={index}>
     <View style={storyStyles.container}>
       <TravelingShimmer
@@ -367,18 +377,24 @@ export const SkeletonStory: React.FC<{ index?: number }> = ({ index = 0 }) => (
     </View>
   </BounceEntrance>
 );
+};
 
-export const StoryBarSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => (
+export const StoryBarSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+  const storyStyles = useThemedStyles(createStoryStyles);
+  return (
   <View style={storyStyles.bar}>
     {Array.from({ length: count }).map((_, i) => (
       <SkeletonStory key={i} index={i} />
     ))}
   </View>
 );
+};
 
 // ─── Profile skeleton ────────────────────────────────────────────────────────
 
-export const ProfileSkeleton: React.FC = () => (
+export const ProfileSkeleton: React.FC = () => {
+  const profileStyles = useThemedStyles(createProfileStyles);
+  return (
   <View style={profileStyles.container}>
     <BounceEntrance index={0}>
       <View style={profileStyles.header}>
@@ -400,6 +416,7 @@ export const ProfileSkeleton: React.FC = () => (
     </BounceEntrance>
   </View>
 );
+};
 
 // ─── Comment skeleton ────────────────────────────────────────────────────────
 
@@ -496,14 +513,14 @@ const listStyles = StyleSheet.create({
   },
 });
 
-const messageStyles = StyleSheet.create({
+const createMessageStyles = (colors: ThemeColors) => StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   content: {
     flex: 1,
@@ -516,7 +533,7 @@ const messageStyles = StyleSheet.create({
   },
 });
 
-const storyStyles = StyleSheet.create({
+const createStoryStyles = (colors: ThemeColors) => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     paddingVertical: 12,
@@ -529,11 +546,11 @@ const storyStyles = StyleSheet.create({
   },
   avatar: {
     borderWidth: 2,
-    borderColor: AppColors.borderLight,
+    borderColor: colors.borderLight,
   },
 });
 
-const profileStyles = StyleSheet.create({
+const createProfileStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     padding: 16,
   },
@@ -544,7 +561,7 @@ const profileStyles = StyleSheet.create({
   },
   avatar: {
     borderWidth: 3,
-    borderColor: AppColors.primary,
+    borderColor: colors.primary,
   },
   stats: {
     flexDirection: 'row',

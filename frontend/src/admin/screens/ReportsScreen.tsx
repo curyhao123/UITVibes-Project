@@ -1,7 +1,7 @@
 /**
  * ReportsScreen — Admin view of user & post reports
  */
-import { AppColors, borderRadius } from "@/constants/theme";
+import { borderRadius, type ThemeColors } from "@/constants/theme";
 import {
   changePostVisibility,
   getPostReports,
@@ -30,6 +30,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 
 type ReportTab = "user" | "post";
 type FilterStatus = AdminReportStatus | "All";
@@ -45,7 +47,9 @@ const TabButton: React.FC<{
   active: boolean;
   onPress: () => void;
   badge?: number;
-}> = ({ label, active, onPress, badge }) => (
+}> = ({ label, active, onPress, badge }) => {
+  const styles = useThemedStyles(createStyles);
+  return (
   <TouchableOpacity
     style={[styles.tab, active && styles.tabActive]}
     onPress={onPress}
@@ -59,11 +63,13 @@ const TabButton: React.FC<{
     ) : null}
   </TouchableOpacity>
 );
+};
 
 const FilterChips: React.FC<{
   active: FilterStatus;
   onChange: (s: FilterStatus) => void;
 }> = ({ active, onChange }) => {
+  const styles = useThemedStyles(createStyles);
   const options: FilterStatus[] = ["All", "Pending", "Resolved", "Dismissed"];
   return (
     <View style={styles.chips}>
@@ -94,6 +100,8 @@ function UserReportCard({
   onResolve: () => void;
   onReject: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const statusColor = STATUS_COLORS[report.status];
 
   return (
@@ -118,18 +126,18 @@ function UserReportCard({
         </View>
       </View>
       <View style={styles.reasonRow}>
-        <Feather name="flag" size={12} color={AppColors.textMuted} />
+        <Feather name="flag" size={12} color={colors.textMuted} />
         <Text style={styles.reasonText}>{report.reason}</Text>
       </View>
       {report.additionalDetails ? (
         <View style={styles.noteRow}>
-          <Feather name="align-left" size={12} color={AppColors.textMuted} />
+          <Feather name="align-left" size={12} color={colors.textMuted} />
           <Text style={styles.noteText}>{report.additionalDetails}</Text>
         </View>
       ) : null}
       {report.adminNote ? (
         <View style={styles.noteRow}>
-          <Feather name="message-square" size={12} color={AppColors.textMuted} />
+          <Feather name="message-square" size={12} color={colors.textMuted} />
           <Text style={styles.noteText}>Admin: {report.adminNote}</Text>
         </View>
       ) : null}
@@ -182,6 +190,8 @@ function PostReportCard({
   onHidePost: () => void;
   isHiding: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const statusColor = STATUS_COLORS[report.status];
 
   return (
@@ -204,12 +214,12 @@ function PostReportCard({
         </Text>
       </View>
       <View style={styles.reasonRow}>
-        <Feather name="flag" size={12} color={AppColors.textMuted} />
+        <Feather name="flag" size={12} color={colors.textMuted} />
         <Text style={styles.reasonText}>{report.reason}</Text>
       </View>
       {report.adminNote ? (
         <View style={styles.noteRow}>
-          <Feather name="message-square" size={12} color={AppColors.textMuted} />
+          <Feather name="message-square" size={12} color={colors.textMuted} />
           <Text style={styles.noteText}>Admin: {report.adminNote}</Text>
         </View>
       ) : null}
@@ -244,6 +254,8 @@ function PostReportCard({
 }
 
 export default function ReportsScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [tab, setTab] = useState<ReportTab>("user");
   const [filter, setFilter] = useState<FilterStatus>("All");
   const [userReports, setUserReports] = useState<BE_UserReport[]>([]);
@@ -390,7 +402,7 @@ export default function ReportsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -427,14 +439,14 @@ export default function ReportsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color={AppColors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
           ) : null
         }
@@ -466,12 +478,12 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: AppColors.text, letterSpacing: -0.4 },
-  headerSubtitle: { fontSize: 13, color: AppColors.textMuted, marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 },
+  headerSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   tabs: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -485,14 +497,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: 36,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     gap: 6,
   },
-  tabActive: { backgroundColor: `${AppColors.primary}14`, borderColor: AppColors.primary },
-  tabText: { fontSize: 13, fontWeight: "600", color: AppColors.textMuted },
-  tabTextActive: { color: AppColors.primary },
+  tabActive: { backgroundColor: `${colors.primary}14`, borderColor: colors.primary },
+  tabText: { fontSize: 13, fontWeight: "600", color: colors.textMuted },
+  tabTextActive: { color: colors.primary },
   badge: {
     backgroundColor: "#EF4444",
     borderRadius: 9,
@@ -509,25 +521,25 @@ const styles = StyleSheet.create({
     height: 30,
     paddingHorizontal: 12,
     borderRadius: 15,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
-  chipActive: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
-  chipText: { fontSize: 12, fontWeight: "600", color: AppColors.textMuted },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
   chipTextActive: { color: "#FFF" },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   footerLoader: { paddingVertical: 16, alignItems: "center" },
   empty: { flex: 1, alignItems: "center", paddingVertical: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: AppColors.textMuted },
+  emptyText: { fontSize: 15, color: colors.textMuted },
   // Card
   card: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: "row",
@@ -538,17 +550,17 @@ const styles = StyleSheet.create({
   cardHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusLabel: { fontSize: 13, fontWeight: "600" },
-  reportDate: { fontSize: 12, color: AppColors.textMuted },
+  reportDate: { fontSize: 12, color: colors.textMuted },
   reportContent: { gap: 6, marginBottom: 8 },
   reportParty: { flexDirection: "row", gap: 6 },
-  reportLabel: { fontSize: 13, color: AppColors.textMuted },
-  reportValue: { fontSize: 13, fontWeight: "500", color: AppColors.text },
-  postThumb: { width: 80, height: 60, borderRadius: borderRadius.sm, backgroundColor: AppColors.border },
-  postContent: { fontSize: 13, color: AppColors.textMuted, marginTop: 4 },
+  reportLabel: { fontSize: 13, color: colors.textMuted },
+  reportValue: { fontSize: 13, fontWeight: "500", color: colors.text },
+  postThumb: { width: 80, height: 60, borderRadius: borderRadius.sm, backgroundColor: colors.border },
+  postContent: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
   reasonRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
-  reasonText: { fontSize: 13, color: AppColors.textMuted, fontStyle: "italic" },
+  reasonText: { fontSize: 13, color: colors.textMuted, fontStyle: "italic" },
   noteRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  noteText: { fontSize: 12, color: AppColors.textMuted },
+  noteText: { fontSize: 12, color: colors.textMuted },
   cardActions: { flexDirection: "row", gap: 8, marginTop: 8 },
   btnHide: {
     flex: 1,
@@ -558,9 +570,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
-    backgroundColor: "#FFFBEB",
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: "rgba(245, 158, 11, 0.35)",
   },
   btnHideText: { fontSize: 13, fontWeight: "600", color: "#F59E0B" },
   btnReject: {
@@ -571,9 +583,9 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: `${colors.error}14`,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: `${colors.error}40`,
   },
   btnRejectText: { fontSize: 13, fontWeight: "600", color: "#EF4444" },
   btnResolve: {
@@ -584,7 +596,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
-    backgroundColor: "#F0FDF4",
+    backgroundColor: `${colors.success}14`,
     borderWidth: 1,
     borderColor: "#DCFCE7",
   },

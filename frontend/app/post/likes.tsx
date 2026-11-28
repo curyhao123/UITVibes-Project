@@ -14,11 +14,15 @@ import { Avatar } from "../../components/Avatar";
 import { CompactHeader } from "../../components/StaticPremiumHeader";
 import { getPostLikes } from "../../services/postService";
 import { BE_LikeDto } from "../../services/backendTypes";
-import { AppColors } from "../../constants/theme";
+import { type ThemeColors } from "../../constants/theme";
 import { useTheme } from "../../context/ThemeContext";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useOpenProfile } from "../../hooks/useOpenProfile";
 
 export default function PostLikesScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const { colors } = useTheme();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const [likes, setLikes] = useState<BE_LikeDto[]>([]);
@@ -43,7 +47,7 @@ export default function PostLikesScreen() {
   };
 
   const handleUserPress = (userId: string) => {
-    router.push(`/profile/${userId}` as any);
+    openProfile(userId);
   };
 
   const formatTimeAgo = (dateString: string): string => {
@@ -120,10 +124,10 @@ export default function PostLikesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     fontSize: 16,
   },
   list: {
@@ -148,12 +152,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   displayName: {
-    color: AppColors.text,
+    color: colors.text,
     fontSize: 15,
     fontWeight: "600",
   },
   timeAgo: {
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     fontSize: 13,
     marginTop: 2,
   },

@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../Avatar';
 import { ConfirmationModal } from '../ConfirmationModal';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface GroupSettingsModalProps {
   visible: boolean;
@@ -43,6 +45,8 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
   onConfirmRemoveMember,
   onConfirmLeaveGroup,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [localConfirmAction, setLocalConfirmAction] = useState<
     | { type: 'remove'; member: any }
     | { type: 'leave' }
@@ -73,7 +77,7 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
             activeOpacity={0.9}
           >
             <Text style={styles.settingsSheetTitle}>{groupName}</Text>
-            <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+            <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
 
           <ScrollView
@@ -132,9 +136,9 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 disabled={isLeavingGroup}
                 activeOpacity={0.7}
               >
-                <Feather name="user-plus" size={20} color={AppColors.text} strokeWidth={2} />
+                <Feather name="user-plus" size={20} color={colors.text} strokeWidth={2} />
                 <Text style={styles.actionText}>Add member</Text>
-                <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
+                <Feather name="chevron-right" size={20} color={colors.textMuted} strokeWidth={2} />
               </TouchableOpacity>
             )}
 
@@ -189,14 +193,14 @@ export const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   settingsSheet: {
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '85%',
@@ -208,12 +212,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   settingsSheetTitle: {
     ...Typography.bodySemibold,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
   },
   settingsContent: {
@@ -224,7 +228,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
     paddingHorizontal: layoutPadding,
     paddingTop: 16,
@@ -243,15 +247,15 @@ const styles = StyleSheet.create({
   },
   memberName: {
     ...Typography.body,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   memberMeta: {
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '400',
   },
   memberAdmin: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: '400',
   },
   removeMemberBtn: {
@@ -268,13 +272,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
+    borderTopColor: colors.border,
     minHeight: 50,
   },
   actionText: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
+    color: colors.text,
   },
   leaveGroupText: {
     ...Typography.body,

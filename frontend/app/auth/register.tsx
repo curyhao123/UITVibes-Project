@@ -16,10 +16,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { FormInput } from "../../components/FormInput";
 import { GoogleIcon } from "../../components/GoogleIcon";
-import { AppColors, borderRadius } from "../../constants/theme";
+import { borderRadius, type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export default function RegisterScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { register, loginWithGoogle, authError } = useApp();
 
@@ -36,10 +40,10 @@ export default function RegisterScreen() {
   const getPasswordStrength = (pwd: string): { label: string; color: string; width: DimensionValue } => {
     const len = pwd.length;
     if (len === 0) return { label: "", color: "transparent", width: "0%" };
-    if (len < 6) return { label: "Too short", color: AppColors.error, width: "20%" };
+    if (len < 6) return { label: "Too short", color: colors.error, width: "20%" };
     if (len < 8) return { label: "Weak", color: "#F59E0B", width: "40%" };
     if (len < 12) return { label: "Good", color: "#3B82F6", width: "70%" };
-    return { label: "Strong", color: AppColors.success, width: "95%" };
+    return { label: "Strong", color: colors.success, width: "95%" };
   };
 
   const strength = getPasswordStrength(password);
@@ -185,7 +189,7 @@ export default function RegisterScreen() {
                   <Feather
                     name={showPassword ? "eye-off" : "eye"}
                     size={18}
-                    color={AppColors.iconMuted}
+                    color={colors.iconMuted}
                   />
                 </TouchableOpacity>
               }
@@ -281,10 +285,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -309,13 +313,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
     letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
@@ -327,13 +331,13 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: "center",
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   termsLink: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: "600",
   },
   authError: {
@@ -365,16 +369,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.border,
+    borderTopColor: colors.border,
     alignItems: "center",
   },
   footerText: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
   logInLink: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: "700",
   },
   dividerRow: {
@@ -385,12 +389,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 12,
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: "500",
   },
   googleBtn: {
@@ -399,16 +403,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     height: 50,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     marginBottom: 16,
   },
   googleBtnText: {
     fontSize: 15,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
   },
 });

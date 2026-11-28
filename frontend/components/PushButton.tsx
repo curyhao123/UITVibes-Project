@@ -17,8 +17,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { AppColors, borderRadius as defaultRadius } from '../constants/theme';
+import { borderRadius as defaultRadius } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
 
 type HapticType = 'light' | 'medium' | 'heavy' | 'none';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -71,7 +72,7 @@ const SPRING_RELEASE = { damping: 16, stiffness: 300 };
 
 export const PushButton: React.FC<PushButtonProps> = ({
   shadowColor = '#0F172A',
-  frontColor = AppColors.primary,
+  frontColor: frontColorProp,
   frontTextColor = '#FFFFFF',
   liftPx = 4,
   borderRadius = defaultRadius.md,
@@ -91,6 +92,8 @@ export const PushButton: React.FC<PushButtonProps> = ({
   onLongPress,
   testID,
 }) => {
+  const { colors } = useTheme();
+  const frontColor = frontColorProp ?? colors.primary;
   const translateY = useSharedValue(-liftPx);
   const isDisabled = disabled || loading;
 

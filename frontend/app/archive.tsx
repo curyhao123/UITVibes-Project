@@ -22,12 +22,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PostCard } from "../components/PostCard";
-import { AppColors, layoutPadding } from "../constants/theme";
+import { layoutPadding, type ThemeColors } from "../constants/theme";
 import { useTheme } from "../context/ThemeContext";
 import { Post } from "../data/mockData";
 import { getBookmarkedPosts } from "../services/postService";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const EmptyState = () => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   return (
     <View style={styles.emptyContainer}>
@@ -43,6 +45,7 @@ const EmptyState = () => {
 };
 
 export default function ArchiveScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors } = useTheme();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -140,10 +143,10 @@ export default function ArchiveScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 4,
@@ -160,7 +163,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
   },
   placeholder: {
     width: 32,
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -195,12 +198,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: "center",
   },
 });

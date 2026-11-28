@@ -27,7 +27,8 @@ import {
 } from '../../services/notificationService';
 import { useActorCache } from '../../hooks/useActorCache';
 import { useToast } from '../../components/EnhancedToast';
-import { borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 const PAGE_SIZE = 20;
 
@@ -88,6 +89,7 @@ interface NotificationSection {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function NotificationsScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { refreshNotifications, toggleFollow } = useApp();
@@ -514,7 +516,7 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1 },
   list: { paddingBottom: 100 },
   loadingState: {
@@ -555,7 +557,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.borderLight,
   },
   avatarFallback: {
     alignItems: 'center',
@@ -571,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.background,
   },
   contentWrap: {
     flex: 1,

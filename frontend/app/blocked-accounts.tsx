@@ -24,10 +24,11 @@ import {
   UnblockConfirmModal,
 } from '../components/blocked-accounts';
 import { CompactHeader } from '../components/StaticPremiumHeader';
-import { AppColors, layoutPadding } from '../constants/theme';
+import { layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
 import { useTheme } from '../context/ThemeContext';
 import { getBlockedUsers, unblockUser } from '../services/blockService';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 if (
   Platform.OS === 'android' &&
@@ -41,6 +42,7 @@ interface UnblockTarget {
 }
 
 export default function BlockedAccountsScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -162,7 +164,7 @@ export default function BlockedAccountsScreen() {
         </Text>
       </View>
     ),
-    [colors.textMuted],
+    [colors.textMuted, styles],
   );
 
   // ── Loading state ───────────────────────────────────────────────
@@ -222,10 +224,10 @@ export default function BlockedAccountsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   loadingWrap: {
     flex: 1,
@@ -239,7 +241,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
   },
   list: {

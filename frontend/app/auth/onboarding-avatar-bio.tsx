@@ -14,7 +14,9 @@ import { Feather } from '@expo/vector-icons';
 import { Button } from '../../components/Button';
 import { FormInput } from '../../components/FormInput';
 import { useApp } from '../../context/AppContext';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 type GenderOption = { label: string; value: string };
 const GENDER_OPTIONS: GenderOption[] = [
@@ -25,6 +27,8 @@ const GENDER_OPTIONS: GenderOption[] = [
 ];
 
 export default function OnboardingAvatarBioScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { completeOnboardingStep, saveOnboardingData } = useApp();
 
@@ -87,7 +91,7 @@ export default function OnboardingAvatarBioScreen() {
           <View style={styles.avatarSection}>
             <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.75}>
               <View style={styles.avatarPlaceholder}>
-                <Feather name="camera" size={28} color={AppColors.textMuted} strokeWidth={1.8} />
+                <Feather name="camera" size={28} color={colors.textMuted} strokeWidth={1.8} />
               </View>
               <View style={styles.addBadge}>
                 <Feather name="plus" size={14} color="#fff" strokeWidth={2.5} />
@@ -185,8 +189,8 @@ export default function OnboardingAvatarBioScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   keyboardView: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
@@ -204,22 +208,22 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   progressDotActive: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     width: 24,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     marginBottom: 32,
   },
@@ -237,9 +241,9 @@ const styles = StyleSheet.create({
     width: 108,
     height: 108,
     borderRadius: 54,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -251,16 +255,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2.5,
-    borderColor: AppColors.background,
+    borderColor: colors.background,
   },
   uploadText: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.primary,
+    color: colors.primary,
     letterSpacing: -0.1,
   },
   genderSection: {
@@ -269,7 +273,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
     marginBottom: 10,
   },
@@ -283,16 +287,16 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   genderOptionSelected: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   genderOptionText: {
     fontSize: 13,
-    color: AppColors.text,
+    color: colors.text,
   },
   genderOptionTextSelected: {
     color: '#fff',
@@ -308,27 +312,27 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
   },
   charCount: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   charCountError: {
-    color: AppColors.error,
+    color: colors.error,
     fontWeight: '600',
   },
   bioInputWrapper: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     minHeight: 100,
   },
   bioInputError: {
-    borderColor: AppColors.error,
-    backgroundColor: '#FDF6F6',
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}14`,
   },
   bioInput: {
     minHeight: 100,
@@ -338,7 +342,7 @@ const styles = StyleSheet.create({
   bioHint: {
     marginTop: 6,
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   actions: { gap: 14 },
   finishBtn: { width: '100%' },
@@ -348,7 +352,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
     letterSpacing: -0.1,
   },

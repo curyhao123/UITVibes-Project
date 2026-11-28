@@ -20,8 +20,9 @@ import {
   TouchableWithoutFeedback,
   View
 } from "react-native";
-import { AppColors, borderRadius } from "../constants/theme";
+import { borderRadius, type ThemeColors } from "../constants/theme";
 import { Button } from "./Button";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface BannedAccountModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ export function BannedAccountModal({
   visible,
   onClose,
 }: BannedAccountModalProps) {
+  const styles = useThemedStyles(createStyles);
   const [modalScale] = useState(new Animated.Value(0.8));
   const [modalOpacity] = useState(new Animated.Value(0));
 
@@ -114,7 +116,7 @@ export function BannedAccountModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   card: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     padding: 28,
     alignItems: "center",
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: `${colors.error}1F`,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -147,14 +149,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 12,
     letterSpacing: -0.4,
     textAlign: "center",
   },
   message: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 20,
     textAlign: "center",
     marginBottom: 24,

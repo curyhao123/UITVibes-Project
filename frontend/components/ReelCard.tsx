@@ -16,7 +16,7 @@
  * - API Reel type (with userId, ownerDisplayName, ownerAvatarUrl fields)
  */
 import { useEventListener } from 'expo';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -37,9 +37,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SPRING_BOUNCE, SPRING_SOFT } from '../animations/spring';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
 import { User } from '../data/mockData';
 import { PostModerationBadge } from './PostModerationBadge';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import { AnimatedHeartIcon } from './AnimatedHeart';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -76,6 +79,8 @@ interface AnimatedHeartOverlayProps {
 }
 
 export const AnimatedHeartOverlay: React.FC<AnimatedHeartOverlayProps> = ({ visible }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
 
@@ -100,7 +105,7 @@ export const AnimatedHeartOverlay: React.FC<AnimatedHeartOverlayProps> = ({ visi
 
   return (
     <Animated.View style={[styles.heartOverlay, animatedStyle]} pointerEvents="none">
-      <Feather name="heart" size={100} color={AppColors.primary} fill={AppColors.primary} />
+      <Ionicons name="heart" size={100} color={colors.primary} />
     </Animated.View>
   );
 };
@@ -112,6 +117,8 @@ interface MiniLikeCounterProps {
 }
 
 export const MiniLikeCounter: React.FC<MiniLikeCounterProps> = ({ visible }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
 
@@ -133,7 +140,7 @@ export const MiniLikeCounter: React.FC<MiniLikeCounterProps> = ({ visible }) => 
 
   return (
     <Animated.View style={[styles.miniLikeCounter, animatedStyle]} pointerEvents="none">
-      <Feather name="heart" size={16} color="white" fill={AppColors.primary} />
+      <Feather name="heart" size={16} color="white" fill={colors.primary} />
       <Text style={styles.miniLikeText}>+1</Text>
     </Animated.View>
   );
@@ -150,6 +157,7 @@ export const ReelProgressBar: React.FC<ReelProgressBarProps> = ({
   isPlaying,
   progress,
 }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.progressContainer}>
       <View style={styles.progressTrack}>
@@ -168,6 +176,7 @@ export const ReelProgressBar: React.FC<ReelProgressBarProps> = ({
 
 interface ActionButtonProps {
   icon: string;
+  iconElement?: React.ReactNode;
   label: string;
   filled?: boolean;
   activeColor?: string;
@@ -178,13 +187,17 @@ interface ActionButtonProps {
 
 export const ActionButton: React.FC<ActionButtonProps> = ({
   icon,
+  iconElement,
   label,
   filled = false,
-  activeColor = AppColors.primary,
+  activeColor: activeColorProp,
   onPress,
   onPressIn,
   isActive = false,
 }) => {
+  const { colors } = useTheme();
+  const activeColor = activeColorProp ?? colors.primary;
+  const styles = useThemedStyles(createStyles);
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -195,13 +208,15 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       }}
       style={styles.actionButton}
     >
-      <Feather
-        name={icon as any}
-        size={28}
-        color={isActive ? activeColor : 'white'}
-        fill={filled || isActive ? activeColor : undefined}
-        strokeWidth={1.5}
-      />
+      {iconElement ?? (
+        <Feather
+          name={icon as any}
+          size={28}
+          color={isActive ? activeColor : 'white'}
+          fill={filled || isActive ? activeColor : undefined}
+          strokeWidth={1.5}
+        />
+      )}
       {label ? <Text style={styles.actionLabel}>{label}</Text> : null}
     </TouchableOpacity>
   );
@@ -224,6 +239,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   onPressIn,
   isCurrentUser = false,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const showFollowButton = user.isFollowing === false && !isCurrentUser;
 
   // Animation values
@@ -333,6 +349,8 @@ export const Caption: React.FC<CaptionProps> = ({
   caption,
   isVerified = false,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [expanded, setExpanded] = useState(false);
 
   const shouldTruncate = caption.length > 80;
@@ -345,7 +363,7 @@ export const Caption: React.FC<CaptionProps> = ({
           <Feather
             name="check-circle"
             size={14}
-            color={AppColors.primary}
+            color={colors.primary}
             style={styles.verifiedBadge}
           />
         )}
@@ -372,6 +390,7 @@ interface MusicTrackProps {
 }
 
 export const MusicTrack: React.FC<MusicTrackProps> = ({ music, artist }) => {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.musicContainer}>
       <Feather name="music" size={14} color="white" style={styles.musicIcon} />
@@ -393,6 +412,7 @@ interface PlayPauseIndicatorProps {
 }
 
 export const PlayPauseIndicator: React.FC<PlayPauseIndicatorProps> = ({ visible, isPaused = false }) => {
+  const styles = useThemedStyles(createStyles);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.5);
 
@@ -460,6 +480,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
   onAppeal,
   onEdit,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const [showHeart, setShowHeart] = useState(false);
   const [isLiked, setIsLiked] = useState(item.isLiked);
   const [showPlayPause, setShowPlayPause] = useState(false);
@@ -623,6 +644,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
         <View pointerEvents="auto">
           <ActionButton
             icon="heart"
+            iconElement={<AnimatedHeartIcon isLiked={isLiked} size={28} inactiveColor="white" />}
             label={formatCount(item.likes)}
             filled={isLiked}
             onPress={handleLike}
@@ -648,16 +670,6 @@ export const ReelCard: React.FC<ReelCardProps> = ({
             onPressIn={handleButtonPress}
           />
         </View>
-
-        {/* Music disc */}
-        <View style={styles.musicDisc} pointerEvents="auto">
-          <View style={styles.musicDiscInner}>
-            <Image
-              source={{ uri: item.user.avatar || 'https://i.pravatar.cc/150' }}
-              style={styles.musicDiscCover}
-            />
-          </View>
-        </View>
       </View>
 
       {/* Bottom content - positioned above tab bar */}
@@ -667,7 +679,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
       >
         {item.caption && (
           <Caption
-            username={item.user.username}
+            username={item.user.displayName || item.user.username}
             caption={item.caption}
             isVerified={item.user.isVerified}
           />
@@ -713,7 +725,7 @@ export const ReelCard: React.FC<ReelCardProps> = ({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     width: SCREEN_WIDTH,
     backgroundColor: '#000',
@@ -804,7 +816,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -820,7 +832,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
   actionButton: {
     alignItems: 'center',
@@ -834,29 +846,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  musicDisc: {
-    marginTop: 10,
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  musicDiscInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    overflow: 'hidden',
-  },
-  musicDiscCover: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
   },
   bottomContent: {
     position: 'absolute',

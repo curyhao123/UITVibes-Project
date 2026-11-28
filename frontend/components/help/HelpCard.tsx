@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface HelpCardData {
   id: string;
@@ -31,6 +33,8 @@ interface HelpCardProps {
 export const HelpCard = memo(function HelpCard(
   { card, isFirst, isLast }: HelpCardProps,
 ) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <TouchableOpacity
       style={[
@@ -46,7 +50,7 @@ export const HelpCard = memo(function HelpCard(
         <Feather
           name={card.icon as any}
           size={20}
-          color={AppColors.primary}
+          color={colors.primary}
           strokeWidth={2}
         />
       </View>
@@ -61,42 +65,42 @@ export const HelpCard = memo(function HelpCard(
       <Feather
         name="chevron-right"
         size={18}
-        color={AppColors.iconMuted}
+        color={colors.iconMuted}
         strokeWidth={2}
       />
     </TouchableOpacity>
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
     gap: 14,
   },
   cardFirst: {
     borderTopLeftRadius: borderRadius.md,
     borderTopRightRadius: borderRadius.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
+    borderTopColor: colors.borderLight,
   },
   cardLast: {
     borderBottomLeftRadius: borderRadius.md,
     borderBottomRightRadius: borderRadius.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
     marginBottom: 4,
   },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: `${AppColors.primary}10`,
+    backgroundColor: `${colors.primary}10`,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
@@ -107,11 +111,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   description: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
 });

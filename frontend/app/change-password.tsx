@@ -15,10 +15,14 @@ import { CompactHeader } from '../components/StaticPremiumHeader';
 import { FormInput } from '../components/FormInput';
 import { getCurrentUserEmail } from '../services/session';
 import { sendChangePasswordOtp } from '../services/authService';
-import { AppColors, borderRadius, layoutPadding } from '../constants/theme';
+import { borderRadius, layoutPadding, type ThemeColors } from '../constants/theme';
 import { Typography } from '../constants/typography';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 export default function ChangePasswordScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [emailLoaded, setEmailLoaded] = useState(false);
@@ -126,7 +130,7 @@ export default function ChangePasswordScreen() {
                 <Feather
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={18}
-                  color={AppColors.iconMuted}
+                  color={colors.iconMuted}
                 />
               </TouchableOpacity>
             }
@@ -154,39 +158,39 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: layoutPadding,
     paddingBottom: 32,
   },
   card: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 18,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   title: {
     ...Typography.sectionTitle,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   subtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginBottom: 18,
   },
   errorText: {
     ...Typography.caption,
-    color: AppColors.error,
+    color: colors.error,
     marginBottom: 12,
   },
   primaryBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',

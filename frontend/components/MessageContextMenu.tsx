@@ -26,7 +26,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SPRING_GENTLE } from '../animations/spring';
-import { AppColors, borderRadius } from '../constants/theme';
+import { borderRadius, type ThemeColors } from '../constants/theme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IS_DESKTOP = Platform.OS === 'web' || SCREEN_WIDTH >= 640;
@@ -47,6 +49,8 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   actions,
   onClose,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const translateY = useSharedValue(400);
   const opacity = useSharedValue(0);
 
@@ -95,13 +99,13 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         {/* Sheet / Overlay */}
         {IS_DESKTOP ? (
           <Animated.View style={[styles.desktopOverlay, sheetStyle]}>
-            {renderMenu(handleEdit, handleDelete)}
+            {renderMenu(handleEdit, handleDelete, styles, colors)}
           </Animated.View>
         ) : (
           <Animated.View style={[styles.bottomSheet, sheetStyle]}>
             {/* Drag handle */}
             <View style={styles.dragHandle} />
-            {renderMenu(handleEdit, handleDelete)}
+            {renderMenu(handleEdit, handleDelete, styles, colors)}
           </Animated.View>
         )}
       </View>
@@ -109,7 +113,12 @@ export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   );
 };
 
-function renderMenu(onEdit: () => void, onDelete: () => void) {
+function renderMenu(
+  onEdit: () => void,
+  onDelete: () => void,
+  styles: ReturnType<typeof createStyles>,
+  colors: ThemeColors,
+) {
   return (
     <View style={styles.menu}>
       {/* Edit */}
@@ -118,7 +127,7 @@ function renderMenu(onEdit: () => void, onDelete: () => void) {
         onPress={onEdit}
         activeOpacity={0.7}
       >
-        <Feather name="edit-2" size={18} color={AppColors.textSecondary} />
+        <Feather name="edit-2" size={18} color={colors.textSecondary} />
         <Text style={styles.menuItemText}>Edit message</Text>
       </TouchableOpacity>
 
@@ -131,14 +140,14 @@ function renderMenu(onEdit: () => void, onDelete: () => void) {
         onPress={onDelete}
         activeOpacity={0.7}
       >
-        <Feather name="trash-2" size={18} color={AppColors.error} />
+        <Feather name="trash-2" size={18} color={colors.error} />
         <Text style={[styles.menuItemText, styles.deleteText]}>Delete message</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   modalRoot: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -151,7 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   bottomSheet: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
     paddingBottom: 34,
@@ -164,7 +173,7 @@ const styles = StyleSheet.create({
     left: '50%',
     transform: [{ translateX: -140 }, { translateY: -70 }],
     width: 280,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingVertical: 6,
     shadowColor: '#000',
@@ -176,7 +185,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     alignSelf: 'center',
     marginBottom: 6,
   },
@@ -193,15 +202,15 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 15,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
   },
   deleteText: {
-    color: AppColors.error,
+    color: colors.error,
     fontWeight: '500',
   },
   divider: {
     height: 1,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     marginHorizontal: 12,
   },
 });

@@ -11,10 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { PushButton } from '../PushButton';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface ChatInputBarProps {
   isChatBlocked: boolean;
@@ -45,6 +46,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onRemoveImage,
   onSend,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
   if (isChatBlocked) {
@@ -150,7 +152,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   keyboardAvoid: {
     // Wraps input so it sits flush against the keyboard
   },
@@ -161,8 +163,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
   },
   blockedInputTextWrap: {
     flex: 1,
@@ -170,11 +172,11 @@ const styles = StyleSheet.create({
   },
   blockedInputTitle: {
     ...Typography.bodySemibold,
-    color: AppColors.text,
+    color: colors.text,
   },
   blockedInputMessage: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 18,
   },
   inputContainer: {
@@ -183,8 +185,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
-    backgroundColor: AppColors.surfaceElevated,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
     gap: 8,
   },
   attachBtn: {
@@ -195,7 +197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingTop: 8,
     paddingBottom: 4,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
   },
   imagePreviewContainer: {
     width: 64,
@@ -231,8 +233,8 @@ const styles = StyleSheet.create({
   messageInput: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
-    backgroundColor: AppColors.borderLight,
+    color: colors.text,
+    backgroundColor: colors.borderLight,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,

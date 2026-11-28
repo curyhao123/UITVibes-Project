@@ -2,8 +2,9 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { ModernTabBar } from '../../components/ModernTabBar';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 /**
  * Bottom tabs — Home, Search, Create, Reels, Profile.
@@ -16,6 +17,7 @@ const TAB_ICON_SIZE = 23;
 const CREATE_ICON_SIZE = 26;
 
 export default function TabLayout() {
+  const styles = useThemedStyles(createStyles);
   return (
     <Tabs
        
@@ -94,18 +96,18 @@ export default function TabLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   createIconWrap: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -10,
     ...Platform.select({
       ios: {
-        shadowColor: AppColors.primaryDark,
+        shadowColor: colors.primaryDark,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.36,
         shadowRadius: 8,

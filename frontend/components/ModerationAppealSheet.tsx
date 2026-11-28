@@ -5,7 +5,7 @@
  * mà muốn nhờ admin xem xét lại. Khiếu nại KHÔNG tự đảo ngược quyết định của AI —
  * nó chỉ chuyển nội dung sang vùng chờ admin quyết định lần cuối.
  */
-import { borderRadius } from "@/constants/theme";
+import { borderRadius, type ThemeColors } from "@/constants/theme";
 import {
   extractApiErrorMessage,
   submitModerationAppeal,
@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const MIN_REASON_LENGTH = 10;
 const MAX_REASON_LENGTH = 500;
@@ -46,6 +47,7 @@ export const ModerationAppealSheet: React.FC<Props> = ({
   onClose,
   onSubmitted,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,14 +192,14 @@ export const ModerationAppealSheet: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.45)",
   },
   sheet: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 28,
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 10,
@@ -226,7 +228,7 @@ const styles = StyleSheet.create({
   bodyContent: { padding: 20, gap: 14 },
   description: { fontSize: 13, lineHeight: 19, color: "#6B7280" },
   previewBox: {
-    backgroundColor: "#F9FAFB",
+    backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     padding: 12,
     gap: 6,
@@ -241,20 +243,20 @@ const styles = StyleSheet.create({
   previewText: { fontSize: 13, lineHeight: 18, color: "#374151" },
   input: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     padding: 12,
     fontSize: 14,
     color: "#111827",
     minHeight: 100,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
   },
   counter: { fontSize: 11, color: "#9CA3AF", textAlign: "right" },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: `${colors.error}14`,
     padding: 10,
     borderRadius: borderRadius.sm,
   },
@@ -274,7 +276,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minHeight: 48,
   },
-  cancelBtn: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+  cancelBtn: { backgroundColor: colors.surface, borderColor: colors.border },
   cancelText: { fontSize: 14, fontWeight: "600", color: "#6B7280" },
   submitBtn: { backgroundColor: "#8B5CF6", borderColor: "#8B5CF6" },
   submitBtnDisabled: { opacity: 0.5 },

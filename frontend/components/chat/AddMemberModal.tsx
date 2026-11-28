@@ -12,9 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { Avatar } from '../Avatar';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface AddMemberModalProps {
   visible: boolean;
@@ -39,6 +41,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   onAddMember,
   onClose,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <Modal
       visible={visible}
@@ -54,15 +58,15 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
           <View style={styles.settingsSheetHeader}>
             <Text style={styles.settingsSheetTitle}>Add Member</Text>
             <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+              <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
           <View style={styles.friendSearchContainer}>
-            <Feather name="search" size={16} color={AppColors.textMuted} strokeWidth={2} />
+            <Feather name="search" size={16} color={colors.textMuted} strokeWidth={2} />
             <TextInput
               style={styles.friendSearchInput}
               placeholder="Search friends..."
-              placeholderTextColor={AppColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={friendSearch}
               onChangeText={onChangeFriendSearch}
               autoFocus
@@ -93,9 +97,9 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
                     </Text>
                   </View>
                   {isAdding ? (
-                    <ActivityIndicator size="small" color={AppColors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} />
                   ) : (
-                    <Feather name="user-plus" size={20} color={AppColors.primary} strokeWidth={2} />
+                    <Feather name="user-plus" size={20} color={colors.primary} strokeWidth={2} />
                   )}
                 </TouchableOpacity>
               );
@@ -103,7 +107,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             ListEmptyComponent={
               isLoadingFriends ? (
                 <View style={styles.emptyFriends}>
-                  <ActivityIndicator size="small" color={AppColors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               ) : (
                 <Text style={styles.emptyFriends}>
@@ -118,14 +122,14 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   settingsSheet: {
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '85%',
@@ -137,12 +141,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   settingsSheetTitle: {
     ...Typography.bodySemibold,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
   },
   friendSearchContainer: {
@@ -152,14 +156,14 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 10,
     gap: 8,
   },
   friendSearchInput: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
+    color: colors.text,
     padding: 0,
   },
   memberRow: {
@@ -174,12 +178,12 @@ const styles = StyleSheet.create({
   },
   memberName: {
     ...Typography.body,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   emptyFriends: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     paddingVertical: 32,
   },

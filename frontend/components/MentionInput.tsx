@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
 import { getFollowing, searchUsers, User } from '../services/userService';
 import { Avatar } from './Avatar';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface MentionInputProps {
   value: string;
@@ -34,6 +36,8 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   inputStyle,
   maxLength,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [mentionStartIndex, setMentionStartIndex] = useState(-1);
@@ -227,7 +231,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         ref={inputRef}
         style={[styles.input, inputStyle]}
         placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor ?? AppColors.iconMuted}
+        placeholderTextColor={placeholderTextColor ?? colors.iconMuted}
         value={value}
         onChangeText={handleTextChange}
         onSubmitEditing={onSubmit}
@@ -273,7 +277,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     position: 'relative',
   },
@@ -283,8 +287,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     fontSize: 14,
-    color: AppColors.text,
-    backgroundColor: '#F2F2F2',
+    color: colors.text,
+    backgroundColor: colors.borderLight,
     borderRadius: 18,
   },
   suggestionsContainer: {
@@ -292,7 +296,7 @@ const styles = StyleSheet.create({
     bottom: '100%',
     left: 0,
     right: 0,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     maxHeight: 280,
     marginBottom: 8,
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     borderWidth: 1,
-    borderColor: AppColors.borderLight,
+    borderColor: colors.borderLight,
     overflow: 'hidden',
   },
   suggestionsList: {
@@ -312,13 +316,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
-    backgroundColor: AppColors.background,
+    borderBottomColor: colors.borderLight,
+    backgroundColor: colors.background,
   },
   headerText: {
     fontSize: 11,
     fontWeight: '600',
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -326,13 +330,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
-    backgroundColor: AppColors.background,
+    borderTopColor: colors.borderLight,
+    backgroundColor: colors.background,
     alignItems: 'center',
   },
   footerText: {
     fontSize: 11,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -340,7 +344,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   suggestionInfo: {
     flex: 1,
@@ -349,15 +353,15 @@ const styles = StyleSheet.create({
   suggestionName: {
     fontSize: 14,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
   },
   suggestionUsername: {
     fontSize: 12,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
   friendBadge: {
-    backgroundColor: `${AppColors.primary}15`,
+    backgroundColor: `${colors.primary}15`,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -365,7 +369,7 @@ const styles = StyleSheet.create({
   friendBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: AppColors.primary,
+    color: colors.primary,
   },
   loadingContainer: {
     padding: 20,
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   emptyContainer: {
     padding: 20,
@@ -381,6 +385,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
 });

@@ -11,10 +11,8 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { useApp } from "../context/AppContext";
 import { Comment } from "../data/mockData";
 import { uploadMedia } from "../services/postService";
-import { Avatar } from "./Avatar";
 import { MentionInput } from "./MentionInput";
 
 interface CommentInputProps {
@@ -37,7 +35,6 @@ export const CommentInput: React.FC<CommentInputProps> = ({
   isSubmitting = false,
 }) => {
   const { colors, isDark } = useTheme();
-  const { currentUser } = useApp();
   const isEditMode = editingComment != null;
 
   const [text, setText] = useState(editingComment?.text ?? "");
@@ -212,15 +209,6 @@ export const CommentInput: React.FC<CommentInputProps> = ({
 
       {/* Input row */}
       <View style={styles.inputRow}>
-        {/* Avatar */}
-        <View style={styles.avatarWrap}>
-          {currentUser ? (
-            <Avatar user={currentUser} size="tiny" />
-          ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: colors.borderLight }]} />
-          )}
-        </View>
-
         <MentionInput
           value={text}
           onChangeText={setText}
@@ -340,14 +328,6 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  avatarWrap: {
-    marginRight: 10,
-  },
-  avatarFallback: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
   },
   mentionInputContainer: {
     flex: 1,

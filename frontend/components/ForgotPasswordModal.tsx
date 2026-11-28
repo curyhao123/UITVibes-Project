@@ -37,12 +37,14 @@ import Animated, {
   FadeIn,
   FadeOut
 } from "react-native-reanimated";
-import { AppColors, borderRadius } from "../constants/theme";
+import { borderRadius, type ThemeColors } from "../constants/theme";
 import { Typography } from "../constants/typography";
 import { forgotPassword, resetPassword } from "../services/authService";
 import { Button } from "./Button";
 import OTPInput from "./OTPInput";
 import { Toast } from "./Toast";
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -55,17 +57,17 @@ interface ForgotPasswordModalProps {
 
 // ─── Password Strength Indicator ──────────────────────────────────────────────
 
-function getPasswordStrength(password: string): {
+function getPasswordStrength(password: string, colors: ThemeColors): {
   label: string;
   color: string;
   width: DimensionValue;
 } {
   const len = password.length;
   if (len === 0) return { label: "", color: "transparent", width: "0%" };
-  if (len < 6) return { label: "Too short", color: AppColors.error, width: "20%" };
+  if (len < 6) return { label: "Too short", color: colors.error, width: "20%" };
   if (len < 8) return { label: "Weak", color: "#F59E0B", width: "40%" };
   if (len < 12) return { label: "Good", color: "#3B82F6", width: "70%" };
-  return { label: "Strong", color: AppColors.success, width: "95%" };
+  return { label: "Strong", color: colors.success, width: "95%" };
 }
 
 // ─── Step 1: Email Input ──────────────────────────────────────────────────────
@@ -77,6 +79,9 @@ interface Step1Props {
 }
 
 function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) {
+  const { colors } = useTheme();
+  const stepStyles = useThemedStyles(createStepStyles);
+  const styles = useThemedStyles(createStyles);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [localError, setLocalError] = useState("");
@@ -125,7 +130,7 @@ function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) 
         <Feather
           name="lock"
           size={32}
-          color={AppColors.primary}
+          color={colors.primary}
           strokeWidth={1.5}
         />
       </View>
@@ -145,7 +150,7 @@ function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) 
             displayError && styles.inputError,
           ]}
           placeholder="you@example.com"
-          placeholderTextColor={AppColors.iconMuted}
+          placeholderTextColor={colors.iconMuted}
           value={email}
           onChangeText={handleChange}
           onBlur={handleBlur}
@@ -162,7 +167,7 @@ function ForgotPasswordStep1({ onNext, isSubmitting, submitError }: Step1Props) 
             <Feather
               name="alert-circle"
               size={13}
-              color={AppColors.error}
+              color={colors.error}
               strokeWidth={2}
             />
             <Text style={stepStyles.errorText}>{displayError}</Text>
@@ -200,6 +205,9 @@ function ForgotPasswordStep2({
   isSubmitting,
   submitError,
 }: Step2Props) {
+  const { colors } = useTheme();
+  const stepStyles = useThemedStyles(createStepStyles);
+  const styles = useThemedStyles(createStyles);
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -228,7 +236,7 @@ function ForgotPasswordStep2({
   const otpCode = otp.join("");
 
   // Password strength
-  const strength = getPasswordStrength(password);
+  const strength = getPasswordStrength(password, colors);
 
   // Validation
   const passwordError =
@@ -292,7 +300,7 @@ function ForgotPasswordStep2({
         <Feather
           name="lock"
           size={32}
-          color={AppColors.primary}
+          color={colors.primary}
           strokeWidth={1.5}
         />
       </View>
@@ -326,7 +334,7 @@ function ForgotPasswordStep2({
           <TextInput
             style={[stepStyles.input, stepStyles.passwordInput, passwordError && styles.inputError]}
             placeholder="At least 6 characters"
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={password}
             onChangeText={(val) => {
               setPassword(val);
@@ -346,7 +354,7 @@ function ForgotPasswordStep2({
             <Feather
               name={showPassword ? "eye-off" : "eye"}
               size={18}
-              color={AppColors.iconMuted}
+              color={colors.iconMuted}
             />
           </TouchableOpacity>
         </View>
@@ -369,7 +377,7 @@ function ForgotPasswordStep2({
         )}
         {passwordError ? (
           <View style={stepStyles.errorRow}>
-            <Feather name="alert-circle" size={13} color={AppColors.error} strokeWidth={2} />
+            <Feather name="alert-circle" size={13} color={colors.error} strokeWidth={2} />
             <Text style={stepStyles.errorText}>{passwordError}</Text>
           </View>
         ) : null}
@@ -386,7 +394,7 @@ function ForgotPasswordStep2({
               confirmError && styles.inputError,
             ]}
             placeholder="Re-enter your password"
-            placeholderTextColor={AppColors.iconMuted}
+            placeholderTextColor={colors.iconMuted}
             value={confirmPassword}
             onChangeText={(val) => {
               setConfirmPassword(val);
@@ -407,13 +415,13 @@ function ForgotPasswordStep2({
             <Feather
               name={showConfirm ? "eye-off" : "eye"}
               size={18}
-              color={AppColors.iconMuted}
+              color={colors.iconMuted}
             />
           </TouchableOpacity>
         </View>
         {confirmError ? (
           <View style={stepStyles.errorRow}>
-            <Feather name="alert-circle" size={13} color={AppColors.error} strokeWidth={2} />
+            <Feather name="alert-circle" size={13} color={colors.error} strokeWidth={2} />
             <Text style={stepStyles.errorText}>{confirmError}</Text>
           </View>
         ) : null}
@@ -422,7 +430,7 @@ function ForgotPasswordStep2({
       {/* Global error */}
       {displayError ? (
         <View style={stepStyles.globalErrorRow}>
-          <Feather name="alert-triangle" size={15} color={AppColors.error} strokeWidth={2} />
+          <Feather name="alert-triangle" size={15} color={colors.error} strokeWidth={2} />
           <Text style={stepStyles.globalErrorText}>{displayError}</Text>
         </View>
       ) : null}
@@ -457,7 +465,7 @@ function ForgotPasswordStep2({
 
       {/* Back */}
       <TouchableOpacity style={stepStyles.backRow} onPress={onBack} disabled={isSubmitting}>
-        <Feather name="arrow-left" size={15} color={AppColors.textMuted} />
+        <Feather name="arrow-left" size={15} color={colors.textMuted} />
         <Text style={stepStyles.backText}>Back</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -471,6 +479,8 @@ export function ForgotPasswordModal({
   onClose,
   onSuccess,
 }: ForgotPasswordModalProps) {
+  const { colors } = useTheme();
+  const modalStyles = useThemedStyles(createModalStyles);
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -540,7 +550,7 @@ export function ForgotPasswordModal({
             disabled={isSubmitting}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="x" size={20} color={AppColors.text} />
+            <Feather name="x" size={20} color={colors.text} />
           </TouchableOpacity>
           <View style={modalStyles.progressWrap}>
             <View
@@ -598,10 +608,10 @@ export default ForgotPasswordModal;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const modalStyles = StyleSheet.create({
+const createModalStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -611,16 +621,16 @@ const modalStyles = StyleSheet.create({
     paddingTop: Platform.OS === "ios" ? 4 : 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.background,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -633,15 +643,15 @@ const modalStyles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   progressDotActive: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
   progressLine: {
     width: 40,
     height: 2,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     marginHorizontal: 4,
   },
   scroll: {
@@ -655,7 +665,7 @@ const modalStyles = StyleSheet.create({
   },
 });
 
-const stepStyles = StyleSheet.create({
+const createStepStyles = (colors: ThemeColors) => StyleSheet.create({
   content: {
     alignItems: "center",
   },
@@ -663,7 +673,7 @@ const stepStyles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -671,21 +681,21 @@ const stepStyles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 10,
     letterSpacing: -0.5,
     textAlign: "center",
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     marginBottom: 32,
     letterSpacing: -0.1,
     textAlign: "center",
   },
   emailHighlight: {
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "600",
   },
   inputWrap: {
@@ -694,7 +704,7 @@ const stepStyles = StyleSheet.create({
   },
   label: {
     ...Typography.captionSemibold,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 8,
     letterSpacing: 0,
   },
@@ -702,12 +712,12 @@ const stepStyles = StyleSheet.create({
     width: "100%",
     height: 52,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
   },
   passwordWrap: {
@@ -748,7 +758,7 @@ const stepStyles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: AppColors.error,
+    color: colors.error,
     letterSpacing: -0.1,
     flex: 1,
   },
@@ -757,7 +767,7 @@ const stepStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: `${AppColors.error}10`,
+    backgroundColor: `${colors.error}10`,
     borderRadius: borderRadius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -765,7 +775,7 @@ const stepStyles = StyleSheet.create({
   },
   globalErrorText: {
     fontSize: 14,
-    color: AppColors.error,
+    color: colors.error,
     letterSpacing: -0.1,
     flex: 1,
     lineHeight: 20,
@@ -788,12 +798,12 @@ const stepStyles = StyleSheet.create({
   },
   resendLabel: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   resendLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: AppColors.primary,
+    color: colors.primary,
     letterSpacing: -0.1,
   },
   resendLinkDisabled: {
@@ -802,7 +812,7 @@ const stepStyles = StyleSheet.create({
   countdownText: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
   backRow: {
@@ -814,14 +824,14 @@ const stepStyles = StyleSheet.create({
   backText: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   inputError: {
-    borderColor: AppColors.error,
-    backgroundColor: `${AppColors.error}06`,
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}06`,
   },
 });

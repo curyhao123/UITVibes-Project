@@ -6,11 +6,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { formatDistanceToNow } from '../../utils/time';
 import { Avatar } from '../Avatar';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface MessageBubbleProps {
   item: any;
@@ -76,6 +77,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   onPress,
   onLongPress,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const showTimeDivider = shouldShowTimeDivider(item, previousMessage);
   const nextHasTimeDivider = nextMessage
@@ -217,20 +219,20 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
 export const MessageBubble = React.memo(MessageBubbleComponent);
 MessageBubble.displayName = 'MessageBubble';
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timeDivider: {
     alignItems: 'center',
     marginVertical: 12,
   },
   timeDividerPill: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 6,
   },
   timeDividerText: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontSize: 14,
   },
   messageRow: {
@@ -286,7 +288,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bubbleMine: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
   },
   bubbleMineSingle: {},
   bubbleMineFirst: {
@@ -300,9 +302,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 4,
   },
   bubbleTheirs: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   bubbleImageOnly: {
     backgroundColor: 'transparent',
@@ -322,7 +324,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     ...Typography.body,
-    color: AppColors.text,
+    color: colors.text,
   },
   messageTextMine: {
     color: '#FFFFFF',
@@ -344,6 +346,6 @@ const styles = StyleSheet.create({
   msgTime: {
     ...Typography.caption,
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
 });

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { StaticPremiumHeader } from "../../components/StaticPremiumHeader";
 import { useApp } from "../../context/AppContext";
 import {
@@ -28,10 +28,13 @@ import {
 } from "../../services/api";
 import { User, Post } from "../../data/mockData";
 import { RecentSearch } from "../../services/session";
-import { AppColors, layoutPadding } from "../../constants/theme";
+import { layoutPadding, type ThemeColors } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useTheme } from "../../context/ThemeContext";
+import { getHashtagColor } from "../../utils/hashtagColor";
 import defaultAvatar from "../../assets/images/default-avatar.png";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
+import { useOpenProfile } from "../../hooks/useOpenProfile";
 
 type HashtagOption = {
   id: string;
@@ -40,9 +43,13 @@ type HashtagOption = {
 };
 
 export default function SearchScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const { colors } = useTheme();
-  const { toggleFollow } = useApp();
+  // `ts` changes on every hashtag tap so re-tapping the same tag still re-runs the search.
+  const { hashtag: hashtagParam, ts: hashtagParamTs } = useLocalSearchParams<{ hashtag?: string; ts?: string }>();
+  const { toggleFollow, currentUser } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -208,6 +215,10 @@ export default function SearchScreen() {
   );
 
   useEffect(() => {
+    if (activeTab === "posts" && selectedHashtag) {
+      void loadHashtagPosts(selectedHashtag);
+      return;
+    }
     void runSearch(searchQuery, activeTab);
   }, [activeTab, runSearch]);
 
@@ -219,13 +230,13 @@ export default function SearchScreen() {
       avatarUrl: user.avatar || "",
       followersCount: user.followers,
     });
-    router.push(`/profile/${user.id}` as any);
+    openProfile(user.id);
   };
 
   const handleRecentClick = async (item: RecentSearch) => {
     await removeRecentSearch(item.userId);
     await saveRecentSearch(item);
-    router.push(`/profile/${item.userId}` as any);
+    openProfile(item.userId);
   };
 
   const handleRemoveRecent = async (userId: string, e: any) => {
@@ -262,20 +273,41 @@ export default function SearchScreen() {
     );
   };
 
-  const handleHashtagSelect = async (tag: HashtagOption) => {
-    const normalized = normalizeHashtagName(tag.name);
-    if (!normalized) return;
-    setSearchQuery(`#${normalized}`);
-    setSelectedHashtag(normalized);
-    setHashtagResults([]);
+  const loadHashtagPosts = async (hashtag: string) => {
     setIsLoadingPosts(true);
     try {
-      const results = await getPostsByHashtag(normalized, 0, 30);
+      const results = await getPostsByHashtag(hashtag, 0, 30);
       setPosts(results);
     } finally {
       setIsLoadingPosts(false);
     }
   };
+
+  const selectHashtag = (name: string) => {
+    const normalized = normalizeHashtagName(name);
+    if (!normalized) return null;
+    setSearchQuery(`#${normalized}`);
+    setSelectedHashtag(normalized);
+    setHashtagResults([]);
+    return normalized;
+  };
+
+  const handleHashtagSelect = async (tag: HashtagOption) => {
+    const normalized = selectHashtag(tag.name);
+    if (normalized) await loadHashtagPosts(normalized);
+  };
+
+  useEffect(() => {
+    if (!hashtagParam) return;
+    const normalized = selectHashtag(hashtagParam);
+    if (!normalized) return;
+    // Switching tabs lets the tab effect load the hashtag's posts; otherwise load them here.
+    if (activeTab === "posts") {
+      void loadHashtagPosts(normalized);
+    } else {
+      setActiveTab("posts");
+    }
+  }, [hashtagParam, hashtagParamTs]);
 
   const renderRecentItem = ({ item }: { item: RecentSearch }) => (
     <TouchableOpacity
@@ -328,19 +360,21 @@ export default function SearchScreen() {
           </Text>
         ) : null}
       </View>
-      <TouchableOpacity
-        style={[
-          styles.followButton,
-          item.isFollowing && [styles.followingButton, { backgroundColor: colors.border }],
-        ]}
-        onPress={() => handleFollowToggle(item.id)}
-      >
-        <Text
-          style={[styles.followText, item.isFollowing && [styles.followingText, { color: colors.text }]]}
+      {item.id !== currentUser?.id && (
+        <TouchableOpacity
+          style={[
+            styles.followButton,
+            item.isFollowing && [styles.followingButton, { backgroundColor: colors.border }],
+          ]}
+          onPress={() => handleFollowToggle(item.id)}
         >
-          {item.isFollowing ? "Following" : "Follow"}
-        </Text>
-      </TouchableOpacity>
+          <Text
+            style={[styles.followText, item.isFollowing && [styles.followingText, { color: colors.text }]]}
+          >
+            {item.isFollowing ? "Following" : "Follow"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 
@@ -368,21 +402,24 @@ export default function SearchScreen() {
   const showTrendingHashtags =
     activeTab === "posts" && !searchQuery.trim() && trendingHashtags.length > 0;
 
-  const renderTrendingHashtag = ({ item }: { item: HashtagOption }) => (
-    <TouchableOpacity
-      style={[styles.trendingChip, { backgroundColor: colors.borderLight }]}
-      onPress={() => handleHashtagSelect(item)}
-    >
-      <Text style={[styles.trendingChipText, { color: colors.text }]}>#{item.name}</Text>
-    </TouchableOpacity>
-  );
+  const renderTrendingHashtag = ({ item }: { item: HashtagOption }) => {
+    const tagColor = getHashtagColor(item.name, colors.hashtagPalette);
+    return (
+      <TouchableOpacity
+        style={[styles.trendingChip, { backgroundColor: `${tagColor}1F` }]}
+        onPress={() => handleHashtagSelect(item)}
+      >
+        <Text style={[styles.trendingChipText, { color: tagColor }]}>#{item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderHashtagItem = ({ item }: { item: HashtagOption }) => (
     <TouchableOpacity
       style={[styles.hashtagItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
       onPress={() => handleHashtagSelect(item)}
     >
-      <Text style={[styles.hashtagName, { color: colors.text }]}>#{item.name}</Text>
+      <Text style={[styles.hashtagName, { color: getHashtagColor(item.name, colors.hashtagPalette) }]}>#{item.name}</Text>
       <Text style={[styles.hashtagCount, { color: colors.textMuted }]}>{item.usageCount} posts</Text>
     </TouchableOpacity>
   );
@@ -639,16 +676,16 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   searchIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -660,7 +697,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -669,7 +706,7 @@ const styles = StyleSheet.create({
     ...Typography.body,
     flex: 1,
     marginLeft: 8,
-    color: AppColors.text,
+    color: colors.text,
     padding: 0,
   },
   tabContainer: {
@@ -683,7 +720,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   activeTab: {
-    borderBottomColor: AppColors.primary,
+    borderBottomColor: colors.primary,
   },
   postItem: {
     flex: 1 / 3,
@@ -714,11 +751,11 @@ const styles = StyleSheet.create({
   displayNameHandle: {
     fontWeight: "700",
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.2,
   },
   userBio: {
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
@@ -727,13 +764,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   followButton: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
   },
   followingButton: {
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   followText: {
     color: "white",
@@ -741,15 +778,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   followingText: {
-    color: AppColors.text,
+    color: colors.text,
   },
   userItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   avatar: {
     width: 56,
@@ -776,21 +813,21 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...Typography.body,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
     textAlign: "center",
     marginTop: 16,
     fontSize: 16,
   },
   emptySubtitle: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: "center",
     marginTop: 6,
     fontSize: 14,
   },
   emptyText: {
     ...Typography.body,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: "center",
   },
   recentHeader: {
@@ -804,12 +841,12 @@ const styles = StyleSheet.create({
   recentTitle: {
     fontWeight: "700",
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
   },
   clearAllText: {
     fontWeight: "600",
     fontSize: 14,
-    color: AppColors.primary,
+    color: colors.primary,
   },
   recentListContent: {
     paddingBottom: 120,
@@ -832,11 +869,11 @@ const styles = StyleSheet.create({
   recentDisplayName: {
     fontWeight: "600",
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
   },
   recentBio: {
     fontSize: 13,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   recentRemoveBtn: {
@@ -853,7 +890,7 @@ const styles = StyleSheet.create({
   trendingTitle: {
     fontWeight: "700",
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
   },
   trendingList: {
     paddingHorizontal: layoutPadding,
@@ -862,13 +899,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
-    backgroundColor: AppColors.borderLight,
     marginRight: 10,
   },
   trendingChipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: AppColors.text,
   },
   hashtagItem: {
     flexDirection: "row",
@@ -877,16 +912,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   hashtagName: {
     fontSize: 15,
     fontWeight: "600",
-    color: AppColors.text,
+    color: colors.text,
   },
   hashtagCount: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
 });

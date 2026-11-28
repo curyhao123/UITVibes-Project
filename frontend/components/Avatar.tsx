@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { User } from '../data/mockData';
-import { AppColors } from '../constants/theme';
+import { type ThemeColors } from '../constants/theme';
 import defaultAvatar from '../assets/images/default-avatar.png';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 interface AvatarProps {
   user: User;
@@ -24,6 +26,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   showOnlineIndicator = false,
   isOnline: isOnlineOverride,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
     setLoadFailed(false);
@@ -46,7 +50,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const getBorderColor = (): string => {
     if (!showBorder) return 'transparent';
-    return isViewed ? AppColors.border : AppColors.primary;
+    return isViewed ? colors.border : colors.primary;
   };
 
   const getBorderWidth = (): number => {
@@ -123,7 +127,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   borderWrap: {
     overflow: 'visible',
     justifyContent: 'center',
@@ -131,12 +135,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   avatarImage: {
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   onlineDot: {
     position: 'absolute',
     backgroundColor: '#22c55e',
     borderWidth: 2,
-    borderColor: AppColors.surfaceElevated,
+    borderColor: colors.surfaceElevated,
   },
 });

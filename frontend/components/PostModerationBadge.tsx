@@ -11,10 +11,11 @@
  *   1. "Edit and resubmit" → sửa nội dung, kiểm duyệt lại từ đầu.
  *   2. "Appeal" → nhờ admin xem xét lại (không tự đảo ngược quyết định của AI).
  */
-import { AppColors } from "@/constants/theme";
+import { type ThemeColors } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 type ModerationState = "Pending" | "Approved" | "Rejected" | "NeedsReview";
 
@@ -91,6 +92,7 @@ export const PostModerationBadge: React.FC<Props> = ({
   onAppeal,
   edgeToEdge = false,
 }) => {
+  const styles = useThemedStyles(createStyles);
   // Approved (or no status at all) → render nothing.
   if (!status || status === "Approved") return null;
 
@@ -134,7 +136,7 @@ export const PostModerationBadge: React.FC<Props> = ({
 
           {canAppeal ? (
             <TouchableOpacity
-              style={[styles.resubmitBtn, { backgroundColor: "#EDE9FE" }]}
+              style={[styles.resubmitBtn, { backgroundColor: "rgba(124, 58, 237, 0.15)" }]}
               activeOpacity={0.7}
               onPress={onAppeal}
             >
@@ -150,7 +152,7 @@ export const PostModerationBadge: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   wrapper: {
     paddingBottom: 10,
     gap: 6,
@@ -176,7 +178,7 @@ const styles = StyleSheet.create({
   reasonText: {
     fontSize: 12,
     lineHeight: 17,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   actionRow: {
     flexDirection: "row",

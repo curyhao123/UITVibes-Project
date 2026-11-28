@@ -9,11 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { User } from '../../data/mockData';
 import { Avatar } from '../Avatar';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface NewMessageSheetProps {
   visible: boolean;
@@ -42,6 +43,7 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
   onSelectUser,
   onClose,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
   if (!visible) return null;
@@ -131,7 +133,7 @@ export const NewMessageSheet: React.FC<NewMessageSheetProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sheetOverlay: {
     ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
@@ -142,7 +144,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   newMsgSheet: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '70%',
@@ -155,17 +157,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   newMsgSheetTitle: {
     ...Typography.bodySemibold,
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
   },
   newMsgSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -176,7 +178,7 @@ const styles = StyleSheet.create({
   newMsgSearchInput: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
+    color: colors.text,
     padding: 0,
   },
   newMsgUserItem: {
@@ -199,16 +201,16 @@ const styles = StyleSheet.create({
   newMsgUserName: {
     ...Typography.bodySemibold,
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
   },
   newMsgUserDisplay: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     marginTop: 2,
   },
   newMsgEmpty: {
     ...Typography.body,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: 'center',
     paddingVertical: 32,
   },

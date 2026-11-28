@@ -20,15 +20,17 @@ import {
   StaticPremiumHeader,
 } from "../../components";
 import { TAB_BAR_BOTTOM_OFFSET } from "../../components/ModernTabBar";
-import { AppColors, layoutPadding } from "../../constants/theme";
+import { layoutPadding, type ThemeColors } from "../../constants/theme";
 import { Typography } from "../../constants/typography";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Conversation, User } from "../../data/mockData";
 import * as api from "../../services/api";
 import { deleteConversation } from "../../services/messageService";
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export default function MessageScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -350,14 +352,14 @@ export default function MessageScreen() {
           isLoadingConversations && conversations.length > 0 ? (
             <ActivityIndicator
               style={{ paddingVertical: 12 }}
-              color={AppColors.primary}
+              color={colors.primary}
             />
           ) : null
         }
         ListEmptyComponent={
           conversations.length === 0 && !isLoadingConversations ? (
             <View style={styles.emptyInbox}>
-              <View style={[styles.emptyInboxIcon, { backgroundColor: isDark ? `${colors.primary}25` : `${AppColors.primary}12` }]}>
+              <View style={[styles.emptyInboxIcon, { backgroundColor: isDark ? `${colors.primary}25` : `${colors.primary}12` }]}>
                 <Feather name="send" size={36} color={colors.primary} strokeWidth={1.5} />
               </View>
               <Text style={[styles.emptyInboxTitle, { color: colors.text }]}>Messages</Text>
@@ -429,10 +431,10 @@ export default function MessageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   headerActionsRow: {
     flexDirection: "row",
@@ -445,7 +447,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -456,7 +458,7 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     flex: 1,
     marginLeft: 8,
-    color: AppColors.text,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -469,7 +471,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   avatarSkeleton: {
     width: 52,
@@ -481,10 +483,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   skeleton: {
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   skeletonLine: {
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 4,
   },
   errorBanner: {
@@ -515,25 +517,25 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
   },
   emptyInboxTitle: {
     ...Typography.screenTitle,
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   emptyInboxSubtitle: {
     ...Typography.body,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyInboxBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 8,
@@ -551,11 +553,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...Typography.sectionTitle,
     marginTop: 16,
-    color: AppColors.text,
+    color: colors.text,
   },
   emptySubtitle: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: "center",
     marginTop: 8,
   },

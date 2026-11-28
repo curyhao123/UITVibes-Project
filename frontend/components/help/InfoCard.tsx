@@ -1,8 +1,9 @@
 import React, { memo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export type InfoCardVariant = 'info' | 'warning' | 'success' | 'summary';
 
@@ -13,7 +14,7 @@ interface InfoCardProps {
   children: ReactNode;
 }
 
-const variantConfig: Record<
+const createVariantConfig = (colors: ThemeColors): Record<
   InfoCardVariant,
   {
     icon: keyof typeof Feather.glyphMap;
@@ -22,36 +23,36 @@ const variantConfig: Record<
     iconBgColor: string;
     titleColor: string;
   }
-> = {
+> => ({
   summary: {
     icon: 'book-open',
-    bgColor: `${AppColors.primary}0C`,
-    iconColor: AppColors.primary,
-    iconBgColor: `${AppColors.primary}18`,
-    titleColor: AppColors.text,
+    bgColor: `${colors.primary}0C`,
+    iconColor: colors.primary,
+    iconBgColor: `${colors.primary}18`,
+    titleColor: colors.text,
   },
   info: {
     icon: 'info',
-    bgColor: `${AppColors.primary}0C`,
-    iconColor: AppColors.primary,
-    iconBgColor: `${AppColors.primary}18`,
-    titleColor: AppColors.text,
+    bgColor: `${colors.primary}0C`,
+    iconColor: colors.primary,
+    iconBgColor: `${colors.primary}18`,
+    titleColor: colors.text,
   },
   warning: {
     icon: 'alert-triangle',
-    bgColor: `${AppColors.error}0C`,
-    iconColor: AppColors.error,
-    iconBgColor: `${AppColors.error}18`,
-    titleColor: AppColors.text,
+    bgColor: `${colors.error}0C`,
+    iconColor: colors.error,
+    iconBgColor: `${colors.error}18`,
+    titleColor: colors.text,
   },
   success: {
     icon: 'check-circle',
-    bgColor: `${AppColors.success}0C`,
-    iconColor: AppColors.success,
-    iconBgColor: `${AppColors.success}18`,
-    titleColor: AppColors.text,
+    bgColor: `${colors.success}0C`,
+    iconColor: colors.success,
+    iconBgColor: `${colors.success}18`,
+    titleColor: colors.text,
   },
-};
+});
 
 /**
  * Reusable styled card for informational notices.
@@ -74,7 +75,8 @@ export const InfoCard = memo(function InfoCard({
   title,
   children,
 }: InfoCardProps) {
-  const config = variantConfig[variant];
+  const styles = useThemedStyles(createStyles);
+  const config = useThemedStyles(createVariantConfig)[variant];
   const displayIcon = icon ?? config.icon;
 
   return (
@@ -101,7 +103,7 @@ export const InfoCard = memo(function InfoCard({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -136,7 +138,7 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 22,
   },
 });

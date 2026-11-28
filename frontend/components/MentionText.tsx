@@ -3,6 +3,8 @@ import React, { useMemo } from 'react';
 import { StyleProp, Text, TextStyle } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { searchUsers } from '../services/userService';
+import { getHashtagColor, normalizeHashtag } from '../utils/hashtagColor';
+import { useOpenProfile } from '../hooks/useOpenProfile';
 
 interface MentionTextProps {
   text: string;
@@ -13,8 +15,8 @@ interface MentionTextProps {
 }
 
 /**
- * Parses text and highlights @username mentions
- * Backend uses regex: @(\w+) to extract mentions
+ * Parses text and highlights @username mentions and #hashtags.
+ * Mirrors the backend's @(\w+) and #(\w+); .NET's \w is Unicode-aware, hence \p{L} for hashtags.
  */
 export const MentionText: React.FC<MentionTextProps> = ({
   text,
@@ -24,17 +26,16 @@ export const MentionText: React.FC<MentionTextProps> = ({
   numberOfLines,
 }) => {
   const router = useRouter();
+  const openProfile = useOpenProfile();
   const { colors } = useTheme();
 
   const parsedText = useMemo(() => {
-    // Split by @username pattern - same as backend: @(\w+)
-    const mentionRegex = /@(\w+)/g;
-    const parts: { type: 'text' | 'mention'; content: string }[] = [];
+    const tokenRegex = /@\w+|#[\p{L}\p{N}_]+/gu;
+    const parts: { type: 'text' | 'mention' | 'hashtag'; content: string }[] = [];
     let lastIndex = 0;
     let match;
 
-    while ((match = mentionRegex.exec(text)) !== null) {
-      // Add text before the mention
+    while ((match = tokenRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         parts.push({
           type: 'text',
@@ -42,10 +43,9 @@ export const MentionText: React.FC<MentionTextProps> = ({
         });
       }
 
-      // Add the mention (including @ symbol)
       parts.push({
-        type: 'mention',
-        content: match[0], // includes @
+        type: match[0].startsWith('@') ? 'mention' : 'hashtag',
+        content: match[0],
       });
 
       lastIndex = match.index + match[0].length;
@@ -80,14 +80,21 @@ export const MentionText: React.FC<MentionTextProps> = ({
       );
 
       if (exactMatch) {
-        router.push(`/profile/${exactMatch.id}` as any);
+        openProfile(exactMatch.id);
       } else if (users.length > 0) {
         // Fallback to first result
-        router.push(`/profile/${users[0].id}` as any);
+        openProfile(users[0].id);
       }
     } catch (error) {
       console.error('[MentionText] Failed to resolve username:', error);
     }
+  };
+
+  const handleHashtagPress = (hashtag: string) => {
+    router.push({
+      pathname: '/(tabs)/search',
+      params: { hashtag: normalizeHashtag(hashtag), ts: String(Date.now()) },
+    } as any);
   };
 
   // Filter out empty parts
@@ -116,8 +123,19 @@ export const MentionText: React.FC<MentionTextProps> = ({
             </Text>
           );
         }
-        // Render text content, replacing newlines with spaces
-        const textContent = part.content.replace(/\n/g, ' ').trim();
+        if (part.type === 'hashtag') {
+          return (
+            <Text
+              key={index}
+              style={{ color: getHashtagColor(part.content, colors.hashtagPalette), fontWeight: '600' }}
+              onPress={() => handleHashtagPress(part.content)}
+            >
+              {part.content}
+            </Text>
+          );
+        }
+        // Keep the spaces between tokens; only flatten newlines.
+        const textContent = part.content.replace(/\n/g, ' ');
         if (!textContent) return null;
         return <Text key={index}>{textContent}</Text>;
       })}

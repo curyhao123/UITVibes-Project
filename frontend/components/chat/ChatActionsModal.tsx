@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors, layoutPadding } from '../../constants/theme';
+import { layoutPadding } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface ChatActionsModalProps {
   visible: boolean;
@@ -23,6 +24,7 @@ export const ChatActionsModal: React.FC<ChatActionsModalProps> = ({
   onBlockAction,
   onClose,
 }) => {
+  const { colors } = useTheme();
   const chatActionLabel = blockedByMe ? 'Unblock user' : 'Block user';
   const chatActionIcon = blockedByMe ? 'user-check' : 'user-x';
 
@@ -39,18 +41,18 @@ export const ChatActionsModal: React.FC<ChatActionsModalProps> = ({
         onPress={onClose}
       >
         <View
-          style={styles.chatActionsSheet}
+          style={[styles.chatActionsSheet, { backgroundColor: colors.surfaceElevated }]}
           onStartShouldSetResponder={() => true}
         >
-          <View style={styles.settingsSheetHeader}>
-            <Text style={styles.settingsSheetTitle}>Chat actions</Text>
+          <View style={[styles.settingsSheetHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.settingsSheetTitle, { color: colors.text }]}>Chat actions</Text>
             <TouchableOpacity onPress={onClose}>
-              <Feather name="x" size={22} color={AppColors.text} strokeWidth={2} />
+              <Feather name="x" size={22} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={styles.actionRow}
+            style={[styles.actionRow, { borderTopColor: colors.border }]}
             activeOpacity={0.7}
             onPress={() => {
               onClose();
@@ -60,18 +62,15 @@ export const ChatActionsModal: React.FC<ChatActionsModalProps> = ({
             <Feather
               name={chatActionIcon}
               size={20}
-              color={blockedByMe ? AppColors.text : AppColors.error}
+              color={blockedByMe ? colors.text : colors.error}
               strokeWidth={2}
             />
             <Text
-              style={[
-                styles.actionText,
-                !blockedByMe && styles.dangerActionText,
-              ]}
+              style={[styles.actionText, { color: blockedByMe ? colors.text : colors.error }]}
             >
               {chatActionLabel}
             </Text>
-            <Feather name="chevron-right" size={20} color={AppColors.textMuted} strokeWidth={2} />
+            <Feather name="chevron-right" size={20} color={colors.textMuted} strokeWidth={2} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -86,7 +85,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   chatActionsSheet: {
-    backgroundColor: AppColors.background,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingBottom: 20,
@@ -98,12 +96,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: layoutPadding,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
   },
   settingsSheetTitle: {
     ...Typography.bodySemibold,
     fontWeight: '600',
-    color: AppColors.text,
     flex: 1,
   },
   actionRow: {
@@ -113,15 +109,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: AppColors.border,
     minHeight: 50,
   },
   actionText: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
-  },
-  dangerActionText: {
-    color: AppColors.error,
   },
 });

@@ -20,7 +20,9 @@ import Animated, {
   Easing,
   interpolate,
 } from 'react-native-reanimated';
-import { AppColors, borderRadius as themeRadii } from '../constants/theme';
+import { borderRadius as themeRadii, type ThemeColors } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 // ─── Animation constants ───────────────────────────────────────────────────────
 
@@ -42,8 +44,11 @@ export const SkeletonShimmer: React.FC<SkeletonShimmerProps> = ({
   height = 16,
   borderRadius: radius = themeRadii.sm,
   style,
-  baseColor = AppColors.borderLight,
+  baseColor: baseColorProp,
 }) => {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const baseColor = baseColorProp ?? colors.borderLight;
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -135,7 +140,9 @@ export const SkeletonBox: React.FC<SkeletonBoxProps> = ({
 
 // ─── Post skeleton (square image + caption + avatar) ──────────────────────────
 
-export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) => (
+export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) => {
+  const postStyles = useThemedStyles(createPostStyles);
+  return (
   <Animated.View style={[postStyles.card, cardEntrance(index)]}>
     {/* Avatar + username row */}
     <View style={postStyles.avatarRow}>
@@ -168,6 +175,7 @@ export const SkeletonPostCard: React.FC<{ index?: number }> = ({ index = 0 }) =>
     </View>
   </Animated.View>
 );
+};
 
 // ─── Feed skeleton (multiple post cards) ──────────────────────────────────────
 
@@ -206,7 +214,7 @@ export const UserListSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) =>
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   shimmerBase: {
     overflow: 'hidden',
   },
@@ -216,14 +224,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surfaceElevated,
     opacity: 0.4,
   },
 });
 
-const postStyles = StyleSheet.create({
+const createPostStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     marginBottom: 14,
     padding: 12,
     borderRadius: themeRadii.lg,

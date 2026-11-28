@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface ContactAvatarProps {
   initials: string;
@@ -24,6 +25,7 @@ export const ContactAvatar = memo(function ContactAvatar({
   avatarBg,
   size = 52,
 }: ContactAvatarProps) {
+  const styles = useThemedStyles(createStyles);
   const innerSize = size;
 
   return (
@@ -50,7 +52,7 @@ export const ContactAvatar = memo(function ContactAvatar({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -58,7 +60,7 @@ const styles = StyleSheet.create({
   },
   initials: {
     ...Typography.statNumber,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: '600',
     letterSpacing: -0.5,
   },

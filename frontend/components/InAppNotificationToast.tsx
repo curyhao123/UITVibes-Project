@@ -11,6 +11,7 @@
  * Mount this ONCE in the root layout (AppLayoutInner).
  */
 
+import { type ThemeColors } from '../constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { useRouter, useSegments } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -39,6 +40,7 @@ import {
   type NewNotificationHandler,
 } from '../services/notificationHubService';
 import type { Notification } from '../services/notificationService';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const log = createLogger('InAppToast');
 
@@ -147,6 +149,7 @@ async function fetchActor(actorId: string): Promise<ActorInfo | null> {
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export const InAppNotificationToast: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
@@ -373,7 +376,7 @@ export const InAppNotificationToast: React.FC = () => {
 };
 
 // ─── Styles ────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   wrap: {
     position: 'absolute',
     left: 12,
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.borderLight,
   },
   avatarFallback: {
     alignItems: 'center',
@@ -415,7 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.surface,
   },
   textWrap: {
     flex: 1,

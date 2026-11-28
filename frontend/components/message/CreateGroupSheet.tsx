@@ -9,11 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AppColors } from '../../constants/theme';
+import { type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
 import { useTheme } from '../../context/ThemeContext';
 import { User } from '../../data/mockData';
 import { Avatar } from '../Avatar';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 export interface CreateGroupSheetProps {
   visible: boolean;
@@ -50,6 +51,7 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
   onSubmit,
   onClose,
 }) => {
+  const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
   if (!visible) return null;
@@ -167,7 +169,7 @@ export const CreateGroupSheet: React.FC<CreateGroupSheetProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sheetOverlay: {
     ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
@@ -178,7 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
-    backgroundColor: AppColors.surfaceElevated,
+    backgroundColor: colors.surfaceElevated,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '70%',
@@ -191,12 +193,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   sheetTitle: {
     ...Typography.bodySemibold,
     fontSize: 16,
-    color: AppColors.text,
+    color: colors.text,
   },
   groupNameContainer: {
     paddingHorizontal: 16,
@@ -204,8 +206,8 @@ const styles = StyleSheet.create({
   },
   groupNameInput: {
     ...Typography.body,
-    color: AppColors.text,
-    backgroundColor: AppColors.borderLight,
+    color: colors.text,
+    backgroundColor: colors.borderLight,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -213,7 +215,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...Typography.captionSemibold,
     fontSize: 12,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: 18,
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -235,7 +237,7 @@ const styles = StyleSheet.create({
   searchInput: {
     ...Typography.body,
     flex: 1,
-    color: AppColors.text,
+    color: colors.text,
     padding: 0,
   },
   userItem: {
@@ -255,11 +257,11 @@ const styles = StyleSheet.create({
   userName: {
     ...Typography.bodySemibold,
     fontSize: 15,
-    color: AppColors.text,
+    color: colors.text,
   },
   userDisplay: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     marginTop: 2,
   },
   checkbox: {
@@ -267,13 +269,13 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   emptyWrap: {
     paddingVertical: 32,
@@ -283,17 +285,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   userInfoText: {
     ...Typography.body,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     marginLeft: 8,
   },
   createGroupBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 10,

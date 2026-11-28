@@ -9,8 +9,10 @@ import {
   UIManager,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { Typography } from '../../constants/typography';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,6 +52,8 @@ const layoutAnimationConfig = {
 export const FAQItem = memo(function FAQItem(
   { item, isFirst, isLast }: FAQItemProps,
 ) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handlePress = useCallback(() => {
@@ -74,7 +78,7 @@ export const FAQItem = memo(function FAQItem(
         <Feather
           name={isOpen ? 'chevron-up' : 'chevron-down'}
           size={18}
-          color={AppColors.iconMuted}
+          color={colors.iconMuted}
           strokeWidth={2}
         />
       </TouchableOpacity>
@@ -89,22 +93,22 @@ export const FAQItem = memo(function FAQItem(
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
   },
   containerFirst: {
     borderTopLeftRadius: borderRadius.md,
     borderTopRightRadius: borderRadius.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: AppColors.borderLight,
+    borderTopColor: colors.borderLight,
   },
   containerLast: {
     borderBottomLeftRadius: borderRadius.md,
     borderBottomRightRadius: borderRadius.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
     marginBottom: 4,
   },
   trigger: {
@@ -117,7 +121,7 @@ const styles = StyleSheet.create({
   },
   question: {
     ...Typography.bodyMedium,
-    color: AppColors.text,
+    color: colors.text,
     flex: 1,
   },
   answerWrap: {
@@ -126,12 +130,12 @@ const styles = StyleSheet.create({
   },
   answerDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     marginBottom: 12,
   },
   answer: {
     ...Typography.body,
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 22,
   },
 });

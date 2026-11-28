@@ -30,7 +30,7 @@ import {
   MessageBubble,
   MessageContextMenu,
 } from '../../../components';
-import { AppColors, layoutPadding } from '../../../constants/theme';
+import { layoutPadding, type ThemeColors } from '../../../constants/theme';
 import { Typography } from '../../../constants/typography';
 import { useApp } from '../../../context/AppContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -48,8 +48,10 @@ import {
   removeMemberFromGroup,
 } from '../../../services/messageService';
 import { invokeHub } from '../../../services/signalrService';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 
 export default function ChatScreen() {
+  const styles = useThemedStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
@@ -758,10 +760,10 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     position: 'relative',
   },
   centerState: {
@@ -773,16 +775,16 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     marginTop: 8,
   },
   emptyChatTitle: {
     ...Typography.bodySemibold,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   emptyChatSubtitle: {
     ...Typography.caption,
-    color: AppColors.iconMuted,
+    color: colors.iconMuted,
     textAlign: 'center',
   },
   messagesList: {
@@ -796,7 +798,7 @@ const styles = StyleSheet.create({
   },
   typingText: {
     ...Typography.caption,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontStyle: 'italic',
   },
   scrollToBottomButton: {
@@ -807,7 +809,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     transform: [{ translateX: -21 }],
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },

@@ -12,10 +12,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
-import { AppColors, borderRadius } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { User } from '../../data/mockData';
 import * as api from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 interface SuggestedUserItemProps {
   user: User;
@@ -24,6 +26,8 @@ interface SuggestedUserItemProps {
 }
 
 const SuggestedUserItem: React.FC<SuggestedUserItemProps> = ({ user, onFollow, onDismiss }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [followed, setFollowed] = useState(false);
 
   const handleFollow = () => {
@@ -42,13 +46,13 @@ const SuggestedUserItem: React.FC<SuggestedUserItemProps> = ({ user, onFollow, o
           @{user.username}
         </Text>
         {user.isVerified && (
-          <Feather name="check-circle" size={12} color={AppColors.primary} />
+          <Feather name="check-circle" size={12} color={colors.primary} />
         )}
       </View>
       <View style={styles.userActions}>
         {followed ? (
           <View style={styles.followedBadge}>
-            <Feather name="check" size={12} color={AppColors.success} />
+            <Feather name="check" size={12} color={colors.success} />
             <Text style={styles.followedText}>Following</Text>
           </View>
         ) : (
@@ -66,7 +70,7 @@ const SuggestedUserItem: React.FC<SuggestedUserItemProps> = ({ user, onFollow, o
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Feather name="x" size={16} color={AppColors.iconMuted} />
+              <Feather name="x" size={16} color={colors.iconMuted} />
             </TouchableOpacity>
           </>
         )}
@@ -76,6 +80,8 @@ const SuggestedUserItem: React.FC<SuggestedUserItemProps> = ({ user, onFollow, o
 };
 
 export default function OnboardingFindFriendsScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { onboardingData, fetchSuggestedUsers, suggestedUsers, followSuggestedUser, finishOnboarding } = useApp();
   const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +150,7 @@ export default function OnboardingFindFriendsScreen() {
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Feather name="arrow-left" size={22} color={AppColors.text} />
+          <Feather name="arrow-left" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
@@ -185,13 +191,13 @@ export default function OnboardingFindFriendsScreen() {
                 activeOpacity={0.75}
               >
                 <View style={styles.syncIconWrap}>
-                  <Feather name="users" size={20} color={AppColors.primary} strokeWidth={2} />
+                  <Feather name="users" size={20} color={colors.primary} strokeWidth={2} />
                 </View>
                 <View style={styles.syncTextWrap}>
                   <Text style={styles.syncTitle}>Find Friends</Text>
                   <Text style={styles.syncSubtitle}>Discover people you may know</Text>
                 </View>
-                <Feather name="chevron-right" size={18} color={AppColors.iconMuted} />
+                <Feather name="chevron-right" size={18} color={colors.iconMuted} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -200,13 +206,13 @@ export default function OnboardingFindFriendsScreen() {
                 activeOpacity={0.75}
               >
                 <View style={styles.syncIconWrap}>
-                  <Feather name="smartphone" size={20} color={AppColors.primary} strokeWidth={2} />
+                  <Feather name="smartphone" size={20} color={colors.primary} strokeWidth={2} />
                 </View>
                 <View style={styles.syncTextWrap}>
                   <Text style={styles.syncTitle}>Sync Contacts</Text>
                   <Text style={styles.syncSubtitle}>Connect with friends from your contacts</Text>
                 </View>
-                <Feather name="chevron-right" size={18} color={AppColors.iconMuted} />
+                <Feather name="chevron-right" size={18} color={colors.iconMuted} />
               </TouchableOpacity>
             </View>
 
@@ -231,7 +237,7 @@ export default function OnboardingFindFriendsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}>
-              <Feather name="user-check" size={32} color={AppColors.iconMuted} strokeWidth={1.5} />
+              <Feather name="user-check" size={32} color={colors.iconMuted} strokeWidth={1.5} />
             </View>
             <Text style={styles.emptyTitle}>You&apos;re all set!</Text>
             <Text style={styles.emptySubtitle}>
@@ -265,10 +271,10 @@ export default function OnboardingFindFriendsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -281,9 +287,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -294,7 +300,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 15,
     fontWeight: '600',
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: -0.1,
   },
   progressRow: {
@@ -307,10 +313,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   progressDotActive: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     width: 24,
   },
   listContent: {
@@ -331,14 +337,14 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
     letterSpacing: -0.1,
@@ -351,9 +357,9 @@ const styles = StyleSheet.create({
   syncContactsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -362,7 +368,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FDF0EC',
+    backgroundColor: `${colors.primary}14`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -373,13 +379,13 @@ const styles = StyleSheet.create({
   syncTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 2,
     letterSpacing: -0.1,
   },
   syncSubtitle: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.05,
   },
   suggestedHeader: {
@@ -388,13 +394,13 @@ const styles = StyleSheet.create({
   suggestedTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   suggestedSubtitle: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
   userCard: {
@@ -402,9 +408,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
   userInfo: {
     flex: 1,
@@ -417,12 +423,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 14,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.1,
   },
   userHandle: {
     fontSize: 13,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.05,
   },
   userActions: {
@@ -431,7 +437,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   followBtn: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: borderRadius.sm,
@@ -446,7 +452,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -458,12 +464,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
   followedText: {
     fontSize: 13,
     fontWeight: '600',
-    color: AppColors.success,
+    color: colors.success,
     letterSpacing: -0.1,
   },
   emptyState: {
@@ -475,7 +481,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -483,13 +489,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -504,7 +510,7 @@ const styles = StyleSheet.create({
   },
   seeMoreText: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     fontWeight: '600',
     letterSpacing: -0.1,
   },

@@ -14,14 +14,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { Toast } from "../../components/Toast";
-import { AppColors, borderRadius } from "../../constants/theme";
+import { borderRadius, type ThemeColors } from "../../constants/theme";
 import { useApp } from "../../context/AppContext";
 import * as api from "../../services/api";
+import { useTheme } from '../../context/ThemeContext';
+import { useThemedStyles } from '../../hooks/useThemedStyles';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60; // seconds
 
 export default function EmailVerificationScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { email, fromLogin } = useLocalSearchParams<{ email?: string; fromLogin?: string }>();
   const { currentUser, confirmPendingAuth } = useApp();
@@ -158,12 +162,12 @@ export default function EmailVerificationScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Feather name="arrow-left" size={18} color={AppColors.text} />
+            <Feather name="arrow-left" size={18} color={colors.text} />
           </TouchableOpacity>
 
           {/* Icon */}
           <View style={styles.iconWrap}>
-            <Feather name="mail" size={36} color={AppColors.primary} strokeWidth={1.5} />
+            <Feather name="mail" size={36} color={colors.primary} strokeWidth={1.5} />
           </View>
 
           {/* Heading */}
@@ -201,7 +205,7 @@ export default function EmailVerificationScreen() {
           {/* Error message */}
           {error ? (
             <View style={styles.errorRow}>
-              <Feather name="alert-circle" size={14} color={AppColors.error} strokeWidth={2} />
+              <Feather name="alert-circle" size={14} color={colors.error} strokeWidth={2} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
@@ -249,10 +253,10 @@ export default function EmailVerificationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -267,9 +271,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 32,
@@ -278,7 +282,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: `${AppColors.primary}12`,
+    backgroundColor: `${colors.primary}12`,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -287,19 +291,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 10,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     lineHeight: 22,
     marginBottom: 36,
     letterSpacing: -0.1,
   },
   emailHighlight: {
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "600",
   },
   otpRow: {
@@ -312,21 +316,21 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     borderWidth: 1.5,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     textAlign: "center",
     fontSize: 22,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: 0,
   },
   otpBoxFilled: {
-    borderColor: AppColors.primary,
-    backgroundColor: `${AppColors.primary}08`,
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}08`,
   },
   otpBoxError: {
-    borderColor: AppColors.error,
+    borderColor: colors.error,
   },
   errorRow: {
     flexDirection: "row",
@@ -336,7 +340,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: AppColors.error,
+    color: colors.error,
     letterSpacing: -0.1,
     flex: 1,
   },
@@ -351,12 +355,12 @@ const styles = StyleSheet.create({
   },
   resendLabel: {
     fontSize: 14,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   resendLink: {
     fontSize: 14,
     fontWeight: "700",
-    color: AppColors.primary,
+    color: colors.primary,
     letterSpacing: -0.1,
   },
   resendLinkDisabled: {
@@ -365,7 +369,7 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: 14,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     letterSpacing: -0.1,
   },
 });

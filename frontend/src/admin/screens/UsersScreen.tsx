@@ -1,7 +1,7 @@
 /**
  * UsersScreen — Admin view of all user profiles
  */
-import { AppColors, borderRadius } from "@/constants/theme";
+import { borderRadius, type ThemeColors } from "@/constants/theme";
 import { banUser, getAllUsers, unbanUser } from "@/services/adminService";
 import type { BE_AdminUserProfile } from "@/services/backendTypes";
 import { Feather } from "@expo/vector-icons";
@@ -19,11 +19,16 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 
 const UserItem: React.FC<{
   user: BE_AdminUserProfile;
   onPress: (user: BE_AdminUserProfile) => void;
-}> = ({ user, onPress }) => (
+}> = ({ user, onPress }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+  return (
   <TouchableOpacity style={styles.userItem} onPress={() => onPress(user)} activeOpacity={0.7}>
     <View style={styles.avatarWrapper}>
       <Image
@@ -47,7 +52,7 @@ const UserItem: React.FC<{
           {user.fullName || user.displayName || user.userId}
         </Text>
         {user.isVerified && (
-          <Feather name="check-circle" size={14} color={AppColors.primary} />
+          <Feather name="check-circle" size={14} color={colors.primary} />
         )}
       </View>
       {user.bio ? (
@@ -67,10 +72,11 @@ const UserItem: React.FC<{
           <Text style={styles.bannedIndicatorText}>Banned</Text>
         </View>
       )}
-      <Feather name="chevron-right" size={16} color={AppColors.textMuted} />
+      <Feather name="chevron-right" size={16} color={colors.textMuted} />
     </View>
   </TouchableOpacity>
 );
+};
 
 interface UserDetailSheetProps {
   user: BE_AdminUserProfile;
@@ -80,6 +86,8 @@ interface UserDetailSheetProps {
 }
 
 const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanToggle, onBanToggleComplete }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleBanToggle = async () => {
@@ -122,7 +130,7 @@ const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanT
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>User Details</Text>
           <TouchableOpacity onPress={onClose}>
-            <Feather name="x" size={20} color={AppColors.text} />
+            <Feather name="x" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
         <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetBodyContent} showsVerticalScrollIndicator={true}>
@@ -169,18 +177,18 @@ const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanT
           <View style={styles.sheetMeta}>
             {user.location ? (
               <View style={styles.metaRow}>
-                <Feather name="map-pin" size={13} color={AppColors.textMuted} />
+                <Feather name="map-pin" size={13} color={colors.textMuted} />
                 <Text style={styles.metaText}>{user.location}</Text>
               </View>
             ) : null}
             {user.website ? (
               <View style={styles.metaRow}>
-                <Feather name="link" size={13} color={AppColors.textMuted} />
+                <Feather name="link" size={13} color={colors.textMuted} />
                 <Text style={styles.metaText}>{user.website}</Text>
               </View>
             ) : null}
             <View style={styles.metaRow}>
-              <Feather name="calendar" size={13} color={AppColors.textMuted} />
+              <Feather name="calendar" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>
                 Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
               </Text>
@@ -233,6 +241,8 @@ const UserDetailSheet: React.FC<UserDetailSheetProps> = ({ user, onClose, onBanT
 };
 
 export default function UsersScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [users, setUsers] = useState<BE_AdminUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -329,7 +339,7 @@ export default function UsersScreen() {
     if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={AppColors.primary} />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   };
@@ -338,7 +348,7 @@ export default function UsersScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -357,14 +367,14 @@ export default function UsersScreen() {
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppColors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="users" size={48} color={AppColors.textMuted} />
+            <Feather name="users" size={48} color={colors.textMuted} />
             <Text style={styles.emptyText}>No users found</Text>
           </View>
         }
@@ -393,29 +403,29 @@ export default function UsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: AppColors.text, letterSpacing: -0.4 },
-  headerSubtitle: { fontSize: 13, color: AppColors.textMuted, marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: "700", color: colors.text, letterSpacing: -0.4 },
+  headerSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   footerLoader: { paddingVertical: 16, alignItems: "center" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: AppColors.textMuted },
+  emptyText: { fontSize: 15, color: colors.textMuted },
   userItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     gap: 12,
   },
   avatarWrapper: { position: "relative" },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: AppColors.border },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.border },
   avatarBanned: { opacity: 0.5 },
   bannedBadge: {
     position: "absolute",
@@ -428,19 +438,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: AppColors.surface,
+    borderColor: colors.surface,
   },
   userInfo: { flex: 1 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  displayName: { fontSize: 15, fontWeight: "600", color: AppColors.text },
+  displayName: { fontSize: 15, fontWeight: "600", color: colors.text },
   textBanned: { color: "#EF4444" },
-  username: { fontSize: 12, color: AppColors.textMuted, marginTop: 1 },
-  bio: { fontSize: 12, color: AppColors.textMuted, marginTop: 2 },
+  username: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  bio: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   statsRow: { flexDirection: "row", gap: 10, marginTop: 4 },
-  stat: { fontSize: 11, color: AppColors.textMuted },
+  stat: { fontSize: 11, color: colors.textMuted },
   chevronContainer: { alignItems: "center", gap: 4 },
   bannedIndicator: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: `${colors.error}1F`,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -450,7 +460,7 @@ const styles = StyleSheet.create({
   sheetOverlay: { ...StyleSheet.absoluteFill, justifyContent: "flex-end" },
   sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 40,
@@ -460,7 +470,7 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 36,
     height: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 10,
@@ -472,13 +482,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
-  sheetTitle: { fontSize: 17, fontWeight: "600", color: AppColors.text },
+  sheetTitle: { fontSize: 17, fontWeight: "600", color: colors.text },
   sheetBody: { flex: 1 },
   sheetBodyContent: { padding: 20, alignItems: "center", paddingBottom: 40 },
   avatarContainer: { position: "relative" },
-  sheetAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: AppColors.border, marginBottom: 12 },
+  sheetAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.border, marginBottom: 12 },
   bannedOverlay: {
     position: "absolute",
     top: 0,
@@ -490,27 +500,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  sheetDisplayName: { fontSize: 20, fontWeight: "700", color: AppColors.text },
-  sheetUsername: { fontSize: 14, color: AppColors.textMuted, marginTop: 2 },
+  sheetDisplayName: { fontSize: 20, fontWeight: "700", color: colors.text },
+  sheetUsername: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
   bannedTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: `${colors.error}1F`,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginTop: 8,
   },
   bannedTagText: { fontSize: 12, fontWeight: "600", color: "#EF4444" },
-  sheetBio: { fontSize: 14, color: AppColors.textMuted, textAlign: "center", marginTop: 8, paddingHorizontal: 20 },
+  sheetBio: { fontSize: 14, color: colors.textMuted, textAlign: "center", marginTop: 8, paddingHorizontal: 20 },
   sheetStats: { flexDirection: "row", gap: 28, marginTop: 16 },
   sheetStatItem: { alignItems: "center" },
-  sheetStatValue: { fontSize: 17, fontWeight: "700", color: AppColors.text },
-  sheetStatLabel: { fontSize: 12, color: AppColors.textMuted, marginTop: 2 },
+  sheetStatValue: { fontSize: 17, fontWeight: "700", color: colors.text },
+  sheetStatLabel: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   sheetMeta: { alignSelf: "stretch", marginTop: 16, gap: 8, paddingHorizontal: 8 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  metaText: { fontSize: 13, color: AppColors.textMuted },
+  metaText: { fontSize: 13, color: colors.textMuted },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   sheetActions: { flexDirection: "row", gap: 10, marginTop: 20, alignSelf: "stretch", paddingVertical: 10 },
   sheetBtn: {
@@ -525,9 +535,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minHeight: 48,
   },
-  sheetBtnDanger: { borderColor: "#FEE2E2", backgroundColor: "#FEF2F2" },
+  sheetBtnDanger: { borderColor: `${colors.error}40`, backgroundColor: `${colors.error}14` },
   sheetBtnDangerText: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
-  sheetBtnSuccess: { borderColor: "#D1FAE5", backgroundColor: "#F0FDF4" },
+  sheetBtnSuccess: { borderColor: `${colors.success}40`, backgroundColor: `${colors.success}14` },
   sheetBtnSuccessText: { fontSize: 14, fontWeight: "600", color: "#22C55E" },
   sheetBtnText: { fontSize: 14, fontWeight: "600" },
 });

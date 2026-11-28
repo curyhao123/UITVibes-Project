@@ -13,7 +13,7 @@
  *  - Xử lý hàng loạt (approve / reject nhiều bản ghi một lượt)
  *  - Lọc & đánh dấu các bản ghi đang có khiếu nại từ tác giả
  */
-import { AppColors, borderRadius } from "@/constants/theme";
+import { borderRadius, type ThemeColors } from "@/constants/theme";
 import {
   approveModeration,
   bulkModeration,
@@ -46,6 +46,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from '../../../context/ThemeContext';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
 
 type FilterStatus = ModerationStatus | "All";
 
@@ -88,6 +90,7 @@ const FilterChips: React.FC<{
   onChange: (s: FilterStatus) => void;
   pendingCount: number;
 }> = ({ active, onChange, pendingCount }) => {
+  const styles = useThemedStyles(createStyles);
   const options: { key: FilterStatus; label: string; badge?: number }[] = [
     { key: "NeedsReview", label: "Needs review", badge: pendingCount },
     { key: "All", label: "All" },
@@ -133,6 +136,7 @@ const FilterChips: React.FC<{
 
 /** Severity badge rendered as "2 · Clear violation". */
 const SeverityBadge: React.FC<{ severity: number | null }> = ({ severity }) => {
+  const styles = useThemedStyles(createStyles);
   if (severity == null) return null;
   const idx = Math.min(Math.max(severity, 0), 3);
   return (
@@ -145,6 +149,7 @@ const SeverityBadge: React.FC<{ severity: number | null }> = ({ severity }) => {
 };
 
 const CategoryChips: React.FC<{ categories: string[] }> = ({ categories }) => {
+  const styles = useThemedStyles(createStyles);
   if (!categories || categories.length === 0) return null;
   return (
     <View style={styles.categoryRow}>
@@ -202,6 +207,8 @@ const AdvancedFilters: React.FC<{
   activeCount,
   onReset,
 }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const targetTypes: ModerationTargetType[] = [
     "Post",
     "Comment",
@@ -219,7 +226,7 @@ const AdvancedFilters: React.FC<{
         onPress={onToggle}
         activeOpacity={0.7}
       >
-        <Feather name="sliders" size={14} color={AppColors.textMuted} />
+        <Feather name="sliders" size={14} color={colors.textMuted} />
         <Text style={styles.advancedToggleText}>Filters</Text>
         {activeCount > 0 ? (
           <View style={styles.chipBadge}>
@@ -229,7 +236,7 @@ const AdvancedFilters: React.FC<{
         <Feather
           name={expanded ? "chevron-up" : "chevron-down"}
           size={14}
-          color={AppColors.textMuted}
+          color={colors.textMuted}
         />
       </TouchableOpacity>
 
@@ -239,11 +246,11 @@ const AdvancedFilters: React.FC<{
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Search</Text>
             <View style={styles.searchWrap}>
-              <Feather name="search" size={13} color={AppColors.textMuted} />
+              <Feather name="search" size={13} color={colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search content, reason or category"
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={search}
                 onChangeText={onSearchChange}
                 returnKeyType="search"
@@ -252,7 +259,7 @@ const AdvancedFilters: React.FC<{
               />
               {search.length > 0 ? (
                 <TouchableOpacity onPress={() => onSearchChange("")} hitSlop={8}>
-                  <Feather name="x-circle" size={14} color={AppColors.textMuted} />
+                  <Feather name="x-circle" size={14} color={colors.textMuted} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -396,7 +403,7 @@ const AdvancedFilters: React.FC<{
               <Feather
                 name="flag"
                 size={12}
-                color={onlyWithAppeal ? "#fff" : AppColors.textMuted}
+                color={onlyWithAppeal ? "#fff" : colors.textMuted}
               />
               <Text
                 style={[
@@ -418,7 +425,7 @@ const AdvancedFilters: React.FC<{
               <Feather
                 name="bar-chart-2"
                 size={12}
-                color={orderBySeverity ? "#fff" : AppColors.textMuted}
+                color={orderBySeverity ? "#fff" : colors.textMuted}
               />
               <Text
                 style={[
@@ -440,7 +447,7 @@ const AdvancedFilters: React.FC<{
               <Feather
                 name="flag"
                 size={12}
-                color={orderByPriority ? "#fff" : AppColors.textMuted}
+                color={orderByPriority ? "#fff" : colors.textMuted}
               />
               <Text
                 style={[
@@ -455,7 +462,7 @@ const AdvancedFilters: React.FC<{
 
           {activeCount > 0 ? (
             <TouchableOpacity onPress={onReset} style={styles.resetBtn}>
-              <Feather name="rotate-ccw" size={12} color={AppColors.primary} />
+              <Feather name="rotate-ccw" size={12} color={colors.primary} />
               <Text style={styles.resetText}>Reset filters</Text>
             </TouchableOpacity>
           ) : null}
@@ -473,6 +480,8 @@ const DetailSheet: React.FC<{
   onApprove: (note: string) => void;
   onReject: (note: string) => void;
 }> = ({ item, busy, onClose, onApprove, onReject }) => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [note, setNote] = useState("");
   const [strikeStatus, setStrikeStatus] = useState<BE_ModerationStrikeStatus | null>(
     null,
@@ -499,7 +508,7 @@ const DetailSheet: React.FC<{
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Moderation details</Text>
             <TouchableOpacity onPress={onClose} disabled={busy}>
-              <Feather name="x" size={20} color={AppColors.text} />
+              <Feather name="x" size={20} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -664,7 +673,7 @@ const DetailSheet: React.FC<{
               <TextInput
                 style={styles.noteInput}
                 placeholder="e.g. Content looks safe, approved."
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={note}
                 onChangeText={setNote}
                 multiline
@@ -713,6 +722,8 @@ const DetailSheet: React.FC<{
 };
 
 export default function ModerationScreen() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [items, setItems] = useState<BE_ModerationResult[]>([]);
   const [stats, setStats] = useState<BE_ModerationStats | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("NeedsReview");
@@ -965,7 +976,7 @@ export default function ModerationScreen() {
   };
 
   const renderItem = ({ item }: { item: BE_ModerationResult }) => {
-    const statusColor = STATUS_COLORS[item.status] ?? AppColors.textMuted;
+    const statusColor = STATUS_COLORS[item.status] ?? colors.textMuted;
     const isSelected = selectedIds.includes(item.id);
     const hasAppeal = item.appealStatus === "Pending";
 
@@ -987,7 +998,7 @@ export default function ModerationScreen() {
           <Feather
             name={isSelected ? "check-square" : "square"}
             size={18}
-            color={isSelected ? AppColors.primary : AppColors.textMuted}
+            color={isSelected ? colors.primary : colors.textMuted}
             style={styles.selectionIcon}
           />
         ) : null}
@@ -1046,7 +1057,7 @@ export default function ModerationScreen() {
 
         <View style={styles.cardFooter}>
           <View style={styles.cardFooterLeft}>
-            <Feather name="user" size={12} color={AppColors.textMuted} />
+            <Feather name="user" size={12} color={colors.textMuted} />
             <Text style={styles.cardAuthor} numberOfLines={1}>
               {item.authorDisplayName || "Someone"}
             </Text>
@@ -1063,7 +1074,7 @@ export default function ModerationScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -1086,7 +1097,7 @@ export default function ModerationScreen() {
             <Feather
               name={selectionMode ? "x" : "check-square"}
               size={14}
-              color={selectionMode ? "#fff" : AppColors.textMuted}
+              color={selectionMode ? "#fff" : colors.textMuted}
             />
             <Text
               style={[
@@ -1216,7 +1227,7 @@ export default function ModerationScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={AppColors.primary}
+            tintColor={colors.primary}
           />
         }
         onEndReached={loadMore}
@@ -1224,7 +1235,7 @@ export default function ModerationScreen() {
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator color={AppColors.primary} />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : total > 0 ? (
             <Text style={styles.footerText}>
@@ -1234,7 +1245,7 @@ export default function ModerationScreen() {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="shield" size={48} color={AppColors.textMuted} />
+            <Feather name="shield" size={48} color={colors.textMuted} />
             <Text style={styles.emptyText}>
               {filter === "NeedsReview"
                 ? "Nothing needs review"
@@ -1257,8 +1268,8 @@ export default function ModerationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AppColors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   headerRow: {
@@ -1270,10 +1281,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     letterSpacing: -0.4,
   },
-  headerSubtitle: { fontSize: 13, color: AppColors.textMuted, marginTop: 2 },
+  headerSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   selectBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1282,14 +1293,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   selectBtnActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  selectBtnText: { fontSize: 12, fontWeight: "600", color: AppColors.textMuted },
+  selectBtnText: { fontSize: 12, fontWeight: "600", color: colors.textMuted },
   selectBtnTextActive: { color: "#fff" },
   statsRow: {
     flexDirection: "row",
@@ -1299,15 +1310,15 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     paddingVertical: 10,
     alignItems: "center",
   },
   statValue: { fontSize: 18, fontWeight: "700" },
-  statLabel: { fontSize: 10, color: AppColors.textMuted, marginTop: 2 },
+  statLabel: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
   alertStrip: {
     flexDirection: "row",
     gap: 8,
@@ -1318,7 +1329,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "rgba(124, 58, 237, 0.15)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1338,13 +1349,13 @@ const styles = StyleSheet.create({
     height: 34,
     paddingHorizontal: 14,
     borderRadius: 17,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
-  chipActive: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   // Font size / weight giống nhau cho mọi chip — chỉ đổi màu để phân biệt trạng thái.
-  chipText: { fontSize: 13, color: AppColors.textMuted, fontWeight: "600" },
+  chipText: { fontSize: 13, color: colors.textMuted, fontWeight: "600" },
   chipTextActive: { color: "#fff" },
   chipBadge: {
     backgroundColor: "#EF4444",
@@ -1370,14 +1381,14 @@ const styles = StyleSheet.create({
   advancedToggleText: {
     fontSize: 13,
     fontWeight: "600",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     flex: 1,
   },
   advancedBody: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     padding: 12,
     gap: 12,
   },
@@ -1387,22 +1398,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.sm,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 10,
     height: 36,
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: AppColors.text,
+    color: colors.text,
     paddingVertical: 0,
   },
   filterLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -1417,14 +1428,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   miniChipActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  miniChipText: { fontSize: 12, fontWeight: "500", color: AppColors.textMuted },
+  miniChipText: { fontSize: 12, fontWeight: "500", color: colors.textMuted },
   miniChipTextActive: { color: "#fff", fontWeight: "600" },
   toggleChip: {
     flexDirection: "row",
@@ -1435,17 +1446,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: AppColors.border,
-    backgroundColor: AppColors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
-  toggleText: { fontSize: 12, fontWeight: "500", color: AppColors.textMuted },
+  toggleText: { fontSize: 12, fontWeight: "500", color: colors.textMuted },
   resetBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     alignSelf: "flex-start",
   },
-  resetText: { fontSize: 12, fontWeight: "600", color: AppColors.primary },
+  resetText: { fontSize: 12, fontWeight: "600", color: colors.primary },
   // Bulk bar
   bulkBar: {
     flexDirection: "row",
@@ -1456,11 +1467,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: borderRadius.md,
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
   },
-  bulkCount: { fontSize: 13, fontWeight: "600", color: AppColors.text },
+  bulkCount: { fontSize: 13, fontWeight: "600", color: colors.text },
   bulkActions: { flexDirection: "row", gap: 8 },
   bulkBtn: {
     flexDirection: "row",
@@ -1472,19 +1483,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   bulkApprove: { backgroundColor: "#22C55E", borderColor: "#22C55E" },
-  bulkReject: { backgroundColor: "#FEF2F2", borderColor: "#FEE2E2" },
+  bulkReject: { backgroundColor: `${colors.error}14`, borderColor: `${colors.error}40` },
   bulkBtnText: { fontSize: 12, fontWeight: "600", color: "#fff" },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   card: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     gap: 8,
   },
-  cardSelected: { borderColor: AppColors.primary, borderWidth: 2 },
+  cardSelected: { borderColor: colors.primary, borderWidth: 2 },
   selectionIcon: { position: "absolute", right: 12, top: 12, zIndex: 2 },
   cardHeader: {
     flexDirection: "row",
@@ -1503,9 +1514,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
   },
-  typeTagText: { fontSize: 10, fontWeight: "600", color: AppColors.textMuted },
+  typeTagText: { fontSize: 10, fontWeight: "600", color: colors.textMuted },
   appealTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -1513,7 +1524,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "rgba(124, 58, 237, 0.15)",
   },
   appealTagText: { fontSize: 10, fontWeight: "700", color: "#8B5CF6" },
   reportTag: {
@@ -1523,27 +1534,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: `${colors.error}1F`,
   },
   reportTagText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
-  cardDate: { fontSize: 11, color: AppColors.textMuted },
-  cardContent: { fontSize: 14, color: AppColors.text, lineHeight: 20 },
+  cardDate: { fontSize: 11, color: colors.textMuted },
+  cardContent: { fontSize: 14, color: colors.text, lineHeight: 20 },
   mediaRow: { flexDirection: "row", gap: 6, marginTop: 2 },
   mediaThumb: {
     width: 56,
     height: 56,
     borderRadius: borderRadius.sm,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
   mediaMore: {
     width: 56,
     height: 56,
     borderRadius: borderRadius.sm,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  mediaMoreText: { fontSize: 13, fontWeight: "600", color: AppColors.textMuted },
+  mediaMoreText: { fontSize: 13, fontWeight: "600", color: colors.textMuted },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1555,7 +1566,7 @@ const styles = StyleSheet.create({
     gap: 4,
     flex: 1,
   },
-  cardAuthor: { fontSize: 12, color: AppColors.textMuted, flexShrink: 1 },
+  cardAuthor: { fontSize: 12, color: colors.textMuted, flexShrink: 1 },
   severityBadge: {
     borderWidth: 1,
     borderRadius: 10,
@@ -1565,7 +1576,7 @@ const styles = StyleSheet.create({
   severityText: { fontSize: 10, fontWeight: "600" },
   categoryRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   categoryChip: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: `${colors.error}14`,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -1577,13 +1588,13 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     gap: 12,
   },
-  emptyText: { fontSize: 15, color: AppColors.textMuted },
+  emptyText: { fontSize: 15, color: colors.textMuted },
   footerLoader: { paddingVertical: 16, alignItems: "center" },
   footerText: {
     paddingVertical: 14,
     textAlign: "center",
     fontSize: 12,
-    color: AppColors.textMuted,
+    color: colors.textMuted,
   },
   // Sheet
   sheetOverlay: { flex: 1, justifyContent: "flex-end" },
@@ -1592,7 +1603,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   sheet: {
-    backgroundColor: AppColors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "92%",
@@ -1601,7 +1612,7 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 36,
     height: 4,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 10,
@@ -1613,24 +1624,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.border,
+    borderBottomColor: colors.border,
   },
-  sheetTitle: { fontSize: 17, fontWeight: "600", color: AppColors.text },
+  sheetTitle: { fontSize: 17, fontWeight: "600", color: colors.text },
   sheetBody: { maxHeight: 460 },
   sheetBodyContent: { padding: 20, gap: 16 },
   detailBlock: { gap: 8 },
   detailLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: AppColors.textMuted,
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   detailContent: {
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
     lineHeight: 20,
-    backgroundColor: AppColors.background,
+    backgroundColor: colors.background,
     padding: 12,
     borderRadius: borderRadius.md,
   },
@@ -1639,9 +1650,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: AppColors.border,
+    backgroundColor: colors.border,
   },
-  authorName: { fontSize: 14, fontWeight: "600", color: AppColors.text },
+  authorName: { fontSize: 14, fontWeight: "600", color: colors.text },
   strikeBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1653,7 +1664,7 @@ const styles = StyleSheet.create({
   strikeBadgeText: { fontSize: 11, fontWeight: "700" },
   appealBox: {
     gap: 6,
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "rgba(124, 58, 237, 0.15)",
     padding: 12,
     borderRadius: borderRadius.md,
   },
@@ -1666,20 +1677,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 4,
   },
-  metaKey: { fontSize: 13, color: AppColors.textMuted },
+  metaKey: { fontSize: 13, color: colors.textMuted },
   metaValue: {
     fontSize: 13,
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "600",
     textTransform: "capitalize",
   },
   noteInput: {
     borderWidth: 1,
-    borderColor: AppColors.border,
+    borderColor: colors.border,
     borderRadius: borderRadius.md,
     padding: 12,
     fontSize: 14,
-    color: AppColors.text,
+    color: colors.text,
     minHeight: 76,
     textAlignVertical: "top",
   },
@@ -1702,6 +1713,6 @@ const styles = StyleSheet.create({
   },
   approveBtn: { backgroundColor: "#22C55E", borderColor: "#22C55E" },
   approveBtnText: { fontSize: 14, fontWeight: "600", color: "#fff" },
-  rejectBtn: { backgroundColor: "#FEF2F2", borderColor: "#FEE2E2" },
+  rejectBtn: { backgroundColor: `${colors.error}14`, borderColor: `${colors.error}40` },
   rejectBtnText: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
 });
